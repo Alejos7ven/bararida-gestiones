@@ -1,0 +1,42 @@
+# =====================================================
+# .gitignore — Parque Zoológico y Botánico Bararida
+# =====================================================
+
+# --- Variables de entorno (credenciales sensibles) ---
+.env
+
+# --- Dependencias y paquetes (si se agregan en el futuro) ---
+/vendor/
+/node_modules/
+
+# --- Archivos de sistema macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+
+# --- IDEs y editores ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# --- Logs de PHP y servidor ---
+*.log
+/logs/
+
+# --- Archivos de caché ---
+/cache/
+*.cache
+
+# --- Archivos de respaldo ---
+*.bak
+*.tmp
+*.swp
+*~
+
+# --- Archivos de prueba / scratch sensibles ---
+# (descomenta si no quieres subir los scripts de prueba)
+# /scratch/

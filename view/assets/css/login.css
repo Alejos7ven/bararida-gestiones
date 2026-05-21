@@ -1,0 +1,223 @@
+:root {
+    --primary-color: #0D9039;
+    --primary-hover: #0a732d;
+    --secondary-color: #83D476;
+    --bg-color: #FFFFFF;
+    --sub-bg-color: #F8F9FA;
+    --card-shadow: 0 10px 30px rgba(13, 144, 57, 0.08);
+    --input-border-focus: #83D476;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--primary-color); /* Verde oscuro institucional del parque */
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    color: #2D3748;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Huellas de oso decorativas en el fondo - Invertidas a blanco sobre el verde */
+.decor-paw {
+    position: absolute;
+    width: 75px;
+    height: 75px;
+    background-image: url('../img/bear-feet.png'); /* Ruta relativa corregida para la hoja de estilos externa */
+    background-size: contain;
+    background-repeat: no-repeat;
+    pointer-events: none;
+    z-index: 0; 
+    transition: all 0.5s ease;
+}
+
+.paw-1 {
+    top: 8%;
+    left: 10%;
+    transform: rotate(15deg);
+    width: 90px;
+    height: 90px;
+}
+
+.paw-2 {
+    top: 25%;
+    right: 8%;
+    transform: rotate(-25deg);
+    width: 70px;
+    height: 70px;
+}
+
+.paw-3 {
+    bottom: 12%;
+    left: 7%;
+    transform: rotate(-45deg);
+    width: 80px;
+    height: 80px;
+}
+
+.paw-4 {
+    bottom: 8%;
+    right: 12%;
+    transform: rotate(35deg);
+    width: 95px;
+    height: 95px;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 440px;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
+}
+
+.login-card {
+    background-color: #FFFFFF; /* Tarjeta en blanco puro */
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 40px 30px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.18); /* Sombra profunda premium */
+    transition: all 0.3s ease;
+    position: relative;
+    z-index: 1;
+}
+
+.login-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22);
+}
+
+.brand-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.brand-logo {
+    width: 110px;
+    height: auto;
+    margin-bottom: 12px;
+    filter: drop-shadow(0 4px 8px rgba(13, 144, 57, 0.12));
+    transition: all 0.3s ease;
+}
+
+.brand-logo:hover {
+    transform: scale(1.05) rotate(-3deg);
+}
+
+.brand-title {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin: 0;
+    letter-spacing: 0.5px;
+}
+
+.brand-subtitle {
+    font-size: 0.8rem;
+    color: #718096;
+    margin-top: 5px;
+    font-weight: 500;
+    letter-spacing: 0.8px;
+}
+
+.form-label {
+    font-weight: 500;
+    font-size: 0.9rem;
+    color: #4A5568;
+    margin-bottom: 8px;
+}
+
+.form-control {
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+    border: 1.5px solid #E2E8F0;
+    background-color: #FFFFFF;
+    transition: all 0.25s ease;
+}
+
+.form-control:focus {
+    border-color: var(--input-border-focus);
+    box-shadow: 0 0 0 4px rgba(131, 212, 118, 0.15);
+    color: #2D3748;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border: none;
+    border-radius: 12px;
+    padding: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px; /* Altura constante para evitar saltos en vertical */
+}
+
+.btn-primary:hover, .btn-primary:focus {
+    background-color: var(--primary-hover);
+    box-shadow: 0 5px 15px rgba(13, 144, 57, 0.25);
+    transform: translateY(-1px);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+}
+
+.btn-primary:disabled,
+.btn-primary[disabled] {
+    background-color: var(--primary-hover) !important;
+    color: #FFFFFF !important;
+    opacity: 0.85 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    cursor: not-allowed !important;
+}
+
+/* Micro-animaciones para el feedback */
+.alert {
+    border-radius: 12px;
+    font-size: 0.9rem;
+    border: none;
+    margin-bottom: 25px;
+    display: none;
+    animation: slideIn 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.alert-danger {
+    background-color: #FFF5F5;
+    color: #C53030;
+    border-left: 4px solid #E53E3E;
+}
+
+.alert-success {
+    background-color: #F0FFF4;
+    color: #2F855A;
+    border-left: 4px solid var(--secondary-color);
+}
+
+/* Spinner de carga */
+.spinner-border-sm {
+    width: 1.2rem;
+    height: 1.2rem;
+    display: none;
+    vertical-align: middle;
+    margin-right: 8px;
+}
