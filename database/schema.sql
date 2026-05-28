@@ -17,9 +17,8 @@ SET time_zone = "+00:00";
 /*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
 /*!40101 SET NAMES utf8mb4 */;
 
---
--- Base de datos: `bararida`
---
+CREATE DATABASE IF NOT EXISTS bararida_gestiones DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE bararida_gestiones;
 
 -- --------------------------------------------------------
 
@@ -30,7 +29,7 @@ SET time_zone = "+00:00";
 CREATE TABLE `recorrido` (
   `id` int NOT NULL,
   `nombre` varchar(100) NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `recorrido`
@@ -52,7 +51,7 @@ CREATE TABLE `rutas` (
   `recorrido_id` int NOT NULL,
   `zona_id` int NOT NULL,
   `orden` int NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `rutas`
@@ -126,8 +125,8 @@ INSERT INTO `usuarios` (`id`, `cedula`, `nombre`, `apellido`, `rol`, `password`,
 CREATE TABLE `zonas` (
   `id` int NOT NULL,
   `nombre` varchar(100) NOT NULL,
-  `coordenadas` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `coordenadas` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
 -- Volcado de datos para la tabla `zonas`
