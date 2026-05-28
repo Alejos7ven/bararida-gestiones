@@ -1,0 +1,616 @@
+/**
+ * Estilos Premium del Módulo de Recorridos y Zonas - recorridos.css
+ * Parque Zoológico y Botánico Bararida
+ */
+
+/* Variables de Colores Corporativos */
+:root {
+    --park-primary: #0D9039;
+    --park-secondary: #83D476;
+    --park-secondary-light: rgba(131, 212, 118, 0.15);
+    --park-dark: #1e293b;
+    --park-light: #f8f9fa;
+    --park-gray: #e2e8f0;
+    --park-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+    --park-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Contenedor Principal del Panel */
+.recorridos-panel {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: var(--park-shadow);
+    border: 1px solid var(--park-gray);
+    margin-bottom: 24px;
+}
+
+/* Cabecera de Secciones */
+.recorridos-title-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--park-gray);
+    padding-bottom: 16px;
+    margin-bottom: 20px;
+}
+
+.recorridos-title-bar h3 {
+    font-family: 'Outfit', sans-serif;
+    color: var(--park-dark);
+    font-weight: 700;
+    margin: 0;
+}
+
+.recorridos-title-bar p {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 4px 0 0 0;
+}
+
+/* =========================================================================
+   SISTEMA DE MAPA Y COORDENADAS RESPONSIVAS
+   ========================================================================= */
+
+.map-wrapper {
+    position: relative;
+    width: 100%;
+    height: auto;
+    background-color: #f1f5f9;
+    border-radius: 16px;
+    border: 2px solid var(--park-gray);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+    overflow: hidden;
+    user-select: none;
+    transition: border-color 0.3s ease;
+}
+
+.map-wrapper.admin-active {
+    border-color: var(--park-primary);
+    cursor: crosshair;
+}
+
+.map-image {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain;
+}
+
+/* Capa Overlay de SVG para Conectores de Recorrido */
+.map-svg-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10;
+}
+
+/* Líneas Conectoras del Recorrido */
+.route-line-bg {
+    fill: none;
+    stroke: rgba(255, 255, 255, 0.7);
+    stroke-width: 6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.route-line {
+    fill: none;
+    stroke: var(--park-primary);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 8 6;
+    animation: flowRouteLine 30s linear infinite;
+}
+
+@keyframes flowRouteLine {
+    to {
+        stroke-dashoffset: -100;
+    }
+}
+
+/* =========================================================================
+   PINES EN EL MAPA (CSS ABSOLUTE COORDINATE SYSTEM)
+   ========================================================================= */
+
+.map-pin {
+    position: absolute;
+    width: 24px;
+    height: 24px;
+    background: #ef4444; /* Pines rojos */
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 15;
+    transition: var(--park-transition);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Outfit', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+/* Hover de Pines */
+.map-pin:hover {
+    transform: translate(-50%, -50%) scale(1.3);
+    background: #f87171; /* Rojo más claro */
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.25);
+    z-index: 25;
+}
+
+/* Estado Activo o Resaltado en Selección (Borde Verde) */
+.map-pin.active {
+    background: #ef4444;
+    border-color: #22c55e; /* Borde verde para la ruta */
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.35);
+    transform: translate(-50%, -50%) scale(1.25);
+}
+
+/* Pin Temporal en Creación (Borde Blanco, Pulsante) */
+.map-pin.temp-pin {
+    background: #ef4444;
+    border-color: #ffffff;
+    width: 28px;
+    height: 28px;
+    animation: tempPinPulse 1s infinite alternate;
+}
+
+@keyframes tempPinPulse {
+    from {
+        transform: translate(-50%, -50%) scale(0.9);
+        box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+    }
+    to {
+        transform: translate(-50%, -50%) scale(1.15);
+        box-shadow: 0 0 15px rgba(239, 68, 68, 0.7);
+    }
+}
+
+/* Botones de Eliminar en Listas Laterales (Premium &times;) */
+.btn-eliminar-zona-list,
+.btn-eliminar-recorrido-list {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.08); /* Fondo rojo muy suave */
+    color: #ef4444;                      /* Letra roja */
+    border: 1px solid rgba(239, 68, 68, 0.15);
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--park-transition);
+    padding: 0;
+    margin-left: 10px;
+    outline: none;
+}
+
+.btn-eliminar-zona-list:hover,
+.btn-eliminar-recorrido-list:hover {
+    background: #ef4444;                 /* Fondo rojo sólido en hover */
+    color: #ffffff;                      /* X blanca */
+    border-color: #ef4444;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);
+    transform: scale(1.1);
+}
+
+
+/* Etiqueta del Nombre de Zona (Permanente) */
+.pin-label {
+    position: absolute;
+    transform: translate(-50%, 14px); /* Abajo del pin circular */
+    background: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(2px);
+    color: #ffffff;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    white-space: nowrap;
+    z-index: 12;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    pointer-events: none;
+    transition: var(--park-transition);
+}
+
+/* =========================================================================
+   ELEMENTOS DE CONTROL / INTERFAZ DE ADMINISTRACIÓN
+   ========================================================================= */
+
+/* Modos de Operación / Avisos de Estado */
+.admin-mode-indicator {
+    background: var(--park-secondary-light);
+    border: 1px dashed var(--park-primary);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--park-primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    animation: slideDownFade 0.3s ease;
+}
+
+@keyframes slideDownFade {
+    from { transform: translateY(-10px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.admin-mode-indicator span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Listas del panel lateral de control */
+.sidebar-panel-list {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--park-gray);
+    border-radius: 12px;
+    background: var(--park-light);
+    padding: 8px;
+}
+
+.sidebar-list-item {
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border: 1px solid var(--park-gray);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: var(--park-transition);
+}
+
+.sidebar-list-item:hover {
+    border-color: var(--park-primary);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.03);
+}
+
+.sidebar-list-item.selected {
+    background: var(--park-secondary-light);
+    border-color: var(--park-primary);
+}
+
+.sidebar-list-item h6 {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--park-dark);
+}
+
+.sidebar-list-item p {
+    margin: 2px 0 0 0;
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+/* Botones especiales */
+.btn-park-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--park-primary);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: var(--park-transition);
+    text-decoration: none;
+    box-shadow: 0 4px 10px rgba(13, 144, 57, 0.15);
+    white-space: nowrap;
+}
+
+.btn-park-action:hover {
+    background: #0b7830;
+    color: #ffffff;
+    box-shadow: 0 6px 15px rgba(13, 144, 57, 0.25);
+    transform: translateY(-1px);
+}
+
+.btn-park-action.active {
+    background: #085f25 !important;
+    color: #ffffff !important;
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.25) !important;
+    border: 1px solid rgba(0, 0, 0, 0.2) !important;
+    transform: translateY(1px);
+}
+
+.btn-park-secondary {
+    background: #ffffff;
+    color: #475569;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.btn-park-secondary:hover {
+    background: #f8fafc;
+    color: #1e293b;
+    border-color: #94a3b8;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    transform: translateY(-1px);
+}
+
+.btn-park-secondary.active {
+    background: var(--park-primary) !important;
+    color: #ffffff !important;
+    border-color: var(--park-primary) !important;
+    box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.15) !important;
+    transform: translateY(1px);
+}
+
+/* Botón de Cancelar Modo en Alerta Banner */
+.btn-cancel-modo {
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #ef4444 !important;
+    border: 1px solid rgba(239, 68, 68, 0.25) !important;
+    font-weight: 600;
+    font-size: 0.8rem;
+    padding: 6px 16px;
+    border-radius: 30px !important; /* Bordes redondeados premium */
+    transition: var(--park-transition);
+    cursor: pointer;
+}
+
+.btn-cancel-modo:hover {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    border-color: #ef4444 !important;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);
+}
+
+.btn-park-danger {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+.btn-park-danger:hover {
+    background: #dc2626;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+}
+
+/* Tarjeta especial del Widget del Dashboard */
+.dashboard-map-card {
+    background: #ffffff;
+    border-radius: 20px;
+    padding: 24px;
+    box-shadow: var(--park-shadow);
+    border: 1px solid var(--park-gray);
+    margin-bottom: 24px;
+    transition: var(--park-transition);
+}
+
+.dashboard-map-card:hover {
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.08);
+}
+
+.dashboard-map-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.dashboard-map-header h3 {
+    margin: 0;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    color: var(--park-dark);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dashboard-map-header h3 svg {
+    width: 28px;
+    height: 28px;
+    fill: var(--park-primary);
+}
+
+/* Caja de Selección de Recorridos en Dashboard */
+.tour-selector-box {
+    min-width: 250px;
+}
+
+.tour-selector-box label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 4px;
+    display: block;
+}
+
+.tour-select-custom {
+    border-radius: 10px;
+    border: 1px solid var(--park-gray);
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: 'Outfit', sans-serif;
+    color: var(--park-dark);
+    background-color: var(--park-light);
+    cursor: pointer;
+    transition: var(--park-transition);
+}
+
+.tour-select-custom:focus {
+    border-color: var(--park-primary);
+    box-shadow: 0 0 0 3px rgba(13, 144, 57, 0.15);
+    outline: none;
+}
+
+/* Indicador de Recorrido Activo / Paradas */
+.active-tour-indicator-list {
+    margin-top: 16px;
+    background: var(--park-light);
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--park-gray);
+}
+
+.active-tour-indicator-list h5 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: 0.95rem;
+    color: var(--park-dark);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.active-tour-indicator-list h5 span {
+    color: var(--park-primary);
+}
+
+.tour-steps-timeline {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.timeline-step {
+    background: #ffffff;
+    border: 1px solid var(--park-gray);
+    border-radius: 10px;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.timeline-step.active {
+    border-color: var(--park-primary);
+    background: var(--park-secondary-light);
+}
+
+.step-num {
+    background: var(--park-primary);
+    color: #ffffff;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.step-name {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--park-dark);
+}
+
+.step-connector-arrow {
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.step-connector-arrow svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
+}
+
+/* =========================================================================
+   ESTILOS DE NOTIFICACIONES TOAST GLOBALES (PREMIUM)
+   ========================================================================= */
+.alert-toast {
+    border-radius: 12px !important;
+    padding: 14px 24px !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 20px !important;
+    display: none;
+    border: 1px solid transparent !important;
+    font-family: 'Outfit', sans-serif !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+    z-index: 99999 !important;
+}
+
+/* Éxito: Verde Bararida */
+.alert-toast-success {
+    background-color: #e6f4ea !important; /* Verde pastel sólido */
+    color: #0D9039 !important;
+    border-color: rgba(13, 144, 57, 0.2) !important;
+}
+
+/* Error/Peligro: Rojo Coral */
+.alert-toast-danger {
+    background-color: #fff5f5 !important; /* Rojo pastel sólido */
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+/* Advertencia: Naranja */
+.alert-toast-warning {
+    background-color: #fffaf0 !important; /* Naranja pastel sólido */
+    color: #f59e0b !important;
+    border-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+/* Info: Azul */
+.alert-toast-info {
+    background-color: #eff6ff !important; /* Azul pastel sólido */
+    color: #3b82f6 !important;
+    border-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+/* =========================================================================
+   RESPONSIVIDAD PREMIUM ADICIONAL (HEADER ACTIONS Y BOTONES)
+   ========================================================================= */
+@media (max-width: 768px) {
+    .recorridos-title-bar {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 16px !important;
+    }
+    
+    .recorridos-title-bar > div:last-child {
+        width: 100% !important;
+        display: flex !important;
+        flex-wrap: nowrap !important;
+        gap: 8px !important;
+    }
+    
+    .btn-park-action {
+        flex: 1 !important;
+        justify-content: center !important;
+        font-size: 0.8rem !important;
+        padding: 8px 10px !important;
+    }
+}
+
+

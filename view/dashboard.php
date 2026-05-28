@@ -27,30 +27,33 @@ $permissions = [
         'usuarios' => true,
         'guias' => true,
         'instituciones' => true,
-        'citas' => true
+        'citas' => true,
+        'recorridos' => true
     ],
     'admin' => [
         'usuarios' => false, // Asistente no gestiona usuarios
         'guias' => true,
         'instituciones' => true,
-        'citas' => true
+        'citas' => true,
+        'recorridos' => true
     ],
     'guia' => [
         'usuarios' => false,
         'guias' => false,
         'instituciones' => false,
-        'citas' => true // Acceso único a su cronograma de visitas
+        'citas' => true, // Acceso único a su cronograma de visitas
+        'recorridos' => false
     ]
 ];
 
 // Obtener permisos para el rol actual
 $userPermissions = isset($permissions[$userRol]) ? $permissions[$userRol] : [
-    'usuarios' => false, 'guias' => false, 'instituciones' => false, 'citas' => false
+    'usuarios' => false, 'guias' => false, 'instituciones' => false, 'citas' => false, 'recorridos' => false
 ];
 
 // Obtener la vista solicitada (Enrutador Interno)
 $currentView = isset($_GET['view']) ? trim($_GET['view']) : 'dashboard';
-$validViews = ['dashboard', 'citas', 'guias', 'instituciones', 'usuarios'];
+$validViews = ['dashboard', 'citas', 'guias', 'instituciones', 'usuarios', 'recorridos'];
 if (!in_array($currentView, $validViews)) {
     $currentView = 'dashboard';
 }
@@ -70,9 +73,12 @@ if (!in_array($currentView, $validViews)) {
     
     <!-- Estilos Premium Personalizados del Dashboard -->
     <link rel="stylesheet" href="view/assets/css/dashboard.css">
+    
+    <!-- Estilos Premium del Módulo de Recorridos y Zonas -->
+    <link rel="stylesheet" href="view/assets/css/recorridos.css">
 
     <!-- Cargar estilos específicos para CRUDs y Acceso Restringido si no estamos en el Dashboard de inicio -->
-    <?php if ($currentView !== 'dashboard'): ?>
+    <?php if ($currentView !== 'dashboard' && $currentView !== 'recorridos'): ?>
         <link rel="stylesheet" href="view/assets/css/usuarios.css">
     <?php endif; ?>
 </head>
@@ -132,7 +138,16 @@ if (!in_array($currentView, $validViews)) {
                             Instituciones
                         </a>
                     </li>
-                    <?php if ($userRol === 'superadmin'): // Solo el superadmin ve la pestaña en barra lateral ?>
+                    <?php if ($userRol === 'superadmin' || $userRol === 'admin'): // Administradores ven la pestaña de Recorridos ?>
+                    <li class="<?php echo ($currentView === 'recorridos') ? 'active' : ''; ?>">
+                        <a href="index.php?view=recorridos">
+                            <!-- SVG Compass / Path Icon -->
+                            <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                            Recorridos
+                        </a>
+                    </li>
+                    <?php endif; ?>
+                    <?php if ($userRol === 'superadmin'): // Solo el superadmin ve la pestaña de Usuarios ?>
                     <li class="<?php echo ($currentView === 'usuarios') ? 'active' : ''; ?>">
                         <a href="index.php?view=usuarios">
                             <!-- SVG Settings Icon -->
@@ -199,7 +214,7 @@ if (!in_array($currentView, $validViews)) {
                     <div class="row g-4">
                         
                         <!-- 1. Citas y Visitas -->
-                        <div class="col-md-6 col-lg-3">
+                        <!-- <div class="col-md-6 col-lg-3">
                             <div class="module-card">
                                 <div class="module-icon-container bg-icon-citas">
                                     <svg viewBox="0 0 24 24"><path d="M19 4H18V2H16V4H8V2H6V4H5C3.89 4 3.01 4.9 3.01 6L3 20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V10H19V20Z"/></svg>
@@ -214,10 +229,10 @@ if (!in_array($currentView, $validViews)) {
                                 </p>
                                 <a href="index.php?view=citas" class="btn-module btn-module-active">Entrar al Módulo</a>
                             </div>
-                        </div>
+                        </div> -->
 
                         <!-- 2. Personal Guía -->
-                        <div class="col-md-6 col-lg-3">
+                        <!-- <div class="col-md-6 col-lg-3">
                             <div class="module-card">
                                 <div class="module-icon-container bg-icon-guias">
                                     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM12 5C13.66 5 15 6.34 15 8C15 9.66 13.66 11 12 11C10.34 11 9 9.66 9 8C9 6.34 10.34 5 12 5ZM12 19.2C9.5 19.2 7.29 17.92 6 15.98C6.03 13.99 10 12.9 12 12.9C13.99 12.9 17.97 13.99 18 15.98C16.71 17.92 14.5 19.2 12 19.2Z"/></svg>
@@ -228,10 +243,10 @@ if (!in_array($currentView, $validViews)) {
                                 </p>
                                 <a href="index.php?view=guias" class="btn-module btn-module-active">Entrar al Módulo</a>
                             </div>
-                        </div>
+                        </div> -->
 
                         <!-- 3. Instituciones -->
-                        <div class="col-md-6 col-lg-3">
+                        <!-- <div class="col-md-6 col-lg-3">
                             <div class="module-card">
                                 <div class="module-icon-container bg-icon-instituciones">
                                     <svg viewBox="0 0 24 24"><path d="M12 3L1 9V11H3V20H5V11H19V20H21V11H23V9L12 3Z"/></svg>
@@ -242,10 +257,10 @@ if (!in_array($currentView, $validViews)) {
                                 </p>
                                 <a href="index.php?view=instituciones" class="btn-module btn-module-active">Entrar al Módulo</a>
                             </div>
-                        </div>
+                        </div> -->
 
                         <!-- 4. Control Usuarios -->
-                        <div class="col-md-6 col-lg-3">
+                        <!-- <div class="col-md-6 col-lg-3">
                             <div class="module-card">
                                 <div class="module-icon-container bg-icon-usuarios">
                                     <svg viewBox="0 0 24 24"><path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.33 4 18V20H20V18C20 15.33 14.67 14 12 14Z"/></svg>
@@ -256,8 +271,47 @@ if (!in_array($currentView, $validViews)) {
                                 </p>
                                 <a href="index.php?view=usuarios" class="btn-module btn-module-active">Entrar al Módulo</a>
                             </div>
-                        </div>
+                        </div> -->
 
+                    </div>
+
+                    <!-- WIDGET PREMIUM: MAPA INTERACTIVO Y RECORRIDOS (VISOR GENERAL PARA TODOS LOS ROLES) -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="dashboard-map-card">
+                                <div class="dashboard-map-header">
+                                    <h3>
+                                        <svg viewBox="0 0 24 24"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+                                        Itinerarios y Zonas del Parque Bararida
+                                    </h3>
+                                    <div class="tour-selector-box d-flex align-items-center gap-3">
+                                        <div class="flex-grow-1">
+                                            <label for="selectRecorridoDashboard">Visualizar Recorrido</label>
+                                            <select id="selectRecorridoDashboard" class="form-select tour-select-custom" style="min-width: 280px;">
+                                                <option value="">Cargando recorridos...</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Mapa responsivo con overlay SVG -->
+                                <div class="map-wrapper shadow-sm">
+                                    <img src="view/assets/img/map.jpg" alt="Mapa del Parque Zoológico Bararida" id="mapaParque" class="map-image">
+                                    <svg id="mapSvgOverlay" class="map-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+                                    <div id="mapPinsContainer"></div>
+                                </div>
+                                
+                                <!-- Timeline de paradas (Secuencia del recorrido) -->
+                                <div id="dashboardTimelineWrapper" class="active-tour-indicator-list" style="display: none; animation: slideDownFade 0.3s ease;">
+                                    <h5>
+                                        <span>Itinerario Activo:</span> <strong id="nombreRecorridoActivoSpan" class="text-success"></strong>
+                                    </h5>
+                                    <div id="timelineDashboardSteps" class="tour-steps-timeline mt-2">
+                                        <!-- Se poblará vía JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     <?php break;
 
@@ -752,6 +806,186 @@ if (!in_array($currentView, $validViews)) {
                     <?php endif;
                     break;
 
+                // =====================================================================
+                // CASE 6: MÓDULO DE RECORRIDOS Y ZONAS (ADMINISTRACIÓN COMPLETA)
+                // =====================================================================
+                case 'recorridos':
+                    if ($userPermissions['recorridos']): ?>
+                        <div class="recorridos-panel animate__animated animate__fadeIn">
+                            <div class="recorridos-title-bar">
+                                <div>
+                                    <h3>Gestión de Recorridos y Zonas en el Mapa</h3>
+                                    <p>Establece pines en el mapa para delimitar zonas y agrúpalos para definir recorridos</p>
+                                </div>
+                                <div class="d-flex gap-2 flex-nowrap">
+                                    <button class="btn-park-action" id="btnModoZona">
+                                        <svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:currentColor; margin-right:4px;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                                        Agregar Zona
+                                    </button>
+                                    <button class="btn-park-action btn-park-secondary" id="btnModoRecorrido">
+                                        <svg viewBox="0 0 24 24" style="width:20px; height:20px; fill:currentColor; margin-right:4px;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                                        Crear Recorrido
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Indicador de Modo Agregar Activo -->
+                            <div class="admin-mode-indicator animate__animated animate__slideInDown" id="indicadorModoZona" style="display: none;">
+                                <span>
+                                    <span class="spinner-grow spinner-grow-sm text-danger" role="status" style="width: 12px; height: 12px;"></span>
+                                    <strong>MODO AGREGAR ZONA ACTIVO:</strong> Haz clic en cualquier parte del mapa para marcar y registrar una zona.
+                                </span>
+                                <button class="btn btn-sm btn-cancel-modo" id="btnCancelarModoZona">Cancelar Modo</button>
+                            </div>
+
+                            <!-- Formulario para Crear Recorrido (Inicialmente Oculto, arriba del mapa) -->
+                            <div id="panelCrearRecorridoForm" class="card mb-4 animate__animated animate__slideInDown" style="display: none; border-radius: 16px; border: 1.5px dashed var(--park-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.02); overflow: hidden;">
+                                <div class="card-body" style="background: #ffffff; padding: 20px;">
+                                    <h5 class="card-title font-weight-bold" style="font-family:'Outfit'; font-weight: 700; color: var(--park-primary);">Nuevo Recorrido</h5>
+                                    <p class="text-muted" style="font-size:0.8rem; line-height: 1.35;">Escribe el nombre del recorrido y haz clic en orden sobre las zonas del mapa para crear la secuencia.</p>
+                                    
+                                    <form id="formCrearRecorrido">
+                                        <div class="row">
+                                            <div class="col-md-4 mb-3">
+                                                <label for="nombreRecorrido" class="form-label" style="font-weight: 600; font-size: 0.85rem; color: var(--park-dark);">Nombre del Recorrido</label>
+                                                <input type="text" class="form-control form-premium-control" id="nombreRecorrido" name="nombre" placeholder="Ej. Ruta de los Primates" required style="border-radius:10px;">
+                                            </div>
+                                            <div class="col-md-8 mb-3">
+                                                <label class="form-label" style="font-weight: 600; font-size: 0.85rem; color: var(--park-dark);">Ruta Trazada</label>
+                                                <div id="timelineCreacionWrapper" style="background:#f8f9fa; border-radius:10px; padding:10px; border: 1px solid var(--park-gray); min-height: 50px;">
+                                                    <!-- Timeline dinámico -->
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex gap-2 justify-content-end mt-2">
+                                            <button type="button" class="btn btn-secondary btn-sm px-3 py-2" id="btnCancelarCrearRecorrido" style="border-radius:8px; font-weight:600;">Cancelar</button>
+                                            <button type="submit" class="btn btn-success btn-sm px-3 py-2" id="btnGuardarRecorrido" style="border-radius:8px; font-weight:600; background: var(--park-primary); border-color: var(--park-primary);">Guardar Recorrido</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="row g-4">
+                                <!-- Columna Izquierda: El Mapa Interactivo Responsivo -->
+                                <div class="col-lg-8">
+                                    <div class="map-wrapper shadow-sm" id="mapWrapper">
+                                        <img src="view/assets/img/map.jpg" alt="Mapa del Parque Zoológico Bararida" id="mapaParque" class="map-image">
+                                        <!-- Overlay de SVG -->
+                                        <svg id="mapSvgOverlay" class="map-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
+                                        <!-- Contenedor de Pines -->
+                                        <div id="mapPinsContainer"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Columna Derecha: Paneles de Control Lateral -->
+                                <div class="col-lg-4">
+                                    
+                                    <!-- Lista de Recorridos Existentes -->
+                                    <div class="card mb-4" style="border-radius: 16px; border:1px solid var(--park-gray); overflow: hidden;">
+                                        <div class="card-body" style="padding: 20px;">
+                                            <h5 class="card-title font-weight-bold mb-3" style="font-family:'Outfit'; font-weight: 700; color: var(--park-dark);">Recorridos Existentes</h5>
+                                            <div class="sidebar-panel-list" id="adminListaRecorridos">
+                                                <!-- Se poblará vía AJAX -->
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Lista de Zonas Pineadas -->
+                                    <div class="card" style="border-radius: 16px; border:1px solid var(--park-gray); overflow: hidden;">
+                                        <div class="card-body" style="padding: 20px;">
+                                            <h5 class="card-title font-weight-bold mb-3" style="font-family:'Outfit'; font-weight: 700; color: var(--park-dark);">Zonas Registradas</h5>
+                                            <div class="sidebar-panel-list" id="adminListaZonas">
+                                                <!-- Se poblará vía AJAX -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal para Crear Nueva Zona -->
+                        <div class="modal fade modal-premium" id="modalCrearZona" tabindex="-1" aria-labelledby="modalCrearZonaLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content" style="border-radius: 20px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                                    <div class="modal-header" style="background: var(--park-primary); color: #ffffff; border-bottom: none; padding: 20px 24px;">
+                                        <h5 class="modal-title" id="modalCrearZonaLabel" style="font-family:'Outfit'; font-weight:600; margin: 0;">Nueva Zona en el Mapa</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                    </div>
+                                    <form id="formCrearZona">
+                                        <div class="modal-body" style="background:#ffffff; padding: 24px;">
+                                            <div class="mb-3">
+                                                <label for="nombreZona" class="form-premium-label" style="font-weight: 600; color: var(--park-dark);">Nombre de la Zona</label>
+                                                <input type="text" class="form-control form-premium-control" id="nombreZona" name="nombre" placeholder="Ej. Área de Serpentario" required style="border-radius:10px;">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label for="nuevaZonaCoords" class="form-premium-label" style="font-weight: 600; color: var(--park-dark);">Coordenadas del Pin (%)</label>
+                                                <input type="text" class="form-control form-premium-control" id="nuevaZonaCoords" name="coordenadas" readonly required style="background:#f8f9fa; border-radius:10px; cursor:not-allowed;">
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">
+                                            <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
+                                            <button type="submit" class="btn btn-premium-primary" id="btnGuardarZona" style="background: var(--park-primary); border-color: var(--park-primary);">Registrar Zona</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Confirmar Eliminación de Zona -->
+                        <div class="modal fade modal-premium" id="modalConfirmarEliminarZona" tabindex="-1" aria-labelledby="modalConfirmarEliminarZonaLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content" style="border-radius: 20px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                                    <div class="modal-header" style="background: #ef4444; color: #ffffff; border-bottom: none; padding: 20px 24px;">
+                                        <h5 class="modal-title" id="modalConfirmarEliminarZonaLabel" style="font-family:'Outfit'; font-weight:600; margin: 0;">Confirmar Eliminación de Zona</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                    </div>
+                                    <div class="modal-body" style="background:#ffffff; padding: 24px;">
+                                        <input type="hidden" id="delete_zona_id_modal">
+                                        <p class="mb-0" style="font-size:0.95rem;">¿Está completamente seguro de que desea eliminar la zona <strong id="deleteZonaNombreSpan" class="text-danger"></strong> del mapa?</p>
+                                        <p class="text-danger mt-2 mb-0" style="font-size:0.85rem; font-weight:600;">Esta acción es irreversible y también eliminará las paradas asociadas de cualquier recorrido activo.</p>
+                                    </div>
+                                    <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">
+                                        <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
+                                        <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminarZonaModal" style="border-radius:10px; font-weight:600; font-size:0.9rem; background: #ef4444; border-color: #ef4444;">Eliminar Zona</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Modal Confirmar Eliminación de Recorrido -->
+                        <div class="modal fade modal-premium" id="modalConfirmarEliminarRecorrido" tabindex="-1" aria-labelledby="modalConfirmarEliminarRecorridoLabel" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content" style="border-radius: 20px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                                    <div class="modal-header" style="background: #ef4444; color: #ffffff; border-bottom: none; padding: 20px 24px;">
+                                        <h5 class="modal-title" id="modalConfirmarEliminarRecorridoLabel" style="font-family:'Outfit'; font-weight:600; margin: 0;">Confirmar Eliminación de Recorrido</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                    </div>
+                                    <div class="modal-body" style="background:#ffffff; padding: 24px;">
+                                        <input type="hidden" id="delete_recorrido_id_modal">
+                                        <p class="mb-0" style="font-size:0.95rem;">¿Está completamente seguro de que desea eliminar el recorrido <strong id="deleteRecorridoNombreSpan" class="text-danger"></strong> del sistema?</p>
+                                        <p class="text-danger mt-2 mb-0" style="font-size:0.85rem; font-weight:600;">Esta acción es irreversible y revocaría el itinerario de forma permanente.</p>
+                                    </div>
+                                    <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">
+                                        <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
+                                        <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminarRecorridoModal" style="border-radius:10px; font-weight:600; font-size:0.9rem; background: #ef4444; border-color: #ef4444;">Eliminar Recorrido</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <?php else: ?>
+                        <div class="restricted-access-container">
+                            <div class="restricted-card">
+                                <div class="restricted-shield-wrapper">
+                                    <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+                                </div>
+                                <h4>Acceso Restringido</h4>
+                                <p>Su rol actual no cuenta con permisos autorizados para interactuar con este módulo. Si requiere visualizar esta sección, solicítelo al Super Administrador.</p>
+                                <a href="index.php?view=dashboard" class="btn-premium-danger">Volver al Dashboard</a>
+                            </div>
+                        </div>
+                    <?php endif;
+                    break;
+
             endswitch; ?>
 
             </div><!-- /.content-area -->
@@ -769,6 +1003,11 @@ if (!in_array($currentView, $validViews)) {
     <!-- Vincular el script del CRUD de forma asíncrona solo si estamos en la vista de usuarios -->
     <?php if ($currentView === 'usuarios' && $userPermissions['usuarios']): ?>
         <script src="view/assets/js/usuarios.js"></script>
+    <?php endif; ?>
+
+    <!-- Vincular el script de recorridos dinámicamente si corresponde -->
+    <?php if ($currentView === 'dashboard' || ($currentView === 'recorridos' && $userPermissions['recorridos'])): ?>
+        <script src="view/assets/js/recorridos.js"></script>
     <?php endif; ?>
 
     <!-- Lógica del Dashboard (sidebar responsivo) -->
