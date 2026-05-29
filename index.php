@@ -27,8 +27,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'logout') {
 }
 
 // Lógica de enrutamiento basada en sesión
-if (isset($_SESSION['usuario'])) {
-    // Si el usuario ya está autenticado, incluimos el Dashboard
+if (isset($_SESSION['personal'])) {
+    // Si el personal ya está autenticado, incluimos el Dashboard
     require_once __DIR__ . "/view/dashboard.php";
 } else {
     // Si no está autenticado, cargamos la pantalla de Login

@@ -5,17 +5,17 @@
  * Actúa como contenedor de vistas SPA internas usando parámetros $_GET['view'].
  */
 
-// Seguridad básica: Si no hay sesión activa de usuario, redirigir al Front Controller
+// Seguridad básica: Si no hay sesión activa de personal, redirigir al Front Controller
 if (!session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-if (!isset($_SESSION['usuario'])) {
+if (!isset($_SESSION['personal'])) {
     header("Location: index.php");
     exit;
 }
 
-// Datos del usuario logueado
-$currentUser = $_SESSION['usuario'];
+// Datos del personal logueado
+$currentUser = $_SESSION['personal'];
 $userRol = $currentUser['rol'];
 $userName = htmlspecialchars($currentUser['nombre'] . ' ' . $currentUser['apellido']);
 $userCedula = htmlspecialchars($currentUser['cedula']);
@@ -24,21 +24,21 @@ $userCedula = htmlspecialchars($currentUser['cedula']);
 // true = Acceso Concedido, false = Acceso Restringido
 $permissions = [
     'superadmin' => [
-        'usuarios' => true,
+        'personal' => true,
         'guias' => true,
         'instituciones' => true,
         'citas' => true,
         'recorridos' => true
     ],
     'admin' => [
-        'usuarios' => false, // Asistente no gestiona usuarios
+        'personal' => false, // Asistente no gestiona personals
         'guias' => true,
         'instituciones' => true,
         'citas' => true,
         'recorridos' => true
     ],
     'guia' => [
-        'usuarios' => false,
+        'personal' => false,
         'guias' => false,
         'instituciones' => false,
         'citas' => true, // Acceso único a su cronograma de visitas
@@ -48,12 +48,12 @@ $permissions = [
 
 // Obtener permisos para el rol actual
 $userPermissions = isset($permissions[$userRol]) ? $permissions[$userRol] : [
-    'usuarios' => false, 'guias' => false, 'instituciones' => false, 'citas' => false, 'recorridos' => false
+    'personal' => false, 'guias' => false, 'instituciones' => false, 'citas' => false, 'recorridos' => false
 ];
 
 // Obtener la vista solicitada (Enrutador Interno)
 $currentView = isset($_GET['view']) ? trim($_GET['view']) : 'dashboard';
-$validViews = ['dashboard', 'citas', 'guias', 'instituciones', 'usuarios', 'recorridos'];
+$validViews = ['dashboard', 'citas', 'guias', 'instituciones', 'personal', 'recorridos'];
 if (!in_array($currentView, $validViews)) {
     $currentView = 'dashboard';
 }
@@ -79,7 +79,7 @@ if (!in_array($currentView, $validViews)) {
 
     <!-- Cargar estilos específicos para CRUDs y Acceso Restringido si no estamos en el Dashboard de inicio -->
     <?php if ($currentView !== 'dashboard' && $currentView !== 'recorridos'): ?>
-        <link rel="stylesheet" href="view/assets/css/usuarios.css">
+        <link rel="stylesheet" href="view/assets/css/personal.css">
     <?php endif; ?>
 </head>
 <body>
@@ -87,7 +87,7 @@ if (!in_array($currentView, $validViews)) {
     <!-- Overlay para cerrar sidebar en mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Input oculto para que el JS sepa quién es el usuario logueado -->
+    <!-- Input oculto para que el JS sepa quién es el personal logueado -->
     <input type="hidden" id="currentLoggedUserId" value="<?php echo $currentUser['id']; ?>">
 
     <div class="wrapper">
@@ -147,12 +147,12 @@ if (!in_array($currentView, $validViews)) {
                         </a>
                     </li>
                     <?php endif; ?>
-                    <?php if ($userRol === 'superadmin'): // Solo el superadmin ve la pestaña de Usuarios ?>
-                    <li class="<?php echo ($currentView === 'usuarios') ? 'active' : ''; ?>">
-                        <a href="index.php?view=usuarios">
+                    <?php if ($userRol === 'superadmin'): // Solo el superadmin ve la pestaña de Personals ?>
+                    <li class="<?php echo ($currentView === 'personal') ? 'active' : ''; ?>">
+                        <a href="index.php?view=personal">
                             <!-- SVG Settings Icon -->
                             <svg viewBox="0 0 24 24"><path d="M19.14 12.94C19.14 12.63 19.17 12.32 19.17 12C19.17 11.68 19.14 11.37 19.09 11.06L21.26 9.37C21.45 9.22 21.5 8.95 21.39 8.74L19.33 5.17C19.22 4.96 18.96 4.88 18.74 4.96L16.18 5.99C15.65 5.58 15.07 5.24 14.44 4.99L14.05 2.27C14.01 2.03 13.8 1.85 13.56 1.85H9.44C9.2 1.85 8.99 2.03 8.95 2.27L8.56 4.99C7.93 5.24 7.35 5.58 6.82 5.99L4.26 4.96C4.04 4.88 3.78 4.96 3.67 5.17L1.61 8.74C1.5 8.95 1.55 9.22 1.74 9.37L3.91 11.06C3.86 11.37 3.83 11.69 3.83 12C3.83 12.31 3.86 12.63 3.91 12.94L1.74 14.63C1.55 14.78 1.5 15.05 1.61 15.26L3.67 18.83C3.78 19.04 4.04 19.12 4.26 19.04L6.82 18.01C7.35 18.42 7.93 18.76 8.56 19.01L8.95 21.73C8.99 21.97 9.2 22.15 9.44 22.15H13.56C13.8 22.15 14.01 21.97 14.05 21.73L14.44 19.01C15.07 18.76 15.65 18.42 16.18 18.01L18.74 19.04C18.96 19.12 19.22 19.04 19.33 18.83L21.39 15.26C21.5 15.05 21.45 14.78 21.26 14.63L19.14 12.94ZM12 15.6C10.01 15.6 8.4 13.99 8.4 12C8.4 10.01 10.01 8.4 12 8.4C13.99 8.4 15.6 10.01 15.6 12C15.6 13.99 13.99 15.6 12 15.6Z"/></svg>
-                            Usuarios
+                            Personals
                         </a>
                     </li>
                     <?php endif; ?>
@@ -259,17 +259,17 @@ if (!in_array($currentView, $validViews)) {
                             </div>
                         </div> -->
 
-                        <!-- 4. Control Usuarios -->
+                        <!-- 4. Control Personals -->
                         <!-- <div class="col-md-6 col-lg-3">
                             <div class="module-card">
-                                <div class="module-icon-container bg-icon-usuarios">
+                                <div class="module-icon-container bg-icon-personal">
                                     <svg viewBox="0 0 24 24"><path d="M12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12ZM12 14C9.33 14 4 15.33 4 18V20H20V18C20 15.33 14.67 14 12 14Z"/></svg>
                                 </div>
-                                <h4 class="module-title">Control Usuarios</h4>
+                                <h4 class="module-title">Control Personals</h4>
                                 <p class="module-desc">
                                     Administración de cuentas del personal administrativo y guías, y auditoría general de accesos.
                                 </p>
-                                <a href="index.php?view=usuarios" class="btn-module btn-module-active">Entrar al Módulo</a>
+                                <a href="index.php?view=personal" class="btn-module btn-module-active">Entrar al Módulo</a>
                             </div>
                         </div> -->
 
@@ -460,14 +460,14 @@ if (!in_array($currentView, $validViews)) {
                 // =====================================================================
                 case 'guias':
                     if ($userPermissions['guias']): 
-                        // Cargar base de datos y obtener usuarios con rol de guía de forma dinámica y segura
+                        // Cargar base de datos y obtener personals con rol de guía de forma dinámica y segura
                         require_once __DIR__ . "/../config/Database.php";
                         $database = new Database();
                         $db = $database->getConnection();
                         $guias = [];
                         if ($db) {
                             try {
-                                $query = "SELECT cedula, nombre, apellido FROM usuarios WHERE rol = 'guia' ORDER BY id DESC";
+                                $query = "SELECT cedula, nombre, apellido FROM personals WHERE rol = 'guia' ORDER BY id DESC";
                                 $stmt = $db->prepare($query);
                                 $stmt->execute();
                                 $guias = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -626,18 +626,18 @@ if (!in_array($currentView, $validViews)) {
                 // =====================================================================
                 // CASE 5: CONTROL DE ACCESOS Y USUARIOS (100% FUNCIONAL PARA SUPERADMIN)
                 // =====================================================================
-                case 'usuarios':
-                    if ($userPermissions['usuarios']): ?>
+                case 'personal':
+                    if ($userPermissions['personal']): ?>
                         <div class="panel-container">
                             <div class="panel-header-section">
                                 <div class="panel-header-title">
-                                    <h3>Gestión y Control de Usuarios</h3>
+                                    <h3>Gestión y Control de Personals</h3>
                                     <p>Administración del personal administrativo y guías autorizados para el sistema</p>
                                 </div>
                                 <div>
-                                    <button class="btn-premium-primary" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario">
+                                    <button class="btn-premium-primary" data-bs-toggle="modal" data-bs-target="#modalCrearPersonal">
                                         <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                                        Registrar Usuario
+                                        Registrar Personal
                                     </button>
                                 </div>
                             </div>
@@ -651,13 +651,13 @@ if (!in_array($currentView, $validViews)) {
                             </div>
 
                             <!-- Cargador Asíncrono AJAX -->
-                            <div id="loaderUsuarios" class="loader-wrapper">
+                            <div id="loaderPersonal" class="loader-wrapper">
                                 <div class="spinner-border spinner-premium" role="status">
                                     <span class="visually-hidden">Cargando registros...</span>
                                 </div>
                             </div>
 
-                            <!-- Tabla de Usuarios -->
+                            <!-- Tabla de Personals -->
                             <div class="table-responsive-premium">
                                 <table class="table-premium">
                                     <thead>
@@ -670,8 +670,8 @@ if (!in_array($currentView, $validViews)) {
                                             <th>Acciones</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="tablaUsuariosBody" style="display:none;">
-                                        <!-- Cargado vía AJAX por usuarios.js -->
+                                    <tbody id="tablaPersonalBody" style="display:none;">
+                                        <!-- Cargado vía AJAX por personal.js -->
                                     </tbody>
                                 </table>
                             </div>
@@ -681,15 +681,15 @@ if (!in_array($currentView, $validViews)) {
                              MODALES DEL CRUD (CREAR, EDITAR, ELIMINAR)
                              ========================================================================= -->
 
-                        <!-- Modal Crear Usuario -->
-                        <div class="modal fade modal-premium" id="modalCrearUsuario" tabindex="-1" aria-labelledby="modalCrearUsuarioLabel" aria-hidden="true">
+                        <!-- Modal Crear Personal -->
+                        <div class="modal fade modal-premium" id="modalCrearPersonal" tabindex="-1" aria-labelledby="modalCrearPersonalLabel" aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="modalCrearUsuarioLabel">Registrar Nuevo Usuario</h5>
+                                        <h5 class="modal-title" id="modalCrearPersonalLabel">Registrar Nuevo Personal</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form id="formCrearUsuario">
+                                    <form id="formCrearPersonal">
                                         <div class="modal-body">
                                             <div id="alertCrearFeedback" class="alert alert-toast alert-toast-danger" role="alert" style="display:none;"></div>
                                             
@@ -706,7 +706,7 @@ if (!in_array($currentView, $validViews)) {
                                                 <input type="text" class="form-control form-premium-control" id="apellido" name="apellido" placeholder="Ej. Pérez" required>
                                             </div>
                                             <div class="mb-3">
-                                                <label for="rol" class="form-premium-label">Rol del Usuario</label>
+                                                <label for="rol" class="form-premium-label">Rol del Personal</label>
                                                 <select class="form-select form-premium-control" id="rol" name="rol" required>
                                                     <option value="" disabled selected>Seleccione un rol...</option>
                                                     <option value="admin">Administrador</option>
@@ -720,22 +720,22 @@ if (!in_array($currentView, $validViews)) {
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
-                                            <button type="submit" class="btn btn-premium-primary" id="btnGuardarNuevo">Registrar Usuario</button>
+                                            <button type="submit" class="btn btn-premium-primary" id="btnGuardarNuevo">Registrar Personal</button>
                                         </div>
                                     </form>
                                 </div>
                             </div>
                         </div>
 
-                        <!-- Modal Editar Usuario -->
-                        <div class="modal fade modal-premium" id="modalEditarUsuario" tabindex="-1" aria-labelledby="modalEditarUsuarioLabel" aria-hidden="true">
+                        <!-- Modal Editar Personal -->
+                        <div class="modal fade modal-premium" id="modalEditarPersonal" tabindex="-1" aria-labelledby="modalEditarPersonalLabel" aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="modalEditarUsuarioLabel">Modificar Usuario</h5>
+                                        <h5 class="modal-title" id="modalEditarPersonalLabel">Modificar Personal</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
-                                    <form id="formEditarUsuario">
+                                    <form id="formEditarPersonal">
                                         <input type="hidden" id="edit_id" name="id">
                                         <div class="modal-body">
                                             <div id="alertEditarFeedback" class="alert alert-toast alert-toast-danger" role="alert" style="display:none;"></div>
@@ -753,9 +753,9 @@ if (!in_array($currentView, $validViews)) {
                                                 <input type="text" class="form-control form-premium-control" id="edit_apellido" name="apellido" required>
                                             </div>
                                             <div class="mb-3">
-                                                <label for="edit_rol" class="form-premium-label">Rol del Usuario</label>
+                                                <label for="edit_rol" class="form-premium-label">Rol del Personal</label>
                                                 <select class="form-select form-premium-control" id="edit_rol" name="rol" required>
-                                                    <!-- Se inyectará dinámicamente por JS según el usuario -->
+                                                    <!-- Se inyectará dinámicamente por JS según el personal -->
                                                 </select>
                                             </div>
                                             <div class="mb-3">
@@ -773,21 +773,21 @@ if (!in_array($currentView, $validViews)) {
                         </div>
 
                         <!-- Modal Confirmar Eliminación -->
-                        <div class="modal fade modal-premium" id="modalEliminarUsuario" tabindex="-1" aria-labelledby="modalEliminarUsuarioLabel" aria-hidden="true">
+                        <div class="modal fade modal-premium" id="modalEliminarPersonal" tabindex="-1" aria-labelledby="modalEliminarPersonalLabel" aria-hidden="true">
                             <div class="modal-dialog modal-dialog-centered">
                                 <div class="modal-content">
                                     <div class="modal-header">
-                                        <h5 class="modal-title" id="modalEliminarUsuarioLabel">Confirmar Eliminación</h5>
+                                        <h5 class="modal-title" id="modalEliminarPersonalLabel">Confirmar Eliminación</h5>
                                         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                     </div>
                                     <div class="modal-body">
                                         <input type="hidden" id="delete_id">
-                                        <p class="mb-0" style="font-size:0.95rem;">¿Está completamente seguro de que desea eliminar al usuario <strong id="deleteUserNameSpan"></strong> del sistema?</p>
-                                        <p class="text-danger mt-2 mb-0" style="font-size:0.85rem; font-weight:600;">Esta acción es irreversible y revocaría todo acceso inmediato del usuario al sistema.</p>
+                                        <p class="mb-0" style="font-size:0.95rem;">¿Está completamente seguro de que desea eliminar al personal <strong id="deleteUserNameSpan"></strong> del sistema?</p>
+                                        <p class="text-danger mt-2 mb-0" style="font-size:0.85rem; font-weight:600;">Esta acción es irreversible y revocaría todo acceso inmediato del personal al sistema.</p>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
-                                        <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminar" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Eliminar Usuario</button>
+                                        <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminar" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Eliminar Personal</button>
                                     </div>
                                 </div>
                             </div>
@@ -874,6 +874,11 @@ if (!in_array($currentView, $validViews)) {
                                         <svg id="mapSvgOverlay" class="map-svg-overlay" viewBox="0 0 100 100" preserveAspectRatio="none"></svg>
                                         <!-- Contenedor de Pines -->
                                         <div id="mapPinsContainer"></div>
+                                        <!-- Tooltip Flotante de Edición Activa (Premium) -->
+                                        <div class="map-edit-tooltip" id="mapEditTooltip" style="display: none;">
+                                            <span class="pulse-indicator"></span>
+                                            <span class="tooltip-text" id="mapEditTooltipText">📍 Modo Edición Activo</span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -890,8 +895,9 @@ if (!in_array($currentView, $validViews)) {
                                         </div>
                                     </div>
 
+
                                     <!-- Lista de Zonas Pineadas -->
-                                    <div class="card" style="border-radius: 16px; border:1px solid var(--park-gray); overflow: hidden;">
+                                    <div class="card mb-4" style="border-radius: 16px; border:1px solid var(--park-gray); overflow: hidden;">
                                         <div class="card-body" style="padding: 20px;">
                                             <h5 class="card-title font-weight-bold mb-3" style="font-family:'Outfit'; font-weight: 700; color: var(--park-dark);">Zonas Registradas</h5>
                                             <div class="sidebar-panel-list" id="adminListaZonas">
@@ -900,6 +906,7 @@ if (!in_array($currentView, $validViews)) {
                                         </div>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
 
@@ -1000,9 +1007,9 @@ if (!in_array($currentView, $validViews)) {
     <!-- Bootstrap JS Bundle Local -->
     <script src="view/assets/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Vincular el script del CRUD de forma asíncrona solo si estamos en la vista de usuarios -->
-    <?php if ($currentView === 'usuarios' && $userPermissions['usuarios']): ?>
-        <script src="view/assets/js/usuarios.js"></script>
+    <!-- Vincular el script del CRUD de forma asíncrona solo si estamos en la vista de personals -->
+    <?php if ($currentView === 'personal' && $userPermissions['personal']): ?>
+        <script src="view/assets/js/personal.js"></script>
     <?php endif; ?>
 
     <!-- Vincular el script de recorridos dinámicamente si corresponde -->

@@ -14,6 +14,14 @@ $(document).ready(function() {
     let modoAgregarZona = false;
     let modoCrearRecorrido = false;
     let recorridoZonasSeleccionadas = []; // IDs de zonas seleccionadas para el recorrido actual
+
+    // Variables de control para edición de orden y recolocación de pines
+    let recorridoSeleccionadoEdicion = null; // Recorrido seleccionado
+    let zonaSeleccionadaEdicion = null;      // Zona seleccionada
+    let modoRelocalizarZona = false;          // Flag de modo relocalización
+    let modoEditarOrdenRecorrido = false;    // Flag de modo ordenamiento
+    let paradasTemporalOrden = [];           // Array temporal de paradas en edición
+
     
     // Referencias principales del DOM
     const $mapWrapper = $('#mapWrapper');
@@ -261,8 +269,38 @@ $(document).ready(function() {
             const $pin = $(this);
             const zonaId = parseInt($pin.data('id'));
             
-            // Si estamos en modo de visualización normal (no creación), resaltamos y mostramos nombre
+            // Caso 1: Si estamos en modo de edición de recorrido inline, permitimos añadir/quitar pines con clics
+            if (modoEditarOrdenRecorrido) {
+                const idx = paradasTemporalOrden.findIndex(p => parseInt(p.zona_id) === zonaId);
+                const $row = $(`.sidebar-list-item[data-type="recorrido"].selected`);
+                
+                if (idx !== -1) {
+                    // Si ya forma parte del recorrido, la removemos
+                    paradasTemporalOrden.splice(idx, 1);
+                    showMapTooltip("✕ Parada removida de la ruta. Haz clic en ✓ para guardar.");
+                } else {
+                    // Si no está, la añadimos al final
+                    const zona = listaZonas.find(z => parseInt(z.id) === zonaId);
+                    if (zona) {
+                        paradasTemporalOrden.push({
+                            zona_id: zona.id,
+                            zona_nombre: zona.nombre,
+                            coordenadas: zona.coordenadas
+                        });
+                        showMapTooltip("✓ Nueva parada añadida al final. Usa ▲/▼ para ordenarla y ✓ para guardar.");
+                    }
+                }
+                
+                // Redibujar lista inline y trazo de mapa en tiempo real
+                renderizarListaParadasEdicionInline($row);
+                actualizarMapaYTrazoEdicionRuta();
+                return;
+            }
+
+            // Caso 2: Si estamos en modo de visualización normal (no creación), resaltamos y mostramos nombre
             if (!modoCrearRecorrido) {
+                if (modoRelocalizarZona) return; // Bloquear selecciones en modo relocalización
+                
                 $('.map-pin').removeClass('active');
                 $pin.addClass('active');
                 return;
@@ -485,7 +523,459 @@ $(document).ready(function() {
                 }
             });
         });
+
+        // =====================================================================
+        // EVENTOS DE GESTIÓN INTERACTIVA INLINE (SIN SCROLL)
+        // =====================================================================
+
+        // Variables locales para recordar el HTML original de los botones de acción
+        let originalActionsHtml = '';
+
+        // ---------------------------------------------------------------------
+        // EVENTO: SELECCIÓN DE RECORRIDO O ZONA EN LISTA ADMINISTRATIVA
+        // ---------------------------------------------------------------------
+        $(document).on('click', '.sidebar-list-item[data-type]', function(e) {
+            // Si hacemos clic en un botón de acción, no alterar selección normal
+            if ($(e.target).closest('button').length > 0) return;
+            
+            // Si estamos en medio de un modo de edición activo, no cambiar selección normal
+            if (modoRelocalizarZona || modoEditarOrdenRecorrido) {
+                showGlobalAlert('Debe confirmar (✓) o cancelar (✕) la edición actual primero.', 'warning');
+                return;
+            }
+
+            const $item = $(this);
+            const id = parseInt($item.data('id'));
+            const type = $item.data('type');
+
+            // Quitar clase selected de otros items
+            $(`.sidebar-list-item`).removeClass('selected');
+            $item.addClass('selected');
+
+            if (type === 'recorrido') {
+                $('.map-pin').removeClass('selected-pin');
+                
+                // Cargar recorrido
+                const rec = listaRecorridos.find(r => parseInt(r.id) === id);
+                if (rec) {
+                    recorridoSeleccionadoEdicion = rec;
+                    // Dibujar pines y recorrido
+                    renderizarPinesZonas(listaZonas, rec.paradas);
+                    dibujarRutaSVG(rec.paradas);
+                }
+            } else if (type === 'zona') {
+                $svgOverlay.empty();
+
+                // Cargar zona
+                const zona = listaZonas.find(z => parseInt(z.id) === id);
+                if (zona) {
+                    zonaSeleccionadaEdicion = zona;
+                    // Renderizar pines normales y destacar el seleccionado
+                    renderizarPinesZonas(listaZonas);
+                    const $pin = $(`.map-pin[data-id="${zona.id}"]`);
+                    if ($pin.length > 0) {
+                        $pin.addClass('selected-pin');
+                    }
+                }
+            }
+        });
+
+        // ---------------------------------------------------------------------
+        // EVENTO: ACTIVAR MODO RELOCALIZAR ZONA (BOTÓN LÁPIZ)
+        // ---------------------------------------------------------------------
+        $(document).on('click', '.btn-editar-zona-list', function(e) {
+            e.stopPropagation();
+
+            if (modoRelocalizarZona || modoEditarOrdenRecorrido) {
+                showGlobalAlert('Ya hay un modo de edición activo en el sistema.', 'warning');
+                return;
+            }
+
+            const $btn = $(this);
+            const id = parseInt($btn.data('id'));
+            const $row = $btn.closest('.sidebar-list-item');
+
+            // Autoseleccionar la fila
+            $row.trigger('click');
+
+            const zona = listaZonas.find(z => parseInt(z.id) === id);
+            if (!zona) return;
+
+            zonaSeleccionadaEdicion = zona;
+            modoRelocalizarZona = true;
+
+            // Desactivar otros modos de creación generales
+            desactivarModoAgregarZona();
+            desactivarModoCrearRecorrido();
+
+            // Resaltar contenedor del mapa
+            $mapWrapper.addClass('admin-active');
+
+            // Guardar HTML original del contenedor de acciones
+            const $actions = $row.find('.sidebar-item-actions');
+            originalActionsHtml = $actions.html();
+
+            // Reemplazar botones por Check ✓ y Cruz ✕
+            $actions.html(`
+                <button class="btn-premium-check btn-confirmar-zona-edit" data-id="${id}" title="Guardar Ubicación">✓</button>
+                <button class="btn-premium-cancel btn-cancelar-zona-edit" data-id="${id}" title="Cancelar">✕</button>
+            `);
+
+            // Mostrar tooltip flotante en el mapa
+            showMapTooltip("📍 Relocalización Activa: Haz clic en el mapa para reposicionar el pin");
+        });
+
+        // Evento Clic en el mapa durante relocalización
+        $mapWrapper.on('click', function(e) {
+            if (!modoRelocalizarZona || !zonaSeleccionadaEdicion) return;
+            // Si el clic es en un pin de otra zona, no hacer nada
+            if ($(e.target).hasClass('map-pin') && !$(e.target).hasClass('selected-pin')) return;
+
+            const rect = $mapImage[0].getBoundingClientRect();
+            const x = ((e.clientX - rect.left) / rect.width) * 100;
+            const y = ((e.clientY - rect.top) / rect.height) * 100;
+            const coordsString = `${x.toFixed(2)},${y.toFixed(2)}`;
+
+            // Mover visualmente el pin destacado en el mapa
+            const $pin = $(`.map-pin[data-id="${zonaSeleccionadaEdicion.id}"]`);
+            const $label = $pin.next('.pin-label');
+            if ($pin.length > 0) {
+                $pin.css({ 'left': x + '%', 'top': y + '%' });
+                $pin.attr('data-coords', coordsString);
+                $label.css({ 'left': x + '%', 'top': y + '%' });
+            }
+
+            // Actualizar tooltip flotante en el mapa indicando coordenadas marcadas
+            showMapTooltip(`📍 Posición colocada temporalmente. Presiona ✓ en la lista para confirmar.`);
+        });
+
+        // Cancelar relocalización de pin
+        $(document).on('click', '.btn-cancelar-zona-edit', function(e) {
+            e.stopPropagation();
+            const id = parseInt($(this).data('id'));
+            const $row = $(this).closest('.sidebar-list-item');
+            
+            desactivarModoRelocalizarZona();
+
+            // Restaurar botones originales
+            $row.find('.sidebar-item-actions').html(originalActionsHtml);
+
+            // Restaurar pin al original
+            if (zonaSeleccionadaEdicion) {
+                const coords = zonaSeleccionadaEdicion.coordenadas.split(',');
+                if (coords.length === 2) {
+                    const x = parseFloat(coords[0]);
+                    const y = parseFloat(coords[1]);
+                    const $pin = $(`.map-pin[data-id="${zonaSeleccionadaEdicion.id}"]`);
+                    const $label = $pin.next('.pin-label');
+                    if ($pin.length > 0) {
+                        $pin.css({ 'left': x + '%', 'top': y + '%' });
+                        $label.css({ 'left': x + '%', 'top': y + '%' });
+                    }
+                }
+            }
+        });
+
+        // Guardar relocalización de pin inline por AJAX
+        $(document).on('click', '.btn-confirmar-zona-edit', function(e) {
+            e.stopPropagation();
+            if (!zonaSeleccionadaEdicion) return;
+
+            const $row = $(this).closest('.sidebar-list-item');
+            
+            // Obtener las coordenadas del pin del mapa actual
+            const $pin = $(`.map-pin[data-id="${zonaSeleccionadaEdicion.id}"]`);
+            const nuevasCoords = $pin.attr('data-coords') || zonaSeleccionadaEdicion.coordenadas;
+
+            const $btn = $(this);
+            $btn.prop('disabled', true).text('...');
+
+            $.ajax({
+                url: 'controllers/RecorridoController.php?action=actualizar_zona_coords',
+                method: 'POST',
+                data: {
+                    id: zonaSeleccionadaEdicion.id,
+                    coordenadas: nuevasCoords
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        showGlobalAlert(response.message, 'success');
+                        desactivarModoRelocalizarZona();
+                        
+                        // Recargar todo
+                        cargarZonas(function() {
+                            cargarRecorridos();
+                        });
+                    } else {
+                        showGlobalAlert(response.message, 'danger');
+                        $btn.prop('disabled', false).text('✓');
+                    }
+                },
+                error: function(xhr) {
+                    let errorMsg = 'Error al actualizar la posición de la zona.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    showGlobalAlert(errorMsg, 'danger');
+                    $btn.prop('disabled', false).text('✓');
+                }
+            });
+        });
+
+        // ---------------------------------------------------------------------
+        // EVENTO: ACTIVAR MODO REORDENAR RECORRIDO (BOTÓN LÁPIZ)
+        // ---------------------------------------------------------------------
+        $(document).on('click', '.btn-editar-recorrido-list', function(e) {
+            e.stopPropagation();
+
+            if (modoRelocalizarZona || modoEditarOrdenRecorrido) {
+                showGlobalAlert('Ya hay un modo de edición activo en el sistema.', 'warning');
+                return;
+            }
+
+            const $btn = $(this);
+            const id = parseInt($btn.data('id'));
+            const $row = $btn.closest('.sidebar-list-item');
+
+            // Autoseleccionar la fila
+            $row.trigger('click');
+
+            const rec = listaRecorridos.find(r => parseInt(r.id) === id);
+            if (!rec) return;
+
+            recorridoSeleccionadoEdicion = rec;
+            modoEditarOrdenRecorrido = true;
+            paradasTemporalOrden = JSON.parse(JSON.stringify(rec.paradas)); // Clonar paradas
+
+            // Guardar HTML original de los botones
+            const $actions = $row.find('.sidebar-item-actions');
+            originalActionsHtml = $actions.html();
+
+            // Reemplazar botones por Check ✓ y Cruz ✕
+            $actions.html(`
+                <button class="btn-premium-check btn-confirmar-recorrido-edit" data-id="${id}" title="Guardar Orden">✓</button>
+                <button class="btn-premium-cancel btn-cancelar-recorrido-edit" data-id="${id}" title="Cancelar">✕</button>
+            `);
+
+            // Expandir fila y renderizar listado secuencial interactivo
+            renderizarListaParadasEdicionInline($row);
+
+            // Mostrar tooltip flotante en el mapa
+            showMapTooltip("🔄 Ordenando Recorrido: Usa las flechas ▲/▼ en la barra lateral para ordenar la ruta");
+        });
+
+        // Evento para flecha arriba inline
+        $(document).on('click', '.inline-reorder-container .btn-arrow-up', function(e) {
+            e.stopPropagation();
+            const index = parseInt($(this).data('index'));
+            const $row = $(this).closest('.sidebar-list-item');
+            
+            if (index > 0) {
+                // Intercambiar elementos en el array temporal
+                const temp = paradasTemporalOrden[index];
+                paradasTemporalOrden[index] = paradasTemporalOrden[index - 1];
+                paradasTemporalOrden[index - 1] = temp;
+
+                // Volver a renderizar lista inline y actualizar mapa en tiempo real
+                renderizarListaParadasEdicionInline($row);
+                actualizarMapaYTrazoEdicionRuta();
+            }
+        });
+
+        // Evento para flecha abajo inline
+        $(document).on('click', '.inline-reorder-container .btn-arrow-down', function(e) {
+            e.stopPropagation();
+            const index = parseInt($(this).data('index'));
+            const $row = $(this).closest('.sidebar-list-item');
+            
+            if (index < paradasTemporalOrden.length - 1) {
+                // Intercambiar elementos en el array temporal
+                const temp = paradasTemporalOrden[index];
+                paradasTemporalOrden[index] = paradasTemporalOrden[index + 1];
+                paradasTemporalOrden[index + 1] = temp;
+
+                // Volver a renderizar lista inline y actualizar mapa en tiempo real
+                renderizarListaParadasEdicionInline($row);
+                actualizarMapaYTrazoEdicionRuta();
+            }
+        });
+
+        // Evento para quitar parada inline
+        $(document).on('click', '.inline-reorder-container .btn-remove-stop-inline', function(e) {
+            e.stopPropagation();
+            const index = parseInt($(this).data('index'));
+            const $row = $(this).closest('.sidebar-list-item');
+
+            // Quitar del array temporal
+            paradasTemporalOrden.splice(index, 1);
+
+            // Volver a renderizar lista inline y actualizar mapa en tiempo real
+            renderizarListaParadasEdicionInline($row);
+            actualizarMapaYTrazoEdicionRuta();
+
+            showMapTooltip("✕ Parada removida de la ruta. Haz clic en ✓ para guardar.");
+        });
+
+        // Cancelar reordenamiento de paradas
+        $(document).on('click', '.btn-cancelar-recorrido-edit', function(e) {
+            e.stopPropagation();
+            const id = parseInt($(this).data('id'));
+            const $row = $(this).closest('.sidebar-list-item');
+
+            desactivarModoEditarOrdenRecorrido();
+
+            // Remover listado expandido inline y restaurar botones
+            $row.find('.inline-reorder-container').remove();
+            $row.find('.sidebar-item-actions').html(originalActionsHtml);
+
+            // Restaurar trazo original en el mapa
+            if (recorridoSeleccionadoEdicion) {
+                renderizarPinesZonas(listaZonas, recorridoSeleccionadoEdicion.paradas);
+                dibujarRutaSVG(recorridoSeleccionadoEdicion.paradas);
+            }
+        });
+
+        // Guardar nuevo orden secuencial inline por AJAX
+        $(document).on('click', '.btn-confirmar-recorrido-edit', function(e) {
+            e.stopPropagation();
+            if (!recorridoSeleccionadoEdicion) return;
+
+            const $row = $(this).closest('.sidebar-list-item');
+            const $btn = $(this);
+            $btn.prop('disabled', true).text('...');
+
+            // Extraer los IDs de zonas en el nuevo orden temporal
+            const idsZonasOrdenadas = paradasTemporalOrden.map(p => p.zona_id);
+
+            $.ajax({
+                url: 'controllers/RecorridoController.php?action=actualizar_recorrido_orden',
+                method: 'POST',
+                data: {
+                    id: recorridoSeleccionadoEdicion.id,
+                    zonas: idsZonasOrdenadas
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        showGlobalAlert(response.message, 'success');
+                        desactivarModoEditarOrdenRecorrido();
+                        
+                        // Remover listado expandido
+                        $row.find('.inline-reorder-container').remove();
+                        
+                        // Recargar todo
+                        cargarRecorridos();
+                    } else {
+                        showGlobalAlert(response.message, 'danger');
+                        $btn.prop('disabled', false).text('✓');
+                    }
+                },
+                error: function(xhr) {
+                    let errorMsg = 'Error al guardar la secuencia de paradas.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        errorMsg = xhr.responseJSON.message;
+                    }
+                    showGlobalAlert(errorMsg, 'danger');
+                    $btn.prop('disabled', false).text('✓');
+                }
+            });
+        });
     }
+
+    /**
+     * Desactiva el modo de relocalización de pines
+     */
+    function desactivarModoRelocalizarZona() {
+        modoRelocalizarZona = false;
+        $mapWrapper.removeClass('admin-active');
+        hideMapTooltip();
+    }
+
+    /**
+     * Desactiva el modo de edición de orden de recorrido
+     */
+    function desactivarModoEditarOrdenRecorrido() {
+        modoEditarOrdenRecorrido = false;
+        hideMapTooltip();
+        paradasTemporalOrden = [];
+    }
+
+    /**
+     * Renderiza el listado secuencial de paradas de forma compacta e inline dentro de la fila del recorrido en sidebar
+     */
+    function renderizarListaParadasEdicionInline($row) {
+        $row.find('.inline-reorder-container').remove();
+
+        const containerHtml = `
+            <div class="inline-reorder-container w-100">
+                <p class="text-muted mb-2" style="font-size:0.7rem; font-weight:700; text-transform:uppercase; margin-bottom: 6px !important;">Timeline del Itinerario:</p>
+                <div class="inline-reorder-list">
+                </div>
+            </div>
+        `;
+        $row.append(containerHtml);
+        const $list = $row.find('.inline-reorder-list');
+
+        if (paradasTemporalOrden.length === 0) {
+            $list.append('<p class="text-muted italic text-center py-2" style="font-size:0.75rem;">Este recorrido no posee paradas.</p>');
+            return;
+        }
+
+        paradasTemporalOrden.forEach(function(p, idx) {
+            const isFirst = (idx === 0);
+            const isLast = (idx === paradasTemporalOrden.length - 1);
+
+            $list.append(`
+                <div class="reorder-item" style="cursor: default; padding: 6px 10px;">
+                    <div class="item-details" style="display:flex; align-items:center; gap:8px; min-width: 0; flex-grow: 1; padding-right: 4px;">
+                        <div class="item-num" style="background:#cbd5e1; color:#475569; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink: 0;">${idx + 1}</div>
+                        <span class="item-name" style="font-size:0.75rem; font-weight:600; color:#334155; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${p.zona_nombre}">${p.zona_nombre}</span>
+                    </div>
+                    <div class="d-flex align-items-center gap-1">
+                        <div class="btn-order-arrows">
+                            <button class="btn-arrow-up" data-index="${idx}" ${isFirst ? 'disabled' : ''} title="Subir Parada">▲</button>
+                            <button class="btn-arrow-down" data-index="${idx}" ${isLast ? 'disabled' : ''} title="Bajar Parada">▼</button>
+                        </div>
+                        <button class="btn-remove-stop-inline" data-index="${idx}" title="Quitar Parada" style="width:20px; height:20px; border-radius:50%; border:1px solid rgba(239, 68, 68, 0.2); background:rgba(239, 68, 68, 0.06); color:#ef4444; font-size:9px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; padding:0; outline:none; transition:var(--park-transition); margin-left: 2px;">✕</button>
+                    </div>
+                </div>
+            `);
+        });
+    }
+
+    /**
+     * Redibuja la ruta y números secuenciales en el mapa en base al orden temporal editado
+     */
+    function actualizarMapaYTrazoEdicionRuta() {
+        // Redibujar pines del mapa utilizando la secuencia modificada
+        renderizarPinesZonas(listaZonas, paradasTemporalOrden);
+        
+        // Trazar el conector de recorrido
+        dibujarRutaSVG(paradasTemporalOrden);
+    }
+
+    /**
+     * Muestra el tooltip flotante sobre el mapa indicando el modo de edición activo
+     */
+    function showMapTooltip(text) {
+        const $tooltip = $('#mapEditTooltip');
+        const $textSpan = $('#mapEditTooltipText');
+        if ($tooltip.length === 0) return;
+
+        $textSpan.text(text);
+        $tooltip.fadeIn(250);
+    }
+
+    /**
+     * Oculta el tooltip flotante del mapa
+     */
+    function hideMapTooltip() {
+        const $tooltip = $('#mapEditTooltip');
+        if ($tooltip.length === 0) return;
+        $tooltip.fadeOut(200);
+    }
+
 
     // =========================================================================
     // FUNCIONES AUXILIARES Y MANEJO DE ESTADOS
@@ -682,15 +1172,20 @@ $(document).ready(function() {
 
         listaZonas.forEach(function(z) {
             $lista.append(`
-                <div class="sidebar-list-item">
-                    <div>
-                        <h6>${z.nombre}</h6>
-                        <p>Coords: ${z.coordenadas}</p>
+                <div class="sidebar-list-item" data-id="${z.id}" data-nombre="${z.nombre}" data-type="zona" style="cursor: pointer;">
+                    <div style="flex-grow: 1; min-width: 0; padding-right: 8px;">
+                        <h6 style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-bottom: 2px;">${z.nombre}</h6>
+                        <p style="margin: 0; font-size: 0.72rem; color: #64748b;">Coords: ${z.coordenadas}</p>
                     </div>
-                    <button class="btn-eliminar-zona-list" 
-                            data-id="${z.id}" data-nombre="${z.nombre}" title="Eliminar Zona">
-                        &times;
-                    </button>
+                    <div class="sidebar-item-actions" data-id="${z.id}">
+                        <button class="btn-editar-zona-list" data-id="${z.id}" data-nombre="${z.nombre}" title="Relocalizar Pin">
+                            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        </button>
+                        <button class="btn-eliminar-zona-list" 
+                                data-id="${z.id}" data-nombre="${z.nombre}" title="Eliminar Zona">
+                            &times;
+                        </button>
+                    </div>
                 </div>
             `);
         });
@@ -712,15 +1207,20 @@ $(document).ready(function() {
 
         listaRecorridos.forEach(function(r) {
             $lista.append(`
-                <div class="sidebar-list-item">
-                    <div>
-                        <h6>${r.nombre}</h6>
-                        <p>${r.paradas.length} zonas en ruta</p>
+                <div class="sidebar-list-item" data-id="${r.id}" data-nombre="${r.nombre}" data-type="recorrido" style="cursor: pointer;">
+                    <div style="flex-grow: 1; min-width: 0; padding-right: 8px;">
+                        <h6 style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-bottom: 2px;">${r.nombre}</h6>
+                        <p style="margin: 0; font-size: 0.72rem; color: #64748b;">${r.paradas.length} zonas en ruta</p>
                     </div>
-                    <button class="btn-eliminar-recorrido-list" 
-                            data-id="${r.id}" data-nombre="${r.nombre}" title="Eliminar Recorrido">
-                        &times;
-                    </button>
+                    <div class="sidebar-item-actions" data-id="${r.id}">
+                        <button class="btn-editar-recorrido-list" data-id="${r.id}" data-nombre="${r.nombre}" title="Editar Orden de Ruta">
+                            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        </button>
+                        <button class="btn-eliminar-recorrido-list" 
+                                data-id="${r.id}" data-nombre="${r.nombre}" title="Eliminar Recorrido">
+                            &times;
+                        </button>
+                    </div>
                 </div>
             `);
         });

@@ -15,7 +15,7 @@ header("Content-Type: application/json; charset=UTF-8");
 // Incluimos las dependencias necesarias
 // En una aplicación real, se podría utilizar un autoloader, pero aquí incluimos de forma directa por portabilidad
 require_once __DIR__ . "/../config/Database.php";
-require_once __DIR__ . "/../models/Usuario.php";
+require_once __DIR__ . "/../models/Personal.php";
 
 // Obtenemos la acción del request
 $action = isset($_GET['action']) ? $_GET['action'] : '';
@@ -80,18 +80,18 @@ function loginAction() {
     }
 
     try {
-        // Instanciamos el modelo de Usuario
-        $usuario = new Usuario($db);
+        // Instanciamos el modelo de Personal
+        $personal = new Personal($db);
 
         // Intentamos el login
-        if ($usuario->login($cedula, $password)) {
-            // Guardamos la información del usuario en la sesión para RBAC
-            $_SESSION['usuario'] = [
-                "id" => $usuario->getId(),
-                "cedula" => $usuario->getCedula(),
-                "nombre" => $usuario->getNombre(),
-                "apellido" => $usuario->getApellido(),
-                "rol" => $usuario->getRol()
+        if ($personal->login($cedula, $password)) {
+            // Guardamos la información del personal en la sesión para RBAC
+            $_SESSION['personal'] = [
+                "id" => $personal->getId(),
+                "cedula" => $personal->getCedula(),
+                "nombre" => $personal->getNombre(),
+                "apellido" => $personal->getApellido(),
+                "rol" => $personal->getRol()
             ];
 
             // Retornamos respuesta exitosa
@@ -99,11 +99,11 @@ function loginAction() {
             echo json_encode([
                 "status" => "success",
                 "message" => "Inicio de sesión exitoso.",
-                "user" => $_SESSION['usuario']
+                "user" => $_SESSION['personal']
             ]);
         } else {
             // Credenciales incorrectas con mensaje detallado
-            $errorMsg = $usuario->getLoginError();
+            $errorMsg = $personal->getLoginError();
             if (empty($errorMsg)) {
                 $errorMsg = "Cédula o contraseña incorrectas.";
             }

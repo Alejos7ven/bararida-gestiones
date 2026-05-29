@@ -1,31 +1,31 @@
 /**
- * Lógica del CRUD de Usuarios - usuarios.js
+ * Lógica del CRUD de Personal - personal.js
  * Parque Zoológico y Botánico Bararida
  */
 
 $(document).ready(function() {
     // Referencias principales
-    const $tablaUsuarios = $('#tablaUsuariosBody');
-    const $loader = $('#loaderUsuarios');
+    const $tablaPersonal = $('#tablaPersonalBody');
+    const $loader = $('#loaderPersonal');
     const $alertFeedback = $('#alertFeedbackGlobal');
     
     // Cargar listado al iniciar
-    listarUsuarios();
+    listarPersonal();
 
     // =========================================================================
-    // LISTAR USUARIOS (AJAX)
+    // LISTAR PERSONAL (AJAX)
     // =========================================================================
-    function listarUsuarios() {
-        $tablaUsuarios.hide();
+    function listarPersonal() {
+        $tablaPersonal.hide();
         $loader.show();
 
         $.ajax({
-            url: 'controllers/UsuarioController.php?action=listar',
+            url: 'controllers/PersonalController.php?action=listar',
             method: 'GET',
             dataType: 'json',
             success: function(response) {
                 $loader.hide();
-                $tablaUsuarios.empty();
+                $tablaPersonal.empty();
 
                 if (response.status === 'success' && response.data.length > 0) {
                     response.data.forEach(function(u) {
@@ -44,7 +44,7 @@ $(document).ready(function() {
                         const nameFull = `${u.nombre} ${u.apellido}`;
 
                         const rowHtml = `
-                            <tr class="user-row" data-search="${u.cedula} ${u.nombre.toLowerCase()} ${u.apellido.toLowerCase()}">
+                            <tr class="personal-row" data-search="${u.cedula} ${u.nombre.toLowerCase()} ${u.apellido.toLowerCase()}">
                                 <td class="fw-600">#${u.id}</td>
                                 <td><strong>${u.cedula}</strong></td>
                                 <td>${nameFull}</td>
@@ -52,11 +52,11 @@ $(document).ready(function() {
                                 <td>${u.created_at}</td>
                                 <td>
                                     <div class="table-actions">
-                                        <button class="btn-action btn-action-edit btn-editar-usuario" data-id="${u.id}" title="Editar Usuario">
+                                        <button class="btn-action btn-action-edit btn-editar-personal" data-id="${u.id}" title="Editar Personal">
                                             <!-- SVG Pencil -->
                                             <svg viewBox="0 0 24 24"><path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/></svg>
                                         </button>
-                                        <button class="btn-action btn-action-delete btn-eliminar-usuario" data-id="${u.id}" data-name="${nameFull}" ${deleteDisabled} title="Eliminar Usuario">
+                                        <button class="btn-action btn-action-delete btn-eliminar-personal" data-id="${u.id}" data-name="${nameFull}" ${deleteDisabled} title="Eliminar Personal">
                                             <!-- SVG Trash -->
                                             <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                                         </button>
@@ -64,17 +64,17 @@ $(document).ready(function() {
                                 </td>
                             </tr>
                         `;
-                        $tablaUsuarios.append(rowHtml);
+                        $tablaPersonal.append(rowHtml);
                     });
-                    $tablaUsuarios.fadeIn(300);
+                    $tablaPersonal.fadeIn(300);
                 } else {
-                    $tablaUsuarios.append('<tr><td colspan="6" class="text-center text-muted py-4">No hay usuarios registrados en el sistema.</td></tr>');
-                    $tablaUsuarios.fadeIn(300);
+                    $tablaPersonal.append('<tr><td colspan="6" class="text-center text-muted py-4">No hay personal registrado en el sistema.</td></tr>');
+                    $tablaPersonal.fadeIn(300);
                 }
             },
             error: function(xhr) {
                 $loader.hide();
-                showGlobalAlert('Ocurrió un error al cargar la lista de usuarios. Contacte a soporte.', 'danger');
+                showGlobalAlert('Ocurrió un error al cargar la lista de personal. Contacte a soporte.', 'danger');
             }
         });
     }
@@ -82,15 +82,15 @@ $(document).ready(function() {
     // =========================================================================
     // FILTRADO / BUSCADOR EN TIEMPO REAL
     // =========================================================================
-    $('#searchUser').on('input', function() {
+    $('#searchPersonal').on('input', function() {
         const query = $(this).val().toLowerCase().trim();
         
         if (query === '') {
-            $('.user-row').show();
+            $('.personal-row').show();
             return;
         }
 
-        $('.user-row').each(function() {
+        $('.personal-row').each(function() {
             const searchText = $(this).data('search');
             if (searchText.indexOf(query) > -1) {
                 $(this).show();
@@ -101,9 +101,9 @@ $(document).ready(function() {
     });
 
     // =========================================================================
-    // CREAR USUARIO (AJAX)
+    // CREAR PERSONAL (AJAX)
     // =========================================================================
-    $('#formCrearUsuario').on('submit', function(e) {
+    $('#formCrearPersonal').on('submit', function(e) {
         e.preventDefault();
 
         const $form = $(this);
@@ -121,24 +121,24 @@ $(document).ready(function() {
         $alert.hide();
 
         $.ajax({
-            url: 'controllers/UsuarioController.php?action=crear',
+            url: 'controllers/PersonalController.php?action=crear',
             method: 'POST',
             data: $form.serialize(),
             dataType: 'json',
             success: function(response) {
-                $btn.prop('disabled', false).text('Registrar Usuario');
+                $btn.prop('disabled', false).text('Registrar Personal');
                 if (response.status === 'success') {
-                    $('#modalCrearUsuario').modal('hide');
+                    $('#modalCrearPersonal').modal('hide');
                     $form[0].reset();
                     showGlobalAlert(response.message, 'success');
-                    listarUsuarios();
+                    listarPersonal();
                 } else {
                     showAlert($alert, response.message, 'danger');
                 }
             },
             error: function(xhr) {
-                $btn.prop('disabled', false).text('Registrar Usuario');
-                let errorMsg = 'Error en el servidor al intentar registrar el usuario.';
+                $btn.prop('disabled', false).text('Registrar Personal');
+                let errorMsg = 'Error en el servidor al intentar registrar el personal.';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMsg = xhr.responseJSON.message;
                 }
@@ -150,9 +150,9 @@ $(document).ready(function() {
     // =========================================================================
     // OBTENER DATOS PARA EDICIÓN
     // =========================================================================
-    $(document).on('click', '.btn-editar-usuario', function() {
+    $(document).on('click', '.btn-editar-personal', function() {
         const id = $(this).data('id');
-        const $modal = $('#modalEditarUsuario');
+        const $modal = $('#modalEditarPersonal');
         const $alert = $('#alertEditarFeedback');
         const $rolSelect = $('#edit_rol');
 
@@ -160,7 +160,7 @@ $(document).ready(function() {
         $('#edit_password').val(''); // Vaciar campo clave en edición
 
         $.ajax({
-            url: `controllers/UsuarioController.php?action=obtener&id=${id}`,
+            url: `controllers/PersonalController.php?action=obtener&id=${id}`,
             method: 'GET',
             dataType: 'json',
             success: function(response) {
@@ -192,7 +192,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr) {
-                showGlobalAlert('No se pudieron recuperar los datos del usuario para editar.', 'danger');
+                showGlobalAlert('No se pudieron recuperar los datos del personal para editar.', 'danger');
             }
         });
     });
@@ -200,7 +200,7 @@ $(document).ready(function() {
     // =========================================================================
     // GUARDAR CAMBIOS DE EDICIÓN (AJAX)
     // =========================================================================
-    $('#formEditarUsuario').on('submit', function(e) {
+    $('#formEditarPersonal').on('submit', function(e) {
         e.preventDefault();
 
         const $form = $(this);
@@ -225,14 +225,14 @@ $(document).ready(function() {
         }
 
         $.ajax({
-            url: 'controllers/UsuarioController.php?action=actualizar',
+            url: 'controllers/PersonalController.php?action=actualizar',
             method: 'POST',
             data: formData,
             dataType: 'json',
             success: function(response) {
                 $btn.prop('disabled', false).text('Guardar Cambios');
                 if (response.status === 'success') {
-                    $('#modalEditarUsuario').modal('hide');
+                    $('#modalEditarPersonal').modal('hide');
                     showGlobalAlert(response.message, 'success');
                     
                     // Si el superadmin editó sus propios datos, refrescamos el header superior al instante
@@ -248,14 +248,14 @@ $(document).ready(function() {
                         $('.topbar .user-profile .avatar-circle').text(initials);
                     }
 
-                    listarUsuarios();
+                    listarPersonal();
                 } else {
                     showAlert($alert, response.message, 'danger');
                 }
             },
             error: function(xhr) {
                 $btn.prop('disabled', false).text('Guardar Cambios');
-                let errorMsg = 'Error en el servidor al intentar actualizar el usuario.';
+                let errorMsg = 'Error en el servidor al intentar actualizar el personal.';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMsg = xhr.responseJSON.message;
                 }
@@ -267,13 +267,13 @@ $(document).ready(function() {
     // =========================================================================
     // ABRIR CONFIRMACIÓN DE ELIMINACIÓN
     // =========================================================================
-    $(document).on('click', '.btn-eliminar-usuario', function() {
+    $(document).on('click', '.btn-eliminar-personal', function() {
         const id = $(this).data('id');
         const name = $(this).data('name');
 
         $('#delete_id').val(id);
         $('#deleteUserNameSpan').text(name);
-        $('#modalEliminarUsuario').modal('show');
+        $('#modalEliminarPersonal').modal('show');
     });
 
     // =========================================================================
@@ -286,25 +286,25 @@ $(document).ready(function() {
         $btn.prop('disabled', true).text('Eliminando...');
 
         $.ajax({
-            url: 'controllers/UsuarioController.php?action=eliminar',
+            url: 'controllers/PersonalController.php?action=eliminar',
             method: 'POST',
             data: { id: id },
             dataType: 'json',
             success: function(response) {
-                $btn.prop('disabled', false).text('Eliminar Usuario');
-                $('#modalEliminarUsuario').modal('hide');
+                $btn.prop('disabled', false).text('Eliminar Personal');
+                $('#modalEliminarPersonal').modal('hide');
                 
                 if (response.status === 'success') {
                     showGlobalAlert(response.message, 'success');
-                    listarUsuarios();
+                    listarPersonal();
                 } else {
                     showGlobalAlert(response.message, 'danger');
                 }
             },
             error: function(xhr) {
-                $btn.prop('disabled', false).text('Eliminar Usuario');
-                $('#modalEliminarUsuario').modal('hide');
-                let errorMsg = 'Error en el servidor al intentar eliminar el usuario.';
+                $btn.prop('disabled', false).text('Eliminar Personal');
+                $('#modalEliminarPersonal').modal('hide');
+                let errorMsg = 'Error en el servidor al intentar eliminar el personal.';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMsg = xhr.responseJSON.message;
                 }

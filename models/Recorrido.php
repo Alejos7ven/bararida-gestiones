@@ -205,4 +205,66 @@ class Recorrido {
             throw $e;
         }
     }
+
+    /**
+     * Actualiza la ruta (secuencia de paradas) de un recorrido en una transacción atómica.
+     * @param int $recorridoId ID del recorrido
+     * @param array $zonasOrdenadas Listado ordenado de IDs de zonas
+     * @return bool True en caso de éxito, False de lo contrario
+     * @throws Exception Si ocurre un fallo en la base de datos
+     */
+    public function actualizarRuta($recorridoId, $zonasOrdenadas) {
+        if (!$this->db) {
+            throw new Exception("Conexión de base de datos no inicializada.");
+        }
+
+        $cleanRecorridoId = filter_var($recorridoId, FILTER_VALIDATE_INT) ? (int)$recorridoId : null;
+        if (!$cleanRecorridoId) {
+            throw new InvalidArgumentException("ID de recorrido inválido.");
+        }
+
+        if (empty($zonasOrdenadas) || !is_array($zonasOrdenadas)) {
+            throw new InvalidArgumentException("Debe seleccionar al menos una zona para actualizar el recorrido.");
+        }
+
+        try {
+            // Iniciar la transacción atómica
+            $this->db->beginTransaction();
+
+            // 1. Eliminar las paradas asociadas en la tabla 'rutas' primero
+            require_once __DIR__ . "/Ruta.php";
+            $ruta = new Ruta($this->db);
+            $ruta->eliminarPorRecorrido($cleanRecorridoId);
+
+            // 2. Insertar cada parada en la tabla 'rutas' con el nuevo orden
+            foreach ($zonasOrdenadas as $orden => $zonaId) {
+                $cleanZonaId = filter_var($zonaId, FILTER_VALIDATE_INT) ? (int)$zonaId : null;
+                if (!$cleanZonaId) {
+                    throw new InvalidArgumentException("ID de zona inválido en la lista de paradas.");
+                }
+
+                $nuevaRuta = new Ruta($this->db);
+                $nuevaRuta->setRecorridoId($cleanRecorridoId);
+                $nuevaRuta->setZonaId($cleanZonaId);
+                $nuevaRuta->setOrden($orden);
+
+                if (!$nuevaRuta->crear()) {
+                    throw new Exception("Error al insertar la parada de zona con ID $cleanZonaId en la ruta.");
+                }
+            }
+
+            // Confirmamos la transacción
+            $this->db->commit();
+            return true;
+
+        } catch (Exception $e) {
+            // Si algo falla, revertimos todos los cambios para evitar inconsistencias
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("Error en Recorrido::actualizarRuta(): " . $e->getMessage());
+            throw $e;
+        }
+    }
 }
+

@@ -238,7 +238,7 @@ body {
     margin: 4px 0 0 0;
 }
 
-/* Perfil de usuario en Topbar */
+/* Perfil de personal en Topbar */
 .user-profile {
     display: flex;
     align-items: center;
@@ -328,7 +328,7 @@ body {
 .bg-icon-citas { background-color: #3182CE; }
 .bg-icon-guias { background-color: #319795; }
 .bg-icon-instituciones { background-color: #805AD5; }
-.bg-icon-usuarios { background-color: #DD6B20; }
+.bg-icon-personal { background-color: #DD6B20; }
 
 .module-icon-container svg { width: 26px; height: 26px; fill: currentColor; }
 

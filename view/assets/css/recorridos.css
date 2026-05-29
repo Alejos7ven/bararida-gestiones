@@ -99,7 +99,7 @@
 
 .route-line {
     fill: none;
-    stroke: var(--park-primary);
+    stroke: #2563eb; /* Trazo azul premium vibrante */
     stroke-width: 4;
     stroke-linecap: round;
     stroke-linejoin: round;
@@ -138,12 +138,26 @@
     color: #ffffff;
 }
 
+/* Zona de acción táctil expandida para pantallas móviles o táctiles sin agrandar el pin visualmente */
+.map-pin::after {
+    content: '';
+    position: absolute;
+    width: 46px;
+    height: 46px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: transparent;
+    z-index: 1;
+}
+
 /* Hover de Pines */
 .map-pin:hover {
     transform: translate(-50%, -50%) scale(1.3);
     background: #f87171; /* Rojo más claro */
     box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.25);
-    z-index: 25;
+    z-index: 100 !important;
 }
 
 /* Estado Activo o Resaltado en Selección (Borde Verde) */
@@ -152,6 +166,18 @@
     border-color: #22c55e; /* Borde verde para la ruta */
     box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.35);
     transform: translate(-50%, -50%) scale(1.25);
+    z-index: 110 !important;
+}
+
+/* Llevar al frente la etiqueta de texto inmediatamente posterior cuando el pin esté activo, seleccionado o en hover */
+.map-pin:hover + .pin-label,
+.map-pin.active + .pin-label,
+.map-pin.selected-pin + .pin-label {
+    z-index: 130 !important;
+    background: rgba(15, 23, 42, 0.95) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+    transform: translate(-50%, 14px) scale(1.1) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
 /* Pin Temporal en Creación (Borde Blanco, Pulsante) */
@@ -612,5 +638,311 @@
         padding: 8px 10px !important;
     }
 }
+
+/* =========================================================================
+   ESTILOS PREMIUM DE GESTIÓN Y SELECCIÓN INTERACTIVA
+   ========================================================================= */
+
+/* Estado Destacado de Pin al Seleccionar Zona (Resplandor Azul Pulsante) */
+.map-pin.selected-pin {
+    background: #2563eb !important; /* Azul */
+    border-color: #ffffff !important;
+    box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.35), 0 0 15px rgba(37, 99, 235, 0.85) !important;
+    transform: translate(-50%, -50%) scale(1.3) !important;
+    animation: selectedPinPulse 1.5s infinite alternate !important;
+    z-index: 120 !important;
+}
+
+@keyframes selectedPinPulse {
+    from {
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2), 0 0 8px rgba(37, 99, 235, 0.5);
+    }
+    to {
+        box-shadow: 0 0 0 8px rgba(37, 99, 235, 0.4), 0 0 20px rgba(37, 99, 235, 0.9);
+    }
+}
+
+/* Estilos para el Listado de Paradas Interactivas */
+.reorder-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    background: #ffffff;
+    border: 1px solid var(--park-gray);
+    border-radius: 10px !important;
+    margin-bottom: 6px;
+    transition: var(--park-transition);
+}
+
+.reorder-item:hover {
+    background: var(--park-light);
+    border-color: #cbd5e1;
+}
+
+.reorder-item .item-details {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.reorder-item .item-num {
+    background: #cbd5e1;
+    color: #475569;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.reorder-item .item-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--park-dark);
+}
+
+.reorder-item .btn-order-arrows {
+    display: flex;
+    gap: 4px;
+}
+
+.btn-arrow-up, .btn-arrow-down {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #ffffff;
+    color: #475569;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--park-transition);
+    padding: 0;
+}
+
+.btn-arrow-up:hover, .btn-arrow-down:hover {
+    background: var(--park-secondary-light);
+    color: var(--park-primary);
+    border-color: var(--park-primary);
+}
+
+.btn-arrow-up:disabled, .btn-arrow-down:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    background: #f1f5f9 !important;
+    color: #94a3b8 !important;
+    border-color: var(--park-gray) !important;
+}
+
+/* =========================================================================
+   ESTILOS PREMIUM DE GESTIÓN INLINE Y TOOLTIPS DE MAPA
+   ========================================================================= */
+
+/* Tooltip Flotante sobre el Mapa */
+.map-edit-tooltip {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.9);
+    backdrop-filter: blur(4px);
+    color: #ffffff;
+    padding: 8px 16px;
+    border-radius: 30px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: 'Outfit', sans-serif;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    pointer-events: none;
+    animation: tooltipSlideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes tooltipSlideDown {
+    from { top: -40px; opacity: 0; }
+    to { top: 16px; opacity: 1; }
+}
+
+.map-edit-tooltip .pulse-indicator {
+    width: 8px;
+    height: 8px;
+    background: #ef4444;
+    border-radius: 50%;
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    animation: indicatorPulse 1.2s infinite;
+}
+
+@keyframes indicatorPulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+    }
+}
+
+/* Acciones en la fila de items de listas laterales */
+.sidebar-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto; /* Alinear hacia la derecha */
+    flex-shrink: 0;
+}
+
+/* Modificar sidebar-list-item para permitir items envolventes con flex */
+.sidebar-list-item {
+    display: flex;
+    flex-wrap: wrap; /* Permitir expandirse hacia abajo */
+    align-items: center;
+    width: 100%;
+}
+
+.sidebar-list-item.selected {
+    box-shadow: 0 0 0 1.5px var(--park-primary);
+}
+
+/* Botón Editar Lápiz */
+.btn-editar-zona-list,
+.btn-editar-recorrido-list {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(13, 144, 57, 0.08); /* Fondo verde suave */
+    color: var(--park-primary);          /* Verde Bararida */
+    border: 1px solid rgba(13, 144, 57, 0.15);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--park-transition);
+    padding: 0;
+    outline: none;
+}
+
+.btn-editar-zona-list:hover,
+.btn-editar-recorrido-list:hover {
+    background: var(--park-primary);
+    color: #ffffff;
+    border-color: var(--park-primary);
+    box-shadow: 0 4px 10px rgba(13, 144, 57, 0.2);
+    transform: scale(1.1);
+}
+
+.btn-editar-zona-list svg,
+.btn-editar-recorrido-list svg {
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+    display: inline-block;
+}
+
+/* Botón Quitar Parada Inline Hover */
+.btn-remove-stop-inline:hover {
+    background: #ef4444 !important;
+    color: #ffffff !important;
+    border-color: #ef4444 !important;
+}
+
+/* Botón Confirmar (Check ✓) */
+.btn-premium-check {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(34, 197, 94, 0.12); /* Verde vivo suave */
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.25);
+    font-size: 14px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--park-transition);
+    padding: 0;
+    outline: none;
+}
+
+.btn-premium-check:hover {
+    background: #22c55e;
+    color: #ffffff;
+    border-color: #22c55e;
+    box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3);
+    transform: scale(1.1);
+}
+
+/* Botón Cancelar (Cruz ✕) */
+.btn-premium-cancel {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(239, 68, 68, 0.12); /* Rojo suave */
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    font-size: 13px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: var(--park-transition);
+    padding: 0;
+    outline: none;
+}
+
+.btn-premium-cancel:hover {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #ef4444;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.3);
+    transform: scale(1.1);
+}
+
+/* Contenedor Inline de Reordenamiento */
+.inline-reorder-container {
+    width: 100%;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--park-gray);
+    animation: slideDownFade 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.inline-reorder-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+/* Scrollbar sutil para el reordenador inline */
+.inline-reorder-list::-webkit-scrollbar {
+    width: 4px;
+}
+.inline-reorder-list::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.02);
+}
+.inline-reorder-list::-webkit-scrollbar-thumb {
+    background: rgba(0,0,0,0.15);
+    border-radius: 2px;
+}
+
 
 

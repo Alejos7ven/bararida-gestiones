@@ -1,8 +1,8 @@
 <?php
 /**
- * Controlador de Usuarios (UsuarioController)
- * Procesa de forma segura las operaciones CRUD de usuarios, respondiendo con estados HTTP y JSON.
- * Acceso restringido exclusivamente a usuarios con rol 'superadmin'.
+ * Controlador de Personal (PersonalController)
+ * Procesa de forma segura las operaciones CRUD de personal, respondiendo con estados HTTP y JSON.
+ * Acceso restringido exclusivamente a personal con rol 'superadmin'.
  */
 
 // Aseguramos que la sesión esté activa
@@ -15,14 +15,14 @@ header("Content-Type: application/json; charset=UTF-8");
 
 // Incluimos las dependencias necesarias
 require_once __DIR__ . "/../config/Database.php";
-require_once __DIR__ . "/../models/Usuario.php";
+require_once __DIR__ . "/../models/Personal.php";
 
 // =========================================================================
 // SEGURIDAD Y CONTROL DE ACCESO ESTRICTO (RBAC)
 // =========================================================================
 
-// Verificar que el usuario esté autenticado
-if (!isset($_SESSION['usuario'])) {
+// Verificar que el personal esté autenticado
+if (!isset($_SESSION['personal'])) {
     http_response_code(401);
     echo json_encode([
         "status" => "error",
@@ -31,8 +31,8 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-// Verificar que el usuario posea el rol de Super Administrador
-if ($_SESSION['usuario']['rol'] !== 'superadmin') {
+// Verificar que el personal posea el rol de Super Administrador
+if ($_SESSION['personal']['rol'] !== 'superadmin') {
     http_response_code(403);
     echo json_encode([
         "status" => "error",
@@ -106,29 +106,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // =========================================================================
 
 /**
- * Obtiene y retorna el listado de todos los usuarios
+ * Obtiene y retorna el listado de todo el personal
  */
 function listarAction($db) {
     try {
-        $usuarioModel = new Usuario($db);
-        $usuarios = $usuarioModel->listarTodos();
+        $personalModel = new Personal($db);
+        $listaPersonal = $personalModel->listarTodos();
         
         http_response_code(200);
         echo json_encode([
             "status" => "success",
-            "data" => $usuarios
+            "data" => $listaPersonal
         ]);
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Error al obtener el listado de usuarios: " . $e->getMessage()
+            "message" => "Error al obtener el listado de personal: " . $e->getMessage()
         ]);
     }
 }
 
 /**
- * Obtiene y retorna los detalles de un usuario por su ID
+ * Obtiene y retorna los detalles de un personal por su ID
  */
 function obtenerAction($db) {
     $id = isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : null;
@@ -137,38 +137,38 @@ function obtenerAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "ID de usuario inválido o no suministrado."
+            "message" => "ID de personal inválido o no suministrado."
         ]);
         return;
     }
 
     try {
-        $userData = Usuario::obtenerPorId($db, $id);
+        $personalData = Personal::obtenerPorId($db, $id);
         
-        if ($userData) {
+        if ($personalData) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
-                "data" => $userData
+                "data" => $personalData
             ]);
         } else {
             http_response_code(404);
             echo json_encode([
                 "status" => "error",
-                "message" => "Usuario no encontrado."
+                "message" => "Personal no encontrado."
             ]);
         }
     } catch (Exception $e) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error al consultar el usuario."
+            "message" => "Ocurrió un error al consultar el personal."
         ]);
     }
 }
 
 /**
- * Registra un nuevo usuario en el sistema
+ * Registra un nuevo personal en el sistema
  */
 function crearAction($db) {
     $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
@@ -192,31 +192,31 @@ function crearAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Rol no permitido. Sólo se pueden crear usuarios de tipo Administrador o Guía."
+            "message" => "Rol no permitido. Sólo se pueden crear personal de tipo Administrador o Guía."
         ]);
         return;
     }
 
     try {
         // Inicializar entidad y aplicar lógica de validación del modelo
-        $usuario = new Usuario($db);
-        $usuario->setCedula($cedula);
-        $usuario->setNombre($nombre);
-        $usuario->setApellido($apellido);
-        $usuario->setRol($rol);
-        $usuario->setPlainPassword($password); // Valida que tenga al menos 6 caracteres
+        $personal = new Personal($db);
+        $personal->setCedula($cedula);
+        $personal->setNombre($nombre);
+        $personal->setApellido($apellido);
+        $personal->setRol($rol);
+        $personal->setPlainPassword($password); // Valida que tenga al menos 6 caracteres
 
-        if ($usuario->crear()) {
+        if ($personal->crear()) {
             http_response_code(201);
             echo json_encode([
                 "status" => "success",
-                "message" => "Usuario registrado correctamente en el sistema."
+                "message" => "Personal registrado correctamente en el sistema."
             ]);
         } else {
             http_response_code(500);
             echo json_encode([
                 "status" => "error",
-                "message" => "No se pudo registrar el usuario por un fallo en la base de datos."
+                "message" => "No se pudo registrar el personal por un fallo en la base de datos."
             ]);
         }
     } catch (InvalidArgumentException $e) {
@@ -229,13 +229,13 @@ function crearAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error inesperado al registrar el usuario."
+            "message" => "Ocurrió un error inesperado al registrar el personal."
         ]);
     }
 }
 
 /**
- * Modifica un usuario existente
+ * Modifica un personal existente
  */
 function actualizarAction($db) {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
@@ -256,28 +256,28 @@ function actualizarAction($db) {
 
     try {
         // Cargar información actual en la BD para verificar políticas de roles
-        $usuarioActual = Usuario::obtenerPorId($db, $id);
-        if (!$usuarioActual) {
+        $personalActual = Personal::obtenerPorId($db, $id);
+        if (!$personalActual) {
             http_response_code(404);
             echo json_encode([
                 "status" => "error",
-                "message" => "El usuario a modificar no existe."
+                "message" => "El personal a modificar no existe."
             ]);
             return;
         }
 
         // Restricción: Impedir promover a superadmin a cuentas existentes
-        if ($usuarioActual['rol'] !== 'superadmin' && $rol === 'superadmin') {
+        if ($personalActual['rol'] !== 'superadmin' && $rol === 'superadmin') {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
-                "message" => "No está permitido promover usuarios al rol de Super Administrador."
+                "message" => "No está permitido promover personal al rol de Super Administrador."
             ]);
             return;
         }
 
         // Restricción: Impedir degradar a un superadmin a admin o guia
-        if ($usuarioActual['rol'] === 'superadmin' && $rol !== 'superadmin') {
+        if ($personalActual['rol'] === 'superadmin' && $rol !== 'superadmin') {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
@@ -287,36 +287,36 @@ function actualizarAction($db) {
         }
 
         // Instanciar modelo para guardar cambios
-        $usuario = new Usuario($db);
-        $usuario->setId($id);
-        $usuario->setCedula($cedula);
-        $usuario->setNombre($nombre);
-        $usuario->setApellido($apellido);
-        $usuario->setRol($rol);
+        $personal = new Personal($db);
+        $personal->setId($id);
+        $personal->setCedula($cedula);
+        $personal->setNombre($nombre);
+        $personal->setApellido($apellido);
+        $personal->setRol($rol);
 
         // Si se suministró una nueva contraseña, se valida y hashea
         if (!empty($password)) {
-            $usuario->setPlainPassword($password);
+            $personal->setPlainPassword($password);
         }
 
-        if ($usuario->actualizar()) {
+        if ($personal->actualizar()) {
             // Si el propio superadmin se editó a sí mismo, actualizamos los datos en su sesión activa
-            if ($_SESSION['usuario']['id'] == $id) {
-                $_SESSION['usuario']['cedula'] = $usuario->getCedula();
-                $_SESSION['usuario']['nombre'] = $usuario->getNombre();
-                $_SESSION['usuario']['apellido'] = $usuario->getApellido();
+            if ($_SESSION['personal']['id'] == $id) {
+                $_SESSION['personal']['cedula'] = $personal->getCedula();
+                $_SESSION['personal']['nombre'] = $personal->getNombre();
+                $_SESSION['personal']['apellido'] = $personal->getApellido();
             }
 
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
-                "message" => "Usuario actualizado con éxito."
+                "message" => "Personal actualizado con éxito."
             ]);
         } else {
             http_response_code(500);
             echo json_encode([
                 "status" => "error",
-                "message" => "No se pudo actualizar la información del usuario."
+                "message" => "No se pudo actualizar la información del personal."
             ]);
         }
     } catch (InvalidArgumentException $e) {
@@ -329,13 +329,13 @@ function actualizarAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error inesperado al actualizar el usuario."
+            "message" => "Ocurrió un error inesperado al actualizar el personal."
         ]);
     }
 }
 
 /**
- * Elimina un usuario por ID (Previene eliminar superadmins)
+ * Elimina un personal por ID (Previene eliminar superadmins)
  */
 function eliminarAction($db) {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
@@ -344,25 +344,25 @@ function eliminarAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "ID de usuario no suministrado o inválido."
+            "message" => "ID de personal no suministrado o inválido."
         ]);
         return;
     }
 
     try {
-        $usuario = new Usuario($db);
+        $personal = new Personal($db);
         
-        if ($usuario->eliminar($id)) {
+        if ($personal->eliminar($id)) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
-                "message" => "Usuario eliminado del sistema correctamente."
+                "message" => "Personal eliminado del sistema correctamente."
             ]);
         } else {
             http_response_code(500);
             echo json_encode([
                 "status" => "error",
-                "message" => "No se pudo eliminar el usuario de la base de datos."
+                "message" => "No se pudo eliminar el personal de la base de datos."
             ]);
         }
     } catch (InvalidArgumentException $e) {
@@ -375,7 +375,7 @@ function eliminarAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error inesperado al intentar eliminar el usuario."
+            "message" => "Ocurrió un error inesperado al intentar eliminar el personal."
         ]);
     }
 }

@@ -3,7 +3,7 @@
  * Controlador de Recorridos y Zonas (RecorridoController)
  * Procesa de forma segura las operaciones de gestión de mapas, zonas y rutas.
  * Responde con estados HTTP óptimos y formato JSON estándar.
- * Acceso de lectura permitido a todos los usuarios; escritura restringida a 'superadmin' y 'admin'.
+ * Acceso de lectura permitido a todo el personal; escritura restringida a 'superadmin' y 'admin'.
  */
 
 // Asegurar que la sesión esté activa
@@ -24,8 +24,8 @@ require_once __DIR__ . "/../models/Ruta.php";
 // SEGURIDAD Y CONTROL DE ACCESO (RBAC)
 // =========================================================================
 
-// 1. Verificar que el usuario esté autenticado
-if (!isset($_SESSION['usuario'])) {
+// 1. Verificar que el personal esté autenticado
+if (!isset($_SESSION['personal'])) {
     http_response_code(401);
     echo json_encode([
         "status" => "error",
@@ -34,7 +34,7 @@ if (!isset($_SESSION['usuario'])) {
     exit;
 }
 
-$currentUser = $_SESSION['usuario'];
+$currentUser = $_SESSION['personal'];
 $userRol = $currentUser['rol'];
 
 // Inicializar conexión a la base de datos
@@ -75,11 +75,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'eliminar_zona':
             eliminarZonaAction($db);
             break;
+        case 'actualizar_zona_coords':
+            actualizarZonaCoordsAction($db);
+            break;
         case 'crear_recorrido':
             crearRecorridoAction($db);
             break;
         case 'eliminar_recorrido':
             eliminarRecorridoAction($db);
+            break;
+        case 'actualizar_recorrido_orden':
+            actualizarRecorridoOrdenAction($db);
             break;
         default:
             http_response_code(400);
@@ -90,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
     }
 } else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    // Todos los usuarios autenticados (incluidos guías) pueden leer la información
+    // Todo el personal autenticado (incluidos guías) puede leer la información
     switch ($action) {
         case 'listar_zonas':
             listarZonasAction($db);
@@ -328,6 +334,107 @@ function eliminarRecorridoAction($db) {
         echo json_encode([
             "status" => "error",
             "message" => "Error al eliminar el recorrido: " . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Actualiza las coordenadas de ubicación de un pin de zona
+ */
+function actualizarZonaCoordsAction($db) {
+    $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
+    $coordenadas = isset($_POST['coordenadas']) ? trim($_POST['coordenadas']) : '';
+
+    if (!$id || empty($coordenadas)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El ID de la zona y las nuevas coordenadas son requeridos."
+        ]);
+        return;
+    }
+
+    try {
+        $zona = new Zona($db);
+        if ($zona->actualizarCoordenadas($id, $coordenadas)) {
+            http_response_code(200);
+            echo json_encode([
+                "status" => "success",
+                "message" => "Ubicación del pin de la zona actualizada con éxito."
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Error interno al guardar la nueva posición en la base de datos."
+            ]);
+        }
+    } catch (InvalidArgumentException $e) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => $e->getMessage()
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Error inesperado al reubicar la zona."
+        ]);
+    }
+}
+
+/**
+ * Actualiza el orden secuencial de paradas de un recorrido
+ */
+function actualizarRecorridoOrdenAction($db) {
+    $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
+    $zonas = isset($_POST['zonas']) ? $_POST['zonas'] : null;
+
+    if (!$id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El ID del recorrido es requerido."
+        ]);
+        return;
+    }
+
+    if (empty($zonas) || !is_array($zonas)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El listado ordenado de paradas (zonas) es requerido."
+        ]);
+        return;
+    }
+
+    try {
+        $recorrido = new Recorrido($db);
+        if ($recorrido->actualizarRuta($id, $zonas)) {
+            http_response_code(200);
+            echo json_encode([
+                "status" => "success",
+                "message" => "El orden de la ruta del recorrido ha sido actualizado correctamente."
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Error interno al actualizar la secuencia de paradas del recorrido."
+            ]);
+        }
+    } catch (InvalidArgumentException $e) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => $e->getMessage()
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Error inesperado al reordenar el recorrido: " . $e->getMessage()
         ]);
     }
 }

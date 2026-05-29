@@ -1,12 +1,12 @@
 <?php
 /**
- * Modelo de Usuario
- * Representa la entidad Usuario y gestiona su persistencia y autenticación de forma segura.
+ * Modelo de Personal
+ * Representa la entidad Personal y gestiona su persistencia y autenticación de forma segura.
  */
-class Usuario {
+class Personal {
     // Conexión de base de datos (PDO)
     private $db;
-    private $table_name = "usuarios";
+    private $table_name = "personal";
 
     // Propiedades privadas de la entidad
     private $id;
@@ -18,7 +18,7 @@ class Usuario {
     private $loginError;
 
     /**
-     * Constructor del Modelo Usuario
+     * Constructor del Modelo Personal
      * @param PDO $db Instancia de conexión PDO
      */
     public function __construct($db = null) {
@@ -152,7 +152,7 @@ class Usuario {
      */
     public function login($cedula, $password) {
         if (!$this->db) {
-            error_log("Error en Usuario::login() - Instancia PDO no configurada.");
+            error_log("Error en Personal::login() - Instancia PDO no configurada.");
             $this->loginError = "Instancia de base de datos no configurada.";
             return false;
         }
@@ -175,7 +175,7 @@ class Usuario {
             $row = $stmt->fetch();
 
             if (!$row) {
-                $this->loginError = "El usuario con la cédula ingresada no existe.";
+                $this->loginError = "El personal con la cédula ingresada no existe.";
                 return false;
             }
 
@@ -196,7 +196,7 @@ class Usuario {
                 return false;
             }
         } catch (PDOException $e) {
-            error_log("Excepción en Usuario::login(): " . $e->getMessage());
+            error_log("Excepción en Personal::login(): " . $e->getMessage());
             $this->loginError = "Error en la consulta de base de datos.";
         }
 
@@ -204,8 +204,8 @@ class Usuario {
     }
 
     /**
-     * Obtiene todos los usuarios ordenados por ID de forma descendente.
-     * @return array Listado de usuarios
+     * Obtiene todo el personal ordenado por ID de forma descendente.
+     * @return array Listado de personal
      */
     public function listarTodos() {
         if (!$this->db) {
@@ -218,16 +218,16 @@ class Usuario {
     }
 
     /**
-     * Obtiene la información de un usuario específico por su ID.
+     * Obtiene la información de un personal específico por su ID.
      * @param PDO $db Instancia de conexión PDO
-     * @param int $id ID del usuario
-     * @return array|null Datos del usuario o null si no se encuentra
+     * @param int $id ID del personal
+     * @return array|null Datos del personal o null si no se encuentra
      */
     public static function obtenerPorId($db, $id) {
         if (!$db) {
             return null;
         }
-        $query = "SELECT id, cedula, nombre, apellido, rol, created_at, updated_at FROM usuarios WHERE id = :id LIMIT 1";
+        $query = "SELECT id, cedula, nombre, apellido, rol, created_at, updated_at FROM personal WHERE id = :id LIMIT 1";
         $stmt = $db->prepare($query);
         $stmt->bindParam(":id", $id, PDO::PARAM_INT);
         $stmt->execute();
@@ -249,7 +249,7 @@ class Usuario {
             return false;
         }
         $cleanCedula = preg_replace('/[^0-9]/', '', trim($cedula));
-        $query = "SELECT COUNT(*) FROM usuarios WHERE cedula = :cedula";
+        $query = "SELECT COUNT(*) FROM personal WHERE cedula = :cedula";
         if ($excluirId !== null) {
             $query .= " AND id != :excluirId";
         }
@@ -265,7 +265,7 @@ class Usuario {
     }
 
     /**
-     * Registra un nuevo usuario en la base de datos aplicando reglas de seguridad estrictas.
+     * Registra un nuevo personal en la base de datos aplicando reglas de seguridad estrictas.
      * @return bool True en caso de éxito, False de lo contrario
      */
     public function crear() {
@@ -280,7 +280,7 @@ class Usuario {
 
         // Restricción estricta: sólo se pueden crear admins y guias, no supers
         if ($this->rol === 'superadmin') {
-            throw new InvalidArgumentException("No está permitido registrar nuevos usuarios con rol de Super Administrador.");
+            throw new InvalidArgumentException("No está permitido registrar nuevo personal con rol de Super Administrador.");
         }
 
         $query = "INSERT INTO " . $this->table_name . " (cedula, nombre, apellido, rol, password) 
@@ -297,7 +297,7 @@ class Usuario {
     }
 
     /**
-     * Actualiza la información de un usuario existente aplicando políticas RBAC estrictas.
+     * Actualiza la información de un personal existente aplicando políticas RBAC estrictas.
      * @return bool True en caso de éxito, False de lo contrario
      */
     public function actualizar() {
@@ -306,18 +306,18 @@ class Usuario {
         }
 
         if (empty($this->id)) {
-            throw new InvalidArgumentException("Se requiere el ID del usuario para poder actualizar.");
+            throw new InvalidArgumentException("Se requiere el ID del personal para poder actualizar.");
         }
 
         // Validación de cédula única (excluyendo el usuario actual)
         if (self::existeCedula($this->db, $this->cedula, $this->id)) {
-            throw new InvalidArgumentException("La cédula ingresada ya está siendo utilizada por otro usuario.");
+            throw new InvalidArgumentException("La cédula ingresada ya está siendo utilizada por otro miembro del personal.");
         }
 
-        // Obtener datos actuales del usuario en base de datos para validar el cambio de rol
+        // Obtener datos actuales del personal en base de datos para validar el cambio de rol
         $currentInDb = self::obtenerPorId($this->db, $this->id);
         if (!$currentInDb) {
-            throw new InvalidArgumentException("El usuario a actualizar no existe.");
+            throw new InvalidArgumentException("El personal a actualizar no existe.");
         }
 
         $oldRol = $currentInDb['rol'];
@@ -329,7 +329,7 @@ class Usuario {
 
         // Restricción: No promover a superadmin a un usuario común
         if ($oldRol !== 'superadmin' && $this->rol === 'superadmin') {
-            throw new InvalidArgumentException("No está permitido promover usuarios al rol de Super Administrador.");
+            throw new InvalidArgumentException("No está permitido promover personal al rol de Super Administrador.");
         }
 
         // Construcción de la consulta dinámica para actualización de contraseña
@@ -358,8 +358,8 @@ class Usuario {
     }
 
     /**
-     * Elimina un usuario por ID. Impide eliminar cuentas con rol Super Administrador.
-     * @param int $id ID del usuario a eliminar
+     * Elimina un personal por ID. Impide eliminar cuentas con rol Super Administrador.
+     * @param int $id ID del personal a eliminar
      * @return bool True si se eliminó con éxito, False de lo contrario
      */
     public function eliminar($id) {
@@ -369,13 +369,13 @@ class Usuario {
 
         $cleanId = filter_var($id, FILTER_VALIDATE_INT) ? (int)$id : null;
         if (!$cleanId) {
-            throw new InvalidArgumentException("ID de usuario inválido.");
+            throw new InvalidArgumentException("ID de personal inválido.");
         }
 
-        // Verificar el rol del usuario antes de borrar
+        // Verificar el rol del personal antes de borrar
         $userInDb = self::obtenerPorId($this->db, $cleanId);
         if (!$userInDb) {
-            throw new InvalidArgumentException("El usuario a eliminar no existe.");
+            throw new InvalidArgumentException("El personal a eliminar no existe.");
         }
 
         if ($userInDb['rol'] === 'superadmin') {
