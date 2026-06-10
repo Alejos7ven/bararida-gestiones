@@ -56,14 +56,12 @@ $(document).ready(function() {
                             ? `<span class="badge-premium badge-premium-info btn-ver-visitantes" data-id="${c.id}" data-name="${c.razon_social}" style="cursor: pointer;">${c.total_visitantes} visitantes</span>`
                             : '<span class="badge-premium bg-secondary">0 visitantes</span>';
 
-                        const btnImportarHtml = parseInt(c.total_visitantes) > 0
-                            ? ''
-                            : `
+                        const btnImportarHtml = `
                                         <button class="btn-action btn-action-edit btn-importar-visitantes" data-id="${c.id}" data-name="${c.razon_social}" title="Importar Visitantes (CSV)">
                                             <!-- SVG Import -->
                                             <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
                                         </button>
-                            `;
+                        `;
 
                         const rowHtml = `
                             <tr class="cita-row" data-search="${c.razon_social.toLowerCase()} ${c.RIF} ${c.id}">
