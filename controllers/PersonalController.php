@@ -171,6 +171,7 @@ function obtenerAction($db) {
  * Registra un nuevo personal en el sistema
  */
 function crearAction($db) {
+    $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
     $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
     $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
     $apellido = isset($_POST['apellido']) ? trim($_POST['apellido']) : '';
@@ -178,7 +179,7 @@ function crearAction($db) {
     $password = isset($_POST['password']) ? trim($_POST['password']) : '';
 
     // Validar campos requeridos
-    if (empty($cedula) || empty($nombre) || empty($apellido) || empty($rol) || empty($password)) {
+    if (empty($tipo_documento) || empty($cedula) || empty($nombre) || empty($apellido) || empty($rol) || empty($password)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
@@ -187,12 +188,29 @@ function crearAction($db) {
         return;
     }
 
-    // Estricta validación del rol: sólo se pueden crear admins y guias
-    if ($rol === 'superadmin' || !in_array($rol, ['admin', 'guia'], true)) {
+    // Obtener roles válidos desde la base de datos (excluyendo superadmin)
+    $validRoles = [];
+    try {
+        $stmtRoles = $db->prepare("SELECT nombre FROM roles WHERE nombre != 'superadmin'");
+        $stmtRoles->execute();
+        $validRoles = $stmtRoles->fetchAll(PDO::FETCH_COLUMN);
+    } catch (PDOException $e) {
+        error_log("Error al cargar roles válidos en PersonalController: " . $e->getMessage());
+    }
+    if (empty($validRoles)) {
+        $validRoles = ['admin', 'guia'];
+    }
+
+    // Estricta validación del rol: sólo se pueden crear roles existentes en la BD
+    if ($rol === 'superadmin' || !in_array($rol, $validRoles, true)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Rol no permitido. Sólo se pueden crear personal de tipo Administrador o Guía."
+            "message" => "Rol no permitido. Roles válidos: " . implode(', ', array_map(function($r) {
+                if ($r === 'admin') return 'Administrador';
+                if ($r === 'guia') return 'Guía de Campo';
+                return ucfirst($r);
+            }, $validRoles))
         ]);
         return;
     }
@@ -200,6 +218,7 @@ function crearAction($db) {
     try {
         // Inicializar entidad y aplicar lógica de validación del modelo
         $personal = new Personal($db);
+        $personal->setTipoDocumento($tipo_documento);
         $personal->setCedula($cedula);
         $personal->setNombre($nombre);
         $personal->setApellido($apellido);
@@ -239,17 +258,18 @@ function crearAction($db) {
  */
 function actualizarAction($db) {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
+    $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
     $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
     $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
     $apellido = isset($_POST['apellido']) ? trim($_POST['apellido']) : '';
     $rol = isset($_POST['rol']) ? trim($_POST['rol']) : '';
     $password = isset($_POST['password']) ? trim($_POST['password']) : ''; // Opcional
 
-    if (!$id || empty($cedula) || empty($nombre) || empty($apellido) || empty($rol)) {
+    if (!$id || empty($tipo_documento) || empty($cedula) || empty($nombre) || empty($apellido) || empty($rol)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Los campos ID, cédula, nombre, apellido y rol son requeridos."
+            "message" => "Los campos ID, tipo de documento, documento, nombre, apellido y rol son requeridos."
         ]);
         return;
     }
@@ -286,9 +306,33 @@ function actualizarAction($db) {
             return;
         }
 
+        // Obtener roles válidos desde la base de datos (excluyendo superadmin)
+        $validRoles = [];
+        try {
+            $stmtRoles = $db->prepare("SELECT nombre FROM roles WHERE nombre != 'superadmin'");
+            $stmtRoles->execute();
+            $validRoles = $stmtRoles->fetchAll(PDO::FETCH_COLUMN);
+        } catch (PDOException $e) {
+            error_log("Error al cargar roles válidos en PersonalController: " . $e->getMessage());
+        }
+        if (empty($validRoles)) {
+            $validRoles = ['admin', 'guia'];
+        }
+
+        // Si no es superadmin, el nuevo rol debe ser válido en la BD
+        if ($rol !== 'superadmin' && !in_array($rol, $validRoles, true)) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "El rol especificado no es válido."
+            ]);
+            return;
+        }
+
         // Instanciar modelo para guardar cambios
         $personal = new Personal($db);
         $personal->setId($id);
+        $personal->setTipoDocumento($tipo_documento);
         $personal->setCedula($cedula);
         $personal->setNombre($nombre);
         $personal->setApellido($apellido);
@@ -302,6 +346,7 @@ function actualizarAction($db) {
         if ($personal->actualizar()) {
             // Si el propio superadmin se editó a sí mismo, actualizamos los datos en su sesión activa
             if ($_SESSION['personal']['id'] == $id) {
+                $_SESSION['personal']['tipo_documento'] = $personal->getTipoDocumento();
                 $_SESSION['personal']['cedula'] = $personal->getCedula();
                 $_SESSION['personal']['nombre'] = $personal->getNombre();
                 $_SESSION['personal']['apellido'] = $personal->getApellido();

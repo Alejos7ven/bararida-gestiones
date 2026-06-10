@@ -944,5 +944,32 @@
     border-radius: 2px;
 }
 
-
-
+/* Estilos para Drag & Drop e interactividad en reordenamiento */
+.reorder-item {
+    cursor: grab !important;
+}
+.reorder-item:active {
+    cursor: grabbing !important;
+}
+.reorder-item.dragging {
+    opacity: 0.4;
+    border: 1px dashed var(--park-primary);
+    background: var(--park-light);
+}
+.reorder-item.drag-over {
+    border: 2px dashed var(--park-primary);
+    background: var(--park-secondary-light);
+    transform: scale(0.98);
+}
+.drag-handle {
+    cursor: grab !important;
+    user-select: none;
+    font-weight: bold;
+    color: #94a3b8;
+    margin-right: 6px;
+    font-size: 14px;
+    display: inline-block;
+}
+.drag-handle:active {
+    cursor: grabbing !important;
+}

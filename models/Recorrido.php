@@ -266,5 +266,88 @@ class Recorrido {
             throw $e;
         }
     }
+
+    /**
+     * Actualiza el nombre y la secuencia de paradas de un recorrido en una transacción atómica.
+     * @param int $recorridoId ID del recorrido
+     * @param string $nombre Nuevo nombre del recorrido
+     * @param array $zonasOrdenadas Listado ordenado de IDs de zonas
+     * @return bool True en caso de éxito, False de lo contrario
+     * @throws Exception Si ocurre un fallo en la base de datos
+     */
+    public function actualizarNombreYListadoZonas($recorridoId, $nombre, $zonasOrdenadas) {
+        if (!$this->db) {
+            throw new Exception("Conexión de base de datos no inicializada.");
+        }
+
+        $cleanRecorridoId = filter_var($recorridoId, FILTER_VALIDATE_INT) ? (int)$recorridoId : null;
+        if (!$cleanRecorridoId) {
+            throw new InvalidArgumentException("ID de recorrido inválido.");
+        }
+
+        $cleanNombre = strip_tags(trim($nombre));
+        if (empty($cleanNombre) || strlen($cleanNombre) > 100) {
+            throw new InvalidArgumentException("El nombre del recorrido es inválido o supera los 100 caracteres.");
+        }
+
+        if (empty($zonasOrdenadas) || !is_array($zonasOrdenadas)) {
+            throw new InvalidArgumentException("Debe seleccionar al menos una zona para el recorrido.");
+        }
+
+        try {
+            $this->db->beginTransaction();
+
+            // 1. Actualizar el nombre en la tabla 'recorrido'
+            $queryRec = "UPDATE " . $this->table_name . " SET nombre = :nombre WHERE id = :id";
+            $stmtRec = $this->db->prepare($queryRec);
+            $stmtRec->bindParam(":nombre", $cleanNombre, PDO::PARAM_STR);
+            $stmtRec->bindParam(":id", $cleanRecorridoId, PDO::PARAM_INT);
+            $stmtRec->execute();
+
+            // 2. Eliminar las paradas antiguas
+            require_once __DIR__ . "/Ruta.php";
+            $ruta = new Ruta($this->db);
+            $ruta->eliminarPorRecorrido($cleanRecorridoId);
+
+            // 3. Insertar las nuevas paradas en el nuevo orden
+            foreach ($zonasOrdenadas as $orden => $zonaId) {
+                $cleanZonaId = filter_var($zonaId, FILTER_VALIDATE_INT) ? (int)$zonaId : null;
+                if (!$cleanZonaId) {
+                    throw new InvalidArgumentException("ID de zona inválido en la lista de paradas.");
+                }
+
+                $nuevaRuta = new Ruta($this->db);
+                $nuevaRuta->setRecorridoId($cleanRecorridoId);
+                $nuevaRuta->setZonaId($cleanZonaId);
+                $nuevaRuta->setOrden($orden);
+
+                if (!$nuevaRuta->crear()) {
+                    throw new Exception("Error al insertar la parada de zona con ID $cleanZonaId en la ruta.");
+                }
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (Exception $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            error_log("Error en Recorrido::actualizarNombreYListadoZonas(): " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Obtiene una lista simple (id y nombre) ordenada alfabéticamente para selectores
+     * @param PDO $db Instancia de conexión PDO
+     * @return array Listado simple de recorridos
+     */
+    public static function obtenerListadoSimple($db) {
+        if (!$db) return [];
+        $query = "SELECT id, nombre FROM recorrido ORDER BY nombre ASC";
+        $stmt = $db->prepare($query);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
 

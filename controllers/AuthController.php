@@ -53,15 +53,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
  */
 function loginAction() {
     // Obtenemos los parámetros enviados vía POST (o desde el body JSON si es el caso)
+    $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
     $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : null;
     $password = isset($_POST['password']) ? trim($_POST['password']) : null;
 
-    // Validación básica inicial de campos vacíos
-    if (empty($cedula) || empty($password)) {
+    // Validación independiente de campos
+    $errors = [];
+
+    if (empty($tipo_documento)) {
+        $errors[] = "El tipo de documento es requerido.";
+    } elseif (!in_array($tipo_documento, ['V', 'E', 'J', 'G', 'P'], true)) {
+        $errors[] = "El tipo de documento seleccionado no es válido (debe ser V, E, J, G o P).";
+    }
+
+    if (empty($cedula)) {
+        $errors[] = "El número de documento es requerido.";
+    } elseif (!ctype_digit($cedula)) {
+        $errors[] = "El número de documento debe contener solo dígitos.";
+    }
+
+    if (empty($password)) {
+        $errors[] = "La contraseña es requerida.";
+    }
+
+    if (!empty($errors)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La cédula y la contraseña son campos requeridos."
+            "message" => implode(" ", $errors)
         ]);
         return;
     }
@@ -84,10 +103,11 @@ function loginAction() {
         $personal = new Personal($db);
 
         // Intentamos el login
-        if ($personal->login($cedula, $password)) {
+        if ($personal->login($tipo_documento, $cedula, $password)) {
             // Guardamos la información del personal en la sesión para RBAC
             $_SESSION['personal'] = [
                 "id" => $personal->getId(),
+                "tipo_documento" => $personal->getTipoDocumento(),
                 "cedula" => $personal->getCedula(),
                 "nombre" => $personal->getNombre(),
                 "apellido" => $personal->getApellido(),

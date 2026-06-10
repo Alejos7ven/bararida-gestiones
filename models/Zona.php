@@ -176,5 +176,41 @@ class Zona {
 
         return $stmt->execute();
     }
+
+    /**
+     * Actualiza el nombre y las coordenadas de una zona por su ID.
+     * @param int $id ID de la zona
+     * @param string $nombre Nuevo nombre de la zona
+     * @param string $coordenadas Nuevas coordenadas en formato "X,Y"
+     * @return bool True en caso de éxito, False de lo contrario
+     */
+    public function actualizarNombreYCoordenadas($id, $nombre, $coordenadas) {
+        if (!$this->db) {
+            throw new Exception("Conexión de base de datos no inicializada.");
+        }
+
+        $cleanId = filter_var($id, FILTER_VALIDATE_INT) ? (int)$id : null;
+        if (!$cleanId) {
+            throw new InvalidArgumentException("ID de zona inválido.");
+        }
+
+        $cleanNombre = strip_tags(trim($nombre));
+        if (empty($cleanNombre) || strlen($cleanNombre) > 100) {
+            throw new InvalidArgumentException("El nombre de la zona es inválido o supera los 100 caracteres.");
+        }
+
+        $cleanCoords = strip_tags(trim($coordenadas));
+        if (!preg_match('/^[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?$/', $cleanCoords)) {
+            throw new InvalidArgumentException("El formato de las coordenadas no es válido. Debe ser 'X,Y' (ej: 45.2,60.8).");
+        }
+
+        $query = "UPDATE " . $this->table_name . " SET nombre = :nombre, coordenadas = :coordenadas WHERE id = :id";
+        $stmt = $this->db->prepare($query);
+        $stmt->bindParam(":nombre", $cleanNombre, PDO::PARAM_STR);
+        $stmt->bindParam(":coordenadas", $cleanCoords, PDO::PARAM_STR);
+        $stmt->bindParam(":id", $cleanId, PDO::PARAM_INT);
+
+        return $stmt->execute();
+    }
 }
 

@@ -339,34 +339,42 @@ function eliminarRecorridoAction($db) {
 }
 
 /**
- * Actualiza las coordenadas de ubicación de un pin de zona
+ * Actualiza las coordenadas y/o nombre de una zona
  */
 function actualizarZonaCoordsAction($db) {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
     $coordenadas = isset($_POST['coordenadas']) ? trim($_POST['coordenadas']) : '';
+    $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
 
     if (!$id || empty($coordenadas)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El ID de la zona y las nuevas coordenadas son requeridos."
+            "message" => "El ID de la zona y las coordenadas son requeridos."
         ]);
         return;
     }
 
     try {
         $zona = new Zona($db);
-        if ($zona->actualizarCoordenadas($id, $coordenadas)) {
+        $result = false;
+        if (!empty($nombre)) {
+            $result = $zona->actualizarNombreYCoordenadas($id, $nombre, $coordenadas);
+        } else {
+            $result = $zona->actualizarCoordenadas($id, $coordenadas);
+        }
+
+        if ($result) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
-                "message" => "Ubicación del pin de la zona actualizada con éxito."
+                "message" => "Zona actualizada con éxito."
             ]);
         } else {
             http_response_code(500);
             echo json_encode([
                 "status" => "error",
-                "message" => "Error interno al guardar la nueva posición en la base de datos."
+                "message" => "Error interno al guardar los cambios en la base de datos."
             ]);
         }
     } catch (InvalidArgumentException $e) {
@@ -379,17 +387,18 @@ function actualizarZonaCoordsAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Error inesperado al reubicar la zona."
+            "message" => "Error inesperado al actualizar la zona: " . $e->getMessage()
         ]);
     }
 }
 
 /**
- * Actualiza el orden secuencial de paradas de un recorrido
+ * Actualiza el orden secuencial de paradas y/o el nombre de un recorrido
  */
 function actualizarRecorridoOrdenAction($db) {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
     $zonas = isset($_POST['zonas']) ? $_POST['zonas'] : null;
+    $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
 
     if (!$id) {
         http_response_code(400);
@@ -411,17 +420,24 @@ function actualizarRecorridoOrdenAction($db) {
 
     try {
         $recorrido = new Recorrido($db);
-        if ($recorrido->actualizarRuta($id, $zonas)) {
+        $result = false;
+        if (!empty($nombre)) {
+            $result = $recorrido->actualizarNombreYListadoZonas($id, $nombre, $zonas);
+        } else {
+            $result = $recorrido->actualizarRuta($id, $zonas);
+        }
+
+        if ($result) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
-                "message" => "El orden de la ruta del recorrido ha sido actualizado correctamente."
+                "message" => "El recorrido ha sido actualizado correctamente."
             ]);
         } else {
             http_response_code(500);
             echo json_encode([
                 "status" => "error",
-                "message" => "Error interno al actualizar la secuencia de paradas del recorrido."
+                "message" => "Error interno al actualizar el recorrido."
             ]);
         }
     } catch (InvalidArgumentException $e) {

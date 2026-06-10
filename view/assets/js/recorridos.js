@@ -621,6 +621,13 @@ $(document).ready(function() {
                 <button class="btn-premium-cancel btn-cancelar-zona-edit" data-id="${id}" title="Cancelar">✕</button>
             `);
 
+            // Reemplazar el h6 por un input para editar el nombre inline
+            const $nameHeader = $row.find('h6');
+            if ($nameHeader.length > 0) {
+                const originalName = $nameHeader.text().trim();
+                $nameHeader.replaceWith(`<input type="text" class="form-control form-control-sm input-edit-nombre" value="${originalName}" style="font-size: 0.85rem; padding: 2px 5px; margin-bottom: 4px; display: inline-block; width: 100%;" />`);
+            }
+
             // Mostrar tooltip flotante en el mapa
             showMapTooltip("📍 Relocalización Activa: Haz clic en el mapa para reposicionar el pin");
         });
@@ -660,6 +667,12 @@ $(document).ready(function() {
             // Restaurar botones originales
             $row.find('.sidebar-item-actions').html(originalActionsHtml);
 
+            // Restaurar h6 con el nombre original
+            const $input = $row.find('.input-edit-nombre');
+            if ($input.length > 0 && zonaSeleccionadaEdicion) {
+                $input.replaceWith(`<h6 style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-bottom: 2px;">${zonaSeleccionadaEdicion.nombre}</h6>`);
+            }
+
             // Restaurar pin al original
             if (zonaSeleccionadaEdicion) {
                 const coords = zonaSeleccionadaEdicion.coordenadas.split(',');
@@ -687,6 +700,9 @@ $(document).ready(function() {
             const $pin = $(`.map-pin[data-id="${zonaSeleccionadaEdicion.id}"]`);
             const nuevasCoords = $pin.attr('data-coords') || zonaSeleccionadaEdicion.coordenadas;
 
+            // Obtener el nuevo nombre del input
+            const nuevoNombre = $row.find('.input-edit-nombre').val() || zonaSeleccionadaEdicion.nombre;
+
             const $btn = $(this);
             $btn.prop('disabled', true).text('...');
 
@@ -695,7 +711,8 @@ $(document).ready(function() {
                 method: 'POST',
                 data: {
                     id: zonaSeleccionadaEdicion.id,
-                    coordenadas: nuevasCoords
+                    coordenadas: nuevasCoords,
+                    nombre: nuevoNombre
                 },
                 dataType: 'json',
                 success: function(response) {
@@ -758,11 +775,18 @@ $(document).ready(function() {
                 <button class="btn-premium-cancel btn-cancelar-recorrido-edit" data-id="${id}" title="Cancelar">✕</button>
             `);
 
+            // Reemplazar el h6 por un input para editar el nombre inline
+            const $nameHeader = $row.find('h6');
+            if ($nameHeader.length > 0) {
+                const originalName = $nameHeader.text().trim();
+                $nameHeader.replaceWith(`<input type="text" class="form-control form-control-sm input-edit-nombre" value="${originalName}" style="font-size: 0.85rem; padding: 2px 5px; margin-bottom: 4px; display: inline-block; width: 100%;" />`);
+            }
+
             // Expandir fila y renderizar listado secuencial interactivo
             renderizarListaParadasEdicionInline($row);
 
             // Mostrar tooltip flotante en el mapa
-            showMapTooltip("🔄 Ordenando Recorrido: Usa las flechas ▲/▼ en la barra lateral para ordenar la ruta");
+            showMapTooltip("🔄 Ordenando Recorrido: Usa las flechas ▲/▼ en la barra lateral o arrastra las zonas para ordenar la ruta");
         });
 
         // Evento para flecha arriba inline
@@ -829,6 +853,12 @@ $(document).ready(function() {
             $row.find('.inline-reorder-container').remove();
             $row.find('.sidebar-item-actions').html(originalActionsHtml);
 
+            // Restaurar h6 con el nombre original
+            const $input = $row.find('.input-edit-nombre');
+            if ($input.length > 0 && recorridoSeleccionadoEdicion) {
+                $input.replaceWith(`<h6 style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; margin-bottom: 2px;">${recorridoSeleccionadoEdicion.nombre}</h6>`);
+            }
+
             // Restaurar trazo original en el mapa
             if (recorridoSeleccionadoEdicion) {
                 renderizarPinesZonas(listaZonas, recorridoSeleccionadoEdicion.paradas);
@@ -848,12 +878,16 @@ $(document).ready(function() {
             // Extraer los IDs de zonas en el nuevo orden temporal
             const idsZonasOrdenadas = paradasTemporalOrden.map(p => p.zona_id);
 
+            // Obtener el nuevo nombre del input
+            const nuevoNombre = $row.find('.input-edit-nombre').val() || recorridoSeleccionadoEdicion.nombre;
+
             $.ajax({
                 url: 'controllers/RecorridoController.php?action=actualizar_recorrido_orden',
                 method: 'POST',
                 data: {
                     id: recorridoSeleccionadoEdicion.id,
-                    zonas: idsZonasOrdenadas
+                    zonas: idsZonasOrdenadas,
+                    nombre: nuevoNombre
                 },
                 dataType: 'json',
                 success: function(response) {
@@ -880,6 +914,53 @@ $(document).ready(function() {
                     $btn.prop('disabled', false).text('✓');
                 }
             });
+        });
+
+        // ---------------------------------------------------------------------
+        // EVENTOS DE DRAG AND DROP PARA REORDENAMIENTO DE PARADAS
+        // ---------------------------------------------------------------------
+        let dragSrcIndex = null;
+
+        $(document).on('dragstart', '.inline-reorder-list .reorder-item', function(e) {
+            dragSrcIndex = $(this).data('index');
+            $(this).addClass('dragging');
+            e.originalEvent.dataTransfer.effectAllowed = 'move';
+            e.originalEvent.dataTransfer.setData('text/plain', dragSrcIndex);
+        });
+
+        $(document).on('dragend', '.inline-reorder-list .reorder-item', function() {
+            $(this).removeClass('dragging');
+            $('.inline-reorder-list .reorder-item').removeClass('drag-over');
+        });
+
+        $(document).on('dragover', '.inline-reorder-list .reorder-item', function(e) {
+            e.preventDefault();
+            e.originalEvent.dataTransfer.dropEffect = 'move';
+            return false;
+        });
+
+        $(document).on('dragenter', '.inline-reorder-list .reorder-item', function() {
+            $(this).addClass('drag-over');
+        });
+
+        $(document).on('dragleave', '.inline-reorder-list .reorder-item', function() {
+            $(this).removeClass('drag-over');
+        });
+
+        $(document).on('drop', '.inline-reorder-list .reorder-item', function(e) {
+            e.stopPropagation();
+            const dragDestIndex = $(this).data('index');
+            if (dragSrcIndex !== null && dragSrcIndex !== dragDestIndex) {
+                const $row = $(this).closest('.sidebar-list-item');
+                // Intercambiar/mover elemento en el array temporal
+                const movedItem = paradasTemporalOrden.splice(dragSrcIndex, 1)[0];
+                paradasTemporalOrden.splice(dragDestIndex, 0, movedItem);
+
+                // Volver a renderizar lista inline y actualizar mapa en tiempo real
+                renderizarListaParadasEdicionInline($row);
+                actualizarMapaYTrazoEdicionRuta();
+            }
+            return false;
         });
     }
 
@@ -927,8 +1008,9 @@ $(document).ready(function() {
             const isLast = (idx === paradasTemporalOrden.length - 1);
 
             $list.append(`
-                <div class="reorder-item" style="cursor: default; padding: 6px 10px;">
+                <div class="reorder-item" draggable="true" data-index="${idx}" style="padding: 6px 10px;">
                     <div class="item-details" style="display:flex; align-items:center; gap:8px; min-width: 0; flex-grow: 1; padding-right: 4px;">
+                        <div class="drag-handle" title="Arrastrar para reordenar">⠿</div>
                         <div class="item-num" style="background:#cbd5e1; color:#475569; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:10px; font-weight:700; flex-shrink: 0;">${idx + 1}</div>
                         <span class="item-name" style="font-size:0.75rem; font-weight:600; color:#334155; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${p.zona_nombre}">${p.zona_nombre}</span>
                     </div>

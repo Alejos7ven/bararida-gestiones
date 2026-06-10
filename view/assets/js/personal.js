@@ -46,7 +46,7 @@ $(document).ready(function() {
                         const rowHtml = `
                             <tr class="personal-row" data-search="${u.cedula} ${u.nombre.toLowerCase()} ${u.apellido.toLowerCase()}">
                                 <td class="fw-600">#${u.id}</td>
-                                <td><strong>${u.cedula}</strong></td>
+                                <td><strong>${u.tipo_documento}-${u.cedula}</strong></td>
                                 <td>${nameFull}</td>
                                 <td>${badgeRol}</td>
                                 <td>${u.created_at}</td>
@@ -168,6 +168,7 @@ $(document).ready(function() {
                     const u = response.data;
                     
                     $('#edit_id').val(u.id);
+                    $('#edit_tipo_documento').val(u.tipo_documento || 'V');
                     $('#edit_cedula').val(u.cedula);
                     $('#edit_nombre').val(u.nombre);
                     $('#edit_apellido').val(u.apellido);
@@ -179,9 +180,20 @@ $(document).ready(function() {
                         $rolSelect.append('<option value="superadmin" selected>Super Administrador</option>');
                         $rolSelect.prop('disabled', true);
                     } else {
-                        // Si NO es superadmin, no se puede promover a super (solo admin/guia)
-                        $rolSelect.append('<option value="admin">Administrador</option>');
-                        $rolSelect.append('<option value="guia">Guía de Campo</option>');
+                        // Si NO es superadmin, no se puede promover a super (solo roles de la BD)
+                        if (typeof DB_ROLES !== 'undefined' && Array.isArray(DB_ROLES)) {
+                            DB_ROLES.forEach(function(r) {
+                                let label = r;
+                                if (r === 'admin') label = 'Administrador';
+                                else if (r === 'guia') label = 'Guía de Campo';
+                                else label = r.charAt(0).toUpperCase() + r.slice(1);
+                                
+                                $rolSelect.append(`<option value="${r}">${label}</option>`);
+                            });
+                        } else {
+                            $rolSelect.append('<option value="admin">Administrador</option>');
+                            $rolSelect.append('<option value="guia">Guía de Campo</option>');
+                        }
                         $rolSelect.val(u.rol);
                         $rolSelect.prop('disabled', false);
                     }
