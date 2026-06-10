@@ -645,11 +645,12 @@ if (!in_array($currentView, $validViews)) {
                                             <div id="importUploadPanel">
                                                 <p class="text-muted" style="font-size:0.85rem; line-height:1.45;">Cargue la plantilla CSV con el listado de visitantes de la cita: <strong id="importCitaNombreSpan" class="text-success"></strong>.</p>
                                                 
+                                                <!-- Input de archivo (fuera del drop zone para evitar bucle de eventos click) -->
+                                                <input type="file" id="csvFileInput" accept=".csv" style="display: none;">
                                                 <!-- Zona de Drag & Drop -->
                                                 <div class="csv-upload-zone" id="csvDropZone">
                                                     <span class="csv-upload-icon">📥</span>
                                                     <p class="csv-upload-text">Arrastra el archivo CSV aquí o <strong>haz clic para examinar</strong></p>
-                                                    <input type="file" id="csvFileInput" accept=".csv" style="display: none;" required>
                                                     <div class="csv-upload-file-info" id="csvFileInfo"></div>
                                                 </div>
 
@@ -1613,7 +1614,7 @@ if (!in_array($currentView, $validViews)) {
 
     <!-- Vincular el script de citas dinámicamente si corresponde -->
     <?php if ($currentView === 'citas' && $userPermissions['citas']): ?>
-        <script src="view/assets/js/citas.js"></script>
+        <script src="view/assets/js/citas.js?v=1.2"></script>
     <?php endif; ?>
 
     <!-- Vincular el script de instituciones dinámicamente si corresponde -->
