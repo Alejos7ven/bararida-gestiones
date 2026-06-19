@@ -64,11 +64,17 @@ $(document).ready(function() {
                             direccion = '<span class="text-muted italic">No definida</span>';
                         }
 
+                        // Construir insignia de tipo de gestión
+                        const badgeGestion = inst.tipo_gestion === 'privada'
+                            ? `<span class="badge-premium badge-premium-danger">Privada</span>`
+                            : `<span class="badge-premium badge-premium-superadmin">Pública</span>`;
+
                         const rowHtml = `
-                            <tr class="inst-row" data-search="${inst.nombre.toLowerCase()} ${inst.tipo_documento}-${inst.documento.toLowerCase()} ${inst.tipo_organizacion.toLowerCase()}">
+                            <tr class="inst-row" data-search="${inst.nombre.toLowerCase()} ${inst.tipo_documento}-${inst.documento.toLowerCase()} ${inst.tipo_organizacion.toLowerCase()} ${inst.tipo_gestion || ''}">
                                 <td style="white-space: nowrap;"><strong>${inst.tipo_documento}-${inst.documento}</strong></td>
                                 <td>${inst.nombre}</td>
                                 <td>${badgeTipo}</td>
+                                <td>${badgeGestion}</td>
                                 <td>${contactosHtml}</td>
                                 <td>${direccion}</td>
                                 <td>
@@ -341,6 +347,7 @@ $(document).ready(function() {
                     $('#edit_documento').val(inst.documento);
                     $('#edit_nombre').val(inst.nombre);
                     $('#edit_tipo_organizacion').val(inst.tipo_organizacion);
+                    $('#edit_tipo_gestion').val(inst.tipo_gestion || 'publica');
                     $('#edit_detalles_direccion').val(inst.detalles_direccion || '');
 
                     // Pre-poblar contactos

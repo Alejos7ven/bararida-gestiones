@@ -18,6 +18,7 @@ class Institucion {
     private $ciudad_id;
     private $parroquia_id;
     private $detalles_direccion;
+    private $tipo_gestion;
 
     // Contactos (directorio)
     private $contactos = []; // Array de arrays [ 'contacto' => '...', 'tipo' => '...' ]
@@ -103,6 +104,17 @@ class Institucion {
         }
     }
 
+    public function getTipoGestion() { return $this->tipo_gestion; }
+    public function setTipoGestion($tipo) {
+        $valid = ['publica', 'privada'];
+        $clean = strtolower(trim($tipo));
+        if (in_array($clean, $valid, true)) {
+            $this->tipo_gestion = $clean;
+        } else {
+            throw new InvalidArgumentException("El tipo de gestión proporcionado no es válido.");
+        }
+    }
+
     public function getContactos() { return $this->contactos; }
     public function setContactos($contactos) {
         if (!is_array($contactos)) {
@@ -140,7 +152,7 @@ class Institucion {
         $cleanDoc = preg_replace('/[^0-9A-Za-z-]/', '', trim($documento));
 
         try {
-            $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre, i.tipo_organizacion,
+            $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre, i.tipo_organizacion, i.tipo_gestion,
                              d.ciudad_id, d.parroquia_id, d.detalles AS detalles_direccion,
                              est.id_estado, mun.id_municipio, p.id_parroquia,
                              est.estado, mun.municipio, p.parroquia, c.ciudad
@@ -207,11 +219,12 @@ class Institucion {
             $this->setEntidadId($entidadId);
 
             // 2. Insertar en instituciones
-            $queryInst = "INSERT INTO instituciones (entidad_id, tipo_organizacion) 
-                          VALUES (:entidad_id, :tipo_organizacion)";
+            $queryInst = "INSERT INTO instituciones (entidad_id, tipo_organizacion, tipo_gestion) 
+                          VALUES (:entidad_id, :tipo_organizacion, :tipo_gestion)";
             $stmtInst = $this->db->prepare($queryInst);
             $stmtInst->bindParam(":entidad_id", $entidadId, PDO::PARAM_INT);
             $stmtInst->bindParam(":tipo_organizacion", $this->tipo_organizacion, PDO::PARAM_STR);
+            $stmtInst->bindParam(":tipo_gestion", $this->tipo_gestion, PDO::PARAM_STR);
             $stmtInst->execute();
 
             $institucionId = $this->db->lastInsertId();
@@ -255,7 +268,7 @@ class Institucion {
     public static function listarTodas($db) {
         if (!$db) return [];
         try {
-            $query = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre, i.tipo_organizacion,
+            $query = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre, i.tipo_organizacion, i.tipo_gestion,
                              d.ciudad_id, d.parroquia_id, d.detalles AS detalles_direccion,
                              c.ciudad, p.parroquia, m.municipio, est.estado, est.id_estado, m.id_municipio
                       FROM instituciones i
@@ -303,7 +316,7 @@ class Institucion {
     public static function obtenerPorId($db, $id) {
         if (!$db) return null;
         try {
-            $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre, i.tipo_organizacion,
+            $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre, i.tipo_organizacion, i.tipo_gestion,
                              d.ciudad_id, d.parroquia_id, d.detalles AS detalles_direccion,
                              est.id_estado, mun.id_municipio, p.id_parroquia,
                              c.ciudad, p.parroquia, mun.municipio, est.estado
@@ -373,10 +386,11 @@ class Institucion {
 
             // 3. Actualizar la tabla instituciones
             $queryInst = "UPDATE instituciones 
-                          SET tipo_organizacion = :tipo_organizacion 
+                          SET tipo_organizacion = :tipo_organizacion, tipo_gestion = :tipo_gestion 
                           WHERE id = :id";
             $stmtInst = $this->db->prepare($queryInst);
             $stmtInst->bindValue(":tipo_organizacion", $this->tipo_organizacion, PDO::PARAM_STR);
+            $stmtInst->bindValue(":tipo_gestion", $this->tipo_gestion, PDO::PARAM_STR);
             $stmtInst->bindValue(":id", $this->id, PDO::PARAM_INT);
             $stmtInst->execute();
 

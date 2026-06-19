@@ -246,7 +246,7 @@ if (!in_array($currentView, $validViews)) {
                     <div class="row mt-4 g-4">
                         <!-- Columna Izquierda: Mapa con Recorridos -->
                         <div class="col-12 col-lg-6">
-                            <div class="dashboard-map-card h-100 shadow-sm">
+                            <div class="dashboard-map-card shadow-sm">
                                 <div class="dashboard-map-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                                     <h3 style="font-size: 1.15rem; font-family: 'Outfit'; font-weight: 700; color: var(--park-dark);">
                                         <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: var(--park-primary); margin-right: 6px;"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
@@ -279,28 +279,22 @@ if (!in_array($currentView, $validViews)) {
                             </div>
                         </div>
                         
-                        <!-- Columna Derecha: Calendario Premium de Citas Próximas -->
+                        <!-- Columna Derecha: Calendario Premium de Citas Próximas (FullCalendar) -->
                         <div class="col-12 col-lg-6">
-                            <div class="dashboard-map-card h-100 shadow-sm d-flex flex-column">
+                            <div class="dashboard-map-card shadow-sm d-flex flex-column">
                                 <div class="dashboard-map-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                    <h3 style="font-size: 1.15rem; font-family: 'Outfit'; font-weight: 700; color: var(--park-dark);">
+                                    <h3 style="font-size: 1.15rem; font-family: 'Outfit'; font-weight: 700; color: var(--park-dark); margin: 0;">
                                         <svg viewBox="0 0 24 24" style="width: 24px; height: 24px; fill: var(--park-primary); margin-right: 6px;"><path d="M19 4H18V2H16V4H8V2H6V4H5C3.89 4 3.01 4.9 3.01 6L3 20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V10H19V20ZM9 14H7V12H9V14ZM13 14H11V12H13V14ZM17 14H15V12H15v2h2zm-8 4H7v-2h2v2zm4 0h-11v-2h2v2zm4 0h-15v-2h2v2z"/></svg>
                                         Cronograma de Citas
                                     </h3>
-                                    <div class="d-flex align-items-center gap-2">
-                                        <button id="btnPrevMonth" class="btn btn-sm btn-outline-success" style="border-radius: 50%; width: 28px; height: 28px; padding:0; display: inline-flex; align-items:center; justify-content:center; font-weight: bold;">&lt;</button>
-                                        <span id="calendarMonthYear" style="font-weight: 700; font-size: 0.9rem; min-width: 120px; text-align: center; color: var(--park-dark);">Junio 2026</span>
-                                        <button id="btnNextMonth" class="btn btn-sm btn-outline-success" style="border-radius: 50%; width: 28px; height: 28px; padding:0; display: inline-flex; align-items:center; justify-content:center; font-weight: bold;">&gt;</button>
-                                    </div>
                                 </div>
                                 
-                                <div id="calendarContainer" class="flex-grow-1 d-flex flex-column mt-3">
-                                    <div class="calendar-grid-header" style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 8px;">
-                                        <div>Dom</div><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div>
-                                    </div>
-                                    <div id="calendarGridBody" class="calendar-grid-body flex-grow-1" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; min-height: 280px; align-content: stretch;">
-                                        <!-- Generado dinámicamente -->
-                                    </div>
+                                <div id="dashboardFullCalendar" class="mt-3 flex-grow-1">
+                                    <!-- Se inicializa vía FullCalendar -->
+                                </div>
+
+                                <div id="dashboardCapacityWarnings" class="mt-3" style="display: none;">
+                                    <!-- Panel de Alertas de Capacidad de la semana actual -->
                                 </div>
                             </div>
                         </div>
@@ -323,6 +317,25 @@ if (!in_array($currentView, $validViews)) {
                                         <p style="font-family:'Outfit'; font-weight:600; font-size:0.95rem; margin:0;">No hay datos de visitantes registrados aún</p>
                                         <p style="font-size:0.8rem; margin:4px 0 0 0;">Los datos aparecerán una vez que se importen visitantes a las citas agendadas.</p>
                                     </div>
+                                </div>
+                        </div>
+                    </div>
+
+                    <!-- MODAL: DETALLE DE BLOQUE HORARIO (MÚLTIPLES CITAS) -->
+                    <div class="modal fade modal-premium" id="modalDetalleBloqueHorario" tabindex="-1" aria-labelledby="modalDetalleBloqueHorarioLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                                <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 16px 20px;">
+                                    <h5 class="modal-title" id="modalDetalleBloqueHorarioLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Citas en Bloque Horario</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                </div>
+                                <div class="modal-body" style="padding: 20px; max-height: 400px; overflow-y: auto;">
+                                    <div id="listaCitasBloqueContainer">
+                                        <!-- Se rellenará dinámicamente con JS -->
+                                    </div>
+                                </div>
+                                <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 12px 20px;">
+                                    <button type="button" class="btn btn-secondary btn-sm px-4 py-2" data-bs-dismiss="modal" style="border-radius: 8px; font-weight: 600;">Cerrar</button>
                                 </div>
                             </div>
                         </div>
@@ -463,11 +476,11 @@ if (!in_array($currentView, $validViews)) {
                                                 <p class="text-muted mb-4" style="font-size:0.85rem;">Si la institución es nueva, registre sus datos fiscales, dirección geográfica e información de contacto.</p>
 
                                                 <div class="row g-3">
-                                                    <div class="col-md-7">
+                                                    <div class="col-md-5">
                                                         <label for="nombre_institucion" class="form-premium-label">Razón Social / Nombre Oficial</label>
                                                         <input type="text" class="form-control form-premium-control" id="nombre_institucion" name="nombre" placeholder="Ej. Colegio La Salle" required>
                                                     </div>
-                                                    <div class="col-md-5">
+                                                    <div class="col-md-4">
                                                         <label for="tipo_organizacion" class="form-premium-label">Tipo de Organización</label>
                                                         <select class="form-select form-premium-control" id="tipo_organizacion" name="tipo_organizacion" required>
                                                             <option value="">Seleccione Tipo</option>
@@ -480,6 +493,13 @@ if (!in_array($currentView, $validViews)) {
                                                             <option value="Empresa Privada">Empresa Privada</option>
                                                             <option value="Comunidad Organizada">Comunidad Organizada</option>
                                                             <option value="Otro">Otro</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <label for="tipo_gestion" class="form-premium-label">Tipo de Gestión</label>
+                                                        <select class="form-select form-premium-control" id="tipo_gestion" name="tipo_gestion" required>
+                                                            <option value="publica" selected>Pública</option>
+                                                            <option value="privada">Privada</option>
                                                         </select>
                                                     </div>
                                                 </div>
@@ -597,6 +617,15 @@ if (!in_array($currentView, $validViews)) {
                                                         </select>
                                                     </div>
                                                 </div>
+
+                                                <!-- Contenedor dinámico de alertas de capacidad y recomendaciones -->
+                                                <div id="bookingCapacityAlert" class="mt-3" style="display: none;"></div>
+
+                                                <!-- Calendario interactivo para selección visual de la fecha -->
+                                                <div class="mt-3">
+                                                    <label class="form-premium-label" style="font-weight: 700;">Calendario de Disponibilidad (Haga clic en un día para seleccionar la fecha)</label>
+                                                    <div id="calendarReserva"></div>
+                                                </div>
                                             </div>
                                         </div>
 
@@ -626,6 +655,104 @@ if (!in_array($currentView, $validViews)) {
                                         <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
                                         <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminarCita" style="border-radius:10px; font-weight:600; font-size:0.9rem; background:#ef4444; border-color:#ef4444;">Eliminar Cita</button>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MODAL: EDITAR CITA -->
+                        <div class="modal fade modal-premium" id="modalEditarCita" tabindex="-1" aria-labelledby="modalEditarCitaLabel" aria-hidden="true" data-bs-backdrop="static">
+                            <div class="modal-dialog modal-md modal-dialog-centered">
+                                <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                                    <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
+                                        <h5 class="modal-title" id="modalEditarCitaLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Editar Cita</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                    </div>
+                                    <form id="formEditarCita" novalidate>
+                                        <input type="hidden" name="id" id="edit_cita_id">
+                                        <div class="modal-body" style="background:#ffffff; padding: 30px;">
+                                            
+                                            <div class="row g-3">
+                                                <div class="col-md-12">
+                                                    <label for="edit_recorrido_id" class="form-premium-label">Recorrido del Parque Asignado (Opcional)</label>
+                                                    <select class="form-select form-premium-control" id="edit_recorrido_id" name="recorrido_id">
+                                                        <option value="">Ninguno / Recorrido Libre</option>
+                                                        <?php foreach ($recorridosList as $rec): ?>
+                                                            <option value="<?php echo $rec['id']; ?>"><?php echo htmlspecialchars($rec['nombre']); ?></option>
+                                                        <?php endforeach; ?>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="row g-3 mt-2">
+                                                <div class="col-md-6">
+                                                    <label for="edit_fecha_visita" class="form-premium-label">Fecha Planificada de Visita</label>
+                                                    <input type="date" class="form-control form-premium-control" id="edit_fecha_visita" name="fecha_visita" required>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="edit_hora_inicio" class="form-premium-label">Hora de Inicio</label>
+                                                    <select class="form-select form-premium-control" id="edit_hora_inicio" name="hora_inicio" required>
+                                                        <option value="">Seleccione Hora</option>
+                                                        <option value="09:00">09:00 AM</option>
+                                                        <option value="09:30">09:30 AM</option>
+                                                        <option value="10:00">10:00 AM</option>
+                                                        <option value="10:30">10:30 AM</option>
+                                                        <option value="11:00">11:00 AM</option>
+                                                        <option value="11:30">11:30 AM</option>
+                                                        <option value="12:00">12:00 PM</option>
+                                                        <option value="12:30">12:30 PM</option>
+                                                        <option value="13:00">01:00 PM</option>
+                                                        <option value="13:30">01:30 PM</option>
+                                                        <option value="14:00">02:00 PM</option>
+                                                        <option value="14:30">02:30 PM</option>
+                                                        <option value="15:00">03:00 PM</option>
+                                                        <option value="15:30">03:30 PM</option>
+                                                        <option value="16:00">04:00 PM</option>
+                                                        <option value="16:30">04:30 PM</option>
+                                                        <option value="17:00">05:00 PM</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="row g-3 mt-2">
+                                                <div class="col-md-6">
+                                                    <label for="edit_metodo_pago" class="form-premium-label">Método de Facturación / Pago</label>
+                                                    <select class="form-select form-premium-control" id="edit_metodo_pago" name="metodo_pago" required>
+                                                        <option value="">Seleccione Método</option>
+                                                        <option value="Transferencia Bancaria">Transferencia Bancaria</option>
+                                                        <option value="Pago Móvil">Pago Móvil</option>
+                                                        <option value="Efectivo Divisas">Efectivo Divisas (USD)</option>
+                                                        <option value="Efectivo Bolívares">Efectivo Bolívares (VES)</option>
+                                                        <option value="Exento / Donativo">Exento / Donativo del Parque</option>
+                                                    </select>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <label for="edit_pago_estado" class="form-premium-label">Estado del Pago</label>
+                                                    <select class="form-select form-premium-control" id="edit_pago_estado" name="pago_estado" required>
+                                                        <option value="pendiente">Pendiente</option>
+                                                        <option value="pagado">Pagado / Verificado</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="row g-3 mt-2">
+                                                <div class="col-md-12">
+                                                    <label for="edit_estatus" class="form-premium-label">Estado de la Cita</label>
+                                                    <select class="form-select form-premium-control" id="edit_estatus" name="estatus" required>
+                                                        <option value="pendiente">Pendiente</option>
+                                                        <option value="aprobado">Aprobada</option>
+                                                        <option value="completado">Completada</option>
+                                                        <option value="cancelado">Cancelada</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            
+                                        </div>
+
+                                        <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 18px 30px;">
+                                            <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
+                                            <button type="submit" class="btn btn-success py-2 px-3" id="btnGuardarEditCita" style="border-radius:10px; font-weight:600; font-size:0.9rem; background:var(--park-primary); border-color:var(--park-primary);">Guardar Cambios</button>
+                                        </div>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -703,23 +830,103 @@ if (!in_array($currentView, $validViews)) {
 
                         <!-- MODAL: VER VISITANTES DE CITA -->
                         <div class="modal fade modal-premium" id="modalVerVisitantes" tabindex="-1" aria-labelledby="modalVerVisitantesLabel" aria-hidden="true">
-                            <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-dialog modal-lg modal-dialog-centered">
                                 <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                                     <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
                                         <h5 class="modal-title" id="modalVerVisitantesLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Visitantes de la Cita</h5>
                                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                                     </div>
                                     <div class="modal-body" style="padding: 24px;">
-                                        <p class="text-muted" style="font-size:0.85rem; line-height:1.45;">Listado de visitantes registrados para la cita: <strong id="verVisitantesCitaNombreSpan" class="text-success"></strong>.</p>
-                                        
+                                        <div class="d-flex justify-content-between align-items-center mb-3">
+                                            <p class="text-muted mb-0" style="font-size:0.85rem; line-height:1.45;">Listado de visitantes registrados para la cita: <strong id="verVisitantesCitaNombreSpan" class="text-success"></strong>.</p>
+                                            <button type="button" class="btn btn-sm btn-outline-success" id="btnToggleAgregarAsistencia" style="border-radius:8px; font-weight:600; font-size:0.8rem; display: flex; align-items: center; gap: 4px;">
+                                                <span>＋</span> Agregar asistencia de visitantes
+                                            </button>
+                                        </div>
+
+                                        <!-- Panel Oculto: Gestión/Agregar Asistencia de Visitantes -->
+                                        <div id="panelAgregarAsistencia" style="display: none; background-color: #F8FAFC; border: 1.5px solid var(--park-gray); border-radius: 14px; padding: 18px; margin-bottom: 20px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
+                                            <h6 style="font-family:'Outfit'; font-weight:700; color:var(--park-dark); margin-bottom: 12px; font-size: 0.9rem;">Agregar Visitantes a la Asistencia</h6>
+                                            
+                                            <ul class="nav nav-pills nav-pills-premium mb-3" id="pills-tab-visitantes" role="tablist" style="gap: 8px;">
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link active" id="pills-existente-tab" data-bs-toggle="pill" data-bs-target="#pills-existente" type="button" role="tab" aria-controls="pills-existente" aria-selected="true" style="font-size: 0.78rem; font-weight: 600; border-radius: 8px; padding: 6px 12px;">Registrados en el Sistema</button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link" id="pills-nuevo-tab" data-bs-toggle="pill" data-bs-target="#pills-nuevo" type="button" role="tab" aria-controls="pills-nuevo" aria-selected="false" style="font-size: 0.78rem; font-weight: 600; border-radius: 8px; padding: 6px 12px;">Nuevo Registro</button>
+                                                </li>
+                                            </ul>
+                                            
+                                            <div class="tab-content" id="pills-tabContent-visitantes">
+                                                <!-- Pestaña 1: Buscar/Agregar Visitantes Existentes -->
+                                                <div class="tab-pane fade show active" id="pills-existente" role="tabpanel" aria-labelledby="pills-existente-tab">
+                                                    <div class="mb-3">
+                                                        <input type="text" id="inputBuscarVisitantesSistema" class="form-control form-premium-control" placeholder="Buscar por Cédula, Nombres o Apellidos..." style="font-size: 0.85rem; border-radius: 8px; padding: 8px 12px;">
+                                                    </div>
+                                                    
+                                                    <div class="table-responsive" style="max-height: 200px; border: 1px solid var(--park-gray); border-radius: 10px; overflow-y: auto; background-color: #ffffff;">
+                                                        <table class="table table-sm align-middle mb-0" style="font-size: 0.82rem;">
+                                                            <thead class="table-light" style="position: sticky; top: 0; z-index: 5;">
+                                                                <tr>
+                                                                    <th class="text-center" style="width: 12%;">Seleccionar</th>
+                                                                    <th style="width: 28%;">Cédula</th>
+                                                                    <th style="width: 60%;">Nombre Completo</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody id="listaVisitantesSistemaChecklist">
+                                                                <!-- Inyectado dinámicamente con JS (todos los visitantes del sistema) -->
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                    
+                                                    <div class="d-flex justify-content-end mt-3 gap-2">
+                                                        <button type="button" class="btn btn-sm btn-secondary" id="btnCancelarAgregarAsistencia" style="border-radius: 8px; font-weight:600; font-size:0.8rem; padding: 6px 14px;">Ocultar</button>
+                                                        <button type="button" class="btn btn-sm btn-success" id="btnGuardarSeleccionAsistencia" style="border-radius: 8px; font-weight:600; font-size:0.8rem; padding: 6px 14px; background: var(--park-primary); border-color: var(--park-primary);">Agregar Seleccionados</button>
+                                                    </div>
+                                                </div>
+                                                
+                                                <!-- Pestaña 2: Crear Nuevo Visitante y Añadir a Asistencia -->
+                                                <div class="tab-pane fade" id="pills-nuevo" role="tabpanel" aria-labelledby="pills-nuevo-tab">
+                                                    <form id="formRegistrarYAgregarAsistencia" novalidate>
+                                                        <div class="row g-2">
+                                                            <div class="col-md-6">
+                                                                <label for="reg_visitante_cedula" class="form-premium-label" style="font-size: 0.75rem;">Cédula / Documento <span class="text-muted" style="font-size:0.7rem;">(Opcional)</span></label>
+                                                                <input type="text" class="form-control form-premium-control" id="reg_visitante_cedula" name="cedula" placeholder="Ej. 28123456" style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label for="reg_visitante_fecha_nac" class="form-premium-label" style="font-size: 0.75rem;">F. Nacimiento *</label>
+                                                                <input type="date" class="form-control form-premium-control" id="reg_visitante_fecha_nac" name="fecha_nacimiento" required style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
+                                                            </div>
+                                                        </div>
+                                                        <div class="row g-2 mt-2">
+                                                            <div class="col-md-6">
+                                                                <label for="reg_visitante_nombres" class="form-premium-label" style="font-size: 0.75rem;">Nombres *</label>
+                                                                <input type="text" class="form-control form-premium-control" id="reg_visitante_nombres" name="nombres" placeholder="Nombres del visitante" required style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
+                                                            </div>
+                                                            <div class="col-md-6">
+                                                                <label for="reg_visitante_apellidos" class="form-premium-label" style="font-size: 0.75rem;">Apellidos *</label>
+                                                                <input type="text" class="form-control form-premium-control" id="reg_visitante_apellidos" name="apellidos" placeholder="Apellidos del visitante" required style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
+                                                            </div>
+                                                        </div>
+                                                        <div class="d-flex justify-content-end mt-3 gap-2">
+                                                            <button type="button" class="btn btn-sm btn-secondary" id="btnCancelarAgregarNuevoAsistencia" style="border-radius: 8px; font-weight:600; font-size:0.8rem; padding: 6px 14px;">Ocultar</button>
+                                                            <button type="submit" class="btn btn-sm btn-success" id="btnRegistrarYAgregarAsistencia" style="border-radius: 8px; font-weight:600; font-size:0.8rem; padding: 6px 14px; background: var(--park-primary); border-color: var(--park-primary);">Registrar y Agregar</button>
+                                                        </div>
+                                                    </form>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Tabla de Asistentes Actuales -->
                                         <div class="table-responsive" style="max-height: 350px; border: 1px solid var(--park-gray); border-radius: 12px; overflow-y: auto;">
                                             <table class="table table-sm table-striped align-middle mb-0" style="font-size: 0.85rem;">
                                                 <thead class="table-light" style="position: sticky; top: 0; z-index: 10;">
                                                     <tr>
-                                                        <th class="text-center" style="width: 10%;">#</th>
-                                                        <th style="width: 30%;">Cédula</th>
-                                                        <th style="width: 40%;">Nombre Completo</th>
-                                                        <th class="text-center" style="width: 20%;">F. Nacimiento</th>
+                                                        <th class="text-center" style="width: 8%;">#</th>
+                                                        <th style="width: 25%;">Cédula</th>
+                                                        <th style="width: 42%;">Nombre Completo</th>
+                                                        <th class="text-center" style="width: 17%;">F. Nacimiento</th>
+                                                        <th class="text-center" style="width: 8%;">Acciones</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody id="tablaVerVisitantesBody">
@@ -730,6 +937,27 @@ if (!in_array($currentView, $validViews)) {
                                     </div>
                                     <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">
                                         <button type="button" class="btn btn-secondary py-2 px-4" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cerrar</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MODAL: CONFIRMAR QUITAR VISITANTE DE ASISTENCIA -->
+                        <div class="modal fade modal-premium" id="modalConfirmarEliminarAsistente" tabindex="-1" aria-labelledby="modalConfirmarEliminarAsistenteLabel" aria-hidden="true" style="z-index: 1070;">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content" style="border-radius: 20px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                                    <div class="modal-header" style="background: #ef4444; color: #ffffff; border-bottom: none; padding: 20px 24px;">
+                                        <h5 class="modal-title" id="modalConfirmarEliminarAsistenteLabel" style="font-family:'Outfit'; font-weight:600; margin: 0;">Confirmar Remoción de Asistente</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                    </div>
+                                    <div class="modal-body" style="background:#ffffff; padding: 24px;">
+                                        <input type="hidden" id="quitar_asistente_visitante_id">
+                                        <p class="mb-0" style="font-size:0.95rem;">¿Está completamente seguro de que desea remover al asistente <strong id="quitarAsistenteNombreSpan" class="text-danger"></strong> de esta cita?</p>
+                                        <p class="text-danger mt-2 mb-0" style="font-size:0.85rem; font-weight:600;">Esta acción afectará los listados de asistencia asociados a esta visita.</p>
+                                    </div>
+                                    <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">
+                                        <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
+                                        <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarQuitarAsistenteModal" style="border-radius:10px; font-weight:600; font-size:0.9rem; background: #ef4444; border-color: #ef4444;">Remover Asistencia</button>
                                     </div>
                                 </div>
                             </div>
@@ -791,6 +1019,7 @@ if (!in_array($currentView, $validViews)) {
                                             <th>Código RIF</th>
                                             <th>Razón Social</th>
                                             <th>Tipo Org.</th>
+                                            <th>Gestión</th>
                                             <th>Contactos</th>
                                             <th>Dirección Física</th>
                                             <th>Acciones</th>
@@ -832,14 +1061,21 @@ if (!in_array($currentView, $validViews)) {
                                                     <label for="create_documento" class="form-premium-label">Número RIF / Cédula</label>
                                                     <input type="text" class="form-control form-premium-control" id="create_documento" name="documento" placeholder="Ej. 123456789 (solo números)" required>
                                                 </div>
-                                                <div class="col-md-8">
-                                                    <label for="create_nombre" class="form-premium-label">Razón Social</label>
-                                                    <input type="text" class="form-control form-premium-control" id="create_nombre" name="nombre" placeholder="Ej. Colegio San Vicente" required>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <label for="create_tipo_organizacion" class="form-premium-label">Tipo de Organización</label>
-                                                    <input type="text" class="form-control form-premium-control" id="create_tipo_organizacion" name="tipo_organizacion" placeholder="Ej. educativa, empresarial" required>
-                                                </div>
+                                                <div class="col-md-5">
+                                                     <label for="create_nombre" class="form-premium-label">Razón Social</label>
+                                                     <input type="text" class="form-control form-premium-control" id="create_nombre" name="nombre" placeholder="Ej. Colegio San Vicente" required>
+                                                 </div>
+                                                 <div class="col-md-4">
+                                                     <label for="create_tipo_organizacion" class="form-premium-label">Tipo de Organización</label>
+                                                     <input type="text" class="form-control form-premium-control" id="create_tipo_organizacion" name="tipo_organizacion" placeholder="Ej. educativa, empresarial" required>
+                                                 </div>
+                                                 <div class="col-md-3">
+                                                     <label for="create_tipo_gestion" class="form-premium-label">Tipo de Gestión</label>
+                                                     <select class="form-select form-premium-control" id="create_tipo_gestion" name="tipo_gestion" required>
+                                                         <option value="publica" selected>Pública</option>
+                                                         <option value="privada">Privada</option>
+                                                     </select>
+                                                 </div>
                                             </div>
 
                                             <!-- Sección 2: Ubicación Geográfica -->
@@ -925,14 +1161,21 @@ if (!in_array($currentView, $validViews)) {
                                                     <label for="edit_documento" class="form-premium-label">Número RIF / Cédula</label>
                                                     <input type="text" class="form-control form-premium-control" id="edit_documento" name="documento" placeholder="Ej. 123456789" required>
                                                 </div>
-                                                <div class="col-md-8">
-                                                    <label for="edit_nombre" class="form-premium-label">Razón Social</label>
-                                                    <input type="text" class="form-control form-premium-control" id="edit_nombre" name="nombre" placeholder="Ej. Colegio San Vicente" required>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <label for="edit_tipo_organizacion" class="form-premium-label">Tipo de Organización</label>
-                                                    <input type="text" class="form-control form-premium-control" id="edit_tipo_organizacion" name="tipo_organizacion" placeholder="Ej. educativa, empresarial" required>
-                                                </div>
+                                                <div class="col-md-5">
+                                                     <label for="edit_nombre" class="form-premium-label">Razón Social</label>
+                                                     <input type="text" class="form-control form-premium-control" id="edit_nombre" name="nombre" placeholder="Ej. Colegio San Vicente" required>
+                                                 </div>
+                                                 <div class="col-md-4">
+                                                     <label for="edit_tipo_organizacion" class="form-premium-label">Tipo de Organización</label>
+                                                     <input type="text" class="form-control form-premium-control" id="edit_tipo_organizacion" name="tipo_organizacion" placeholder="Ej. educativa, empresarial" required>
+                                                 </div>
+                                                 <div class="col-md-3">
+                                                     <label for="edit_tipo_gestion" class="form-premium-label">Tipo de Gestión</label>
+                                                     <select class="form-select form-premium-control" id="edit_tipo_gestion" name="tipo_gestion" required>
+                                                         <option value="publica">Pública</option>
+                                                         <option value="privada">Privada</option>
+                                                     </select>
+                                                 </div>
                                             </div>
 
                                             <!-- Sección 2: Ubicación Geográfica -->
@@ -1596,6 +1839,11 @@ if (!in_array($currentView, $validViews)) {
     <script src="view/assets/js/jquery.min.js"></script>
     <!-- Bootstrap JS Bundle Local -->
     <script src="view/assets/js/bootstrap.bundle.min.js"></script>
+    <!-- Carga de FullCalendar Local -->
+    <?php if ($currentView === 'dashboard' || ($currentView === 'citas' && $userPermissions['citas'])): ?>
+        <script src="view/assets/js/fullcalendar.min.js"></script>
+        <script src="view/assets/js/fullcalendar.es.js"></script>
+    <?php endif; ?>
 
     <!-- Vincular el script del CRUD de forma asíncrona solo si estamos en la vista de personal -->
     <?php if ($currentView === 'personal' && $userPermissions['personal']): ?>

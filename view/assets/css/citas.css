@@ -288,3 +288,270 @@
     background-color: #D1FAE5;
     color: #059669;
 }
+
+/* Estilos Premium para FullCalendar dentro del Wizard de Citas */
+#calendarReserva {
+    max-width: 100%;
+    margin: 15px 0;
+    background: #ffffff;
+    border: 1px solid var(--park-gray);
+    border-radius: var(--park-border-radius);
+    padding: 10px;
+    position: relative !important; /* Contexto de posicionamiento para que los popovers no se desborden */
+}
+.fc {
+    font-family: 'Outfit', sans-serif !important;
+    --fc-border-color: #E2E8F0 !important;
+    --fc-today-bg-color: rgba(37, 99, 235, 0.04) !important;
+}
+.fc .fc-toolbar-title {
+    font-size: 0.95rem !important;
+    font-weight: 700 !important;
+    color: var(--park-dark) !important;
+}
+.fc .fc-button {
+    padding: 4px 8px !important;
+    font-size: 0.78rem !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+.fc .fc-button-group > .fc-button {
+    margin-right: 6px !important;
+    border-radius: 8px !important;
+}
+.fc .fc-button-group > .fc-button:last-child {
+    margin-right: 0 !important;
+}
+.fc .fc-button-primary {
+    background-color: var(--park-primary) !important;
+    border-color: var(--park-primary) !important;
+}
+.fc .fc-button-primary:hover {
+    opacity: 0.9;
+}
+.fc .fc-col-header-cell {
+    background-color: #F8FAFC !important;
+    padding: 6px 0 !important;
+    font-size: 0.7rem !important;
+    font-weight: 800 !important;
+    color: #64748b !important;
+    text-transform: uppercase;
+}
+.fc .fc-daygrid-day-number {
+    font-size: 0.78rem !important;
+    font-weight: 700 !important;
+    color: var(--park-dark) !important;
+    padding: 4px !important;
+    text-decoration: none !important;
+}
+.fc-theme-standard td, .fc-theme-standard th {
+    border: 1px solid #E2E8F0 !important;
+}
+.fc .fc-daygrid-day.fc-day-today {
+    background-color: rgba(37, 99, 235, 0.03) !important;
+}
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+    color: #2563eb !important;
+    background-color: rgba(37, 99, 235, 0.08);
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin: 2px;
+    padding: 0 !important;
+}
+.fc-event {
+    border-radius: 4px !important;
+    border: none !important;
+    padding: 1px 3px !important;
+    cursor: pointer;
+}
+.fc-event-title {
+    font-weight: 600 !important;
+    font-size: 0.68rem !important;
+}
+/* Densidades de celdas */
+.fc-day-density-low {
+    background-color: rgba(131, 212, 118, 0.08) !important;
+}
+.fc-day-density-medium {
+    background-color: rgba(245, 158, 11, 0.08) !important;
+}
+.fc-day-density-high {
+    background-color: rgba(239, 68, 68, 0.08) !important;
+}
+
+/* Colores de eventos según estatus */
+.fc-event-status-pendiente { background-color: #3182CE !important; color: #ffffff !important; }
+.fc-event-status-aprobado { background-color: #0D9039 !important; color: #ffffff !important; }
+.fc-event-status-completado { background-color: #2D3748 !important; color: #ffffff !important; }
+.fc-event-status-cancelado { background-color: #E53E3E !important; color: #ffffff !important; }
+
+/* Contenedor de advertencias de agendamiento */
+.booking-capacity-warning {
+    border-radius: 12px;
+    padding: 15px;
+    margin: 15px 0;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    animation: fadeInStep 0.3s ease;
+}
+.booking-capacity-warning.warning {
+    background-color: #FFFBEB;
+    border: 1px solid #FDE68A;
+    color: #92400E;
+}
+.booking-capacity-warning.info {
+    background-color: #F0FDF4;
+    border: 1px solid #BBF7D0;
+    color: #166534;
+}
+.booking-capacity-title {
+    font-weight: 700;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.booking-suggestions-list {
+    margin-top: 10px;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.booking-suggestion-btn {
+    background-color: #ffffff;
+    border: 1px solid currentColor;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+}
+.booking-suggestion-btn:hover {
+    background-color: currentColor;
+    color: #ffffff !important;
+}
+.booking-existing-appointments {
+    font-size: 0.8rem;
+    margin-top: 8px;
+    border-top: 1px dashed rgba(0,0,0,0.1);
+    padding-top: 8px;
+}
+.booking-existing-item {
+    padding: 3px 0;
+    color: #4B5563;
+}
+
+/* Correcciones de responsividad y estabilidad del calendario de reserva */
+#calendarReserva {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+}
+
+@media (max-width: 768px) {
+    #calendarReserva .fc {
+        min-width: 500px !important;
+    }
+}
+
+/* Estilo premium para el Popover de FullCalendar (evento +más) */
+.fc-popover {
+    border-radius: 12px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+    border: 1px solid #E2E8F0 !important;
+    background: #ffffff !important;
+    font-family: 'Outfit', sans-serif !important;
+    overflow: hidden;
+    z-index: 2000 !important;
+}
+.fc-popover-header {
+    background: #F8FAFC !important;
+    padding: 8px 12px !important;
+    font-weight: 700 !important;
+    color: #1A202C !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+}
+.fc-popover-close {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+.fc-popover-close:hover {
+    opacity: 1;
+}
+.fc-popover-body {
+    padding: 10px !important;
+}
+.fc-popover-body .fc-event {
+    margin-bottom: 4px !important;
+}
+
+/* Estilos Premium para la Gestión de Asistencia de Visitantes */
+.nav-pills-premium .nav-link {
+    color: var(--park-gray-text);
+    background-color: transparent;
+    border: 1px solid #E2E8F0;
+    transition: all 0.25s ease;
+}
+
+.nav-pills-premium .nav-link:hover {
+    color: var(--park-dark);
+    background-color: var(--park-gray);
+    border-color: #CBD5E1;
+}
+
+.nav-pills-premium .nav-link.active {
+    background-color: var(--park-primary) !important;
+    color: #FFFFFF !important;
+    border-color: var(--park-primary);
+    box-shadow: 0 4px 10px rgba(13, 144, 57, 0.25);
+}
+
+/* Checklist de visitantes en el sistema */
+#listaVisitantesSistemaChecklist tr {
+    transition: background-color 0.2s ease;
+}
+
+#listaVisitantesSistemaChecklist tr:hover {
+    background-color: #F1F5F9;
+}
+
+/* Ajustes de scrollbar para áreas con desbordamiento en los modales */
+.table-responsive::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.table-responsive::-webkit-scrollbar-track {
+    background: #F1F5F9;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 4px;
+}
+
+.table-responsive::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+}
+
+/* Badge de visitante ya en asistencia */
+.badge-asistencia {
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: 6px;
+    background-color: #D1FAE5;
+    color: #065F46;
+}
+

@@ -119,8 +119,10 @@ class Recorrido {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        // Obtener todos los recorridos
-        $query = "SELECT id, nombre FROM " . $this->table_name . " ORDER BY id DESC";
+        // Obtener todos los recorridos que tengan al menos una parada asignada en la ruta
+        $query = "SELECT r.id, r.nombre FROM " . $this->table_name . " r 
+                  WHERE EXISTS (SELECT 1 FROM rutas ru WHERE ru.recorrido_id = r.id)
+                  ORDER BY r.id DESC";
         $stmt = $this->db->prepare($query);
         $stmt->execute();
         $recorridos = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -344,7 +346,9 @@ class Recorrido {
      */
     public static function obtenerListadoSimple($db) {
         if (!$db) return [];
-        $query = "SELECT id, nombre FROM recorrido ORDER BY nombre ASC";
+        $query = "SELECT r.id, r.nombre FROM recorrido r 
+                  WHERE EXISTS (SELECT 1 FROM rutas ru WHERE ru.recorrido_id = r.id)
+                  ORDER BY r.nombre ASC";
         $stmt = $db->prepare($query);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

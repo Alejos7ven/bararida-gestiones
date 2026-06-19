@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS instituciones (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `entidad_id` int NOT NULL,
   `tipo_organizacion` varchar(50) NOT NULL,
+  `tipo_gestion` varchar(50) NOT NULL DEFAULT 'publica',
   CONSTRAINT fk_entidad_institucion 
     FOREIGN KEY (`entidad_id`) REFERENCES `entidades` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ); 

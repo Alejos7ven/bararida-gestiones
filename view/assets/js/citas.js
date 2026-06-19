@@ -12,6 +12,8 @@ $(document).ready(function() {
     // Variables de estado del Wizard (Modal de registro)
     let currentStep = 1;
     let selectedInstitutionId = null; // null si no está registrada, entero si existe
+    let cacheCitas = [];
+    let bookingCalendar = null;
 
     // Cargar citas al iniciar
     listarCitas();
@@ -32,7 +34,9 @@ $(document).ready(function() {
                 $loader.hide();
                 $tablaCitas.empty();
 
-                if (response.status === 'success' && response.data.length > 0) {
+                if (response.status === 'success') {
+                    cacheCitas = response.data || [];
+                    if (cacheCitas.length > 0) {
                     response.data.forEach(function(c) {
                         // Badge de estatus de la cita
                         let badgeEstatus = '';
@@ -52,9 +56,7 @@ $(document).ready(function() {
                             : '<span class="badge-premium badge-payment-pending">Pendiente</span>';
 
                         // Badge de cantidad de visitantes
-                        const badgeVisitantes = parseInt(c.total_visitantes) > 0
-                            ? `<span class="badge-premium badge-premium-info btn-ver-visitantes" data-id="${c.id}" data-name="${c.razon_social}" style="cursor: pointer;">${c.total_visitantes} visitantes</span>`
-                            : '<span class="badge-premium bg-secondary">0 visitantes</span>';
+                        const badgeVisitantes = `<span class="badge-premium btn-ver-visitantes ${parseInt(c.total_visitantes) > 0 ? 'badge-premium-info' : 'bg-secondary'}" data-id="${c.id}" data-name="${c.razon_social}" style="cursor: pointer;">${c.total_visitantes} visitantes</span>`;
 
                         const btnImportarHtml = `
                                         <button class="btn-action btn-action-edit btn-importar-visitantes" data-id="${c.id}" data-name="${c.razon_social}" title="Importar Visitantes (CSV)">
@@ -81,6 +83,10 @@ $(document).ready(function() {
                                 <td>
                                     <div class="table-actions">
                                         ${btnImportarHtml}
+                                        <button class="btn-action btn-action-edit btn-editar-cita" data-id="${c.id}" title="Editar Cita">
+                                            <!-- SVG Edit -->
+                                            <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                        </button>
                                         <a href="controllers/CitaController.php?action=descargar_plantilla&cita_id=${c.id}" class="btn-action btn-action-edit" title="Descargar Plantilla Excel/CSV" target="_blank">
                                             <!-- SVG Download -->
                                             <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
@@ -96,9 +102,10 @@ $(document).ready(function() {
                         $tablaCitas.append(rowHtml);
                     });
                     $tablaCitas.fadeIn(300);
-                } else {
-                    $tablaCitas.append('<tr><td colspan="8" class="text-center text-muted py-4">No hay citas agendadas registradas en el sistema.</td></tr>');
-                    $tablaCitas.fadeIn(300);
+                    } else {
+                        $tablaCitas.append('<tr><td colspan="8" class="text-center text-muted py-4">No hay citas agendadas registradas en el sistema.</td></tr>');
+                        $tablaCitas.fadeIn(300);
+                    }
                 }
             },
             error: function(xhr) {
@@ -226,6 +233,9 @@ $(document).ready(function() {
         selectedInstitutionId = null;
         $('#formCrearCita')[0].reset();
         
+        // Ocultar alerta de capacidad
+        $('#bookingCapacityAlert').hide().empty();
+        
         // Limpiar contenedor de contactos e insertar el campo obligatorio inicial
         $('#contactsContainer').empty();
         agregarFilaContacto('principal');
@@ -283,6 +293,8 @@ $(document).ready(function() {
 
         if (step === 3) {
             $('#btnWizardNext').text('Agendar Cita');
+            // Inicializar o redibujar FullCalendar en el modal
+            setTimeout(inicializarCalendarioReserva, 150);
         } else {
             $('#btnWizardNext').text('Siguiente');
         }
@@ -428,6 +440,7 @@ $(document).ready(function() {
             $('#tipo_organizacion').append(`<option value="${data.tipo_organizacion}">${data.tipo_organizacion}</option>`);
         }
         $('#tipo_organizacion').val(data.tipo_organizacion).prop('disabled', true);
+        $('#tipo_gestion').val(data.tipo_gestion || 'publica').prop('disabled', true);
         
         // Limpiar selects geográficos y forzar a mostrar los nombres de forma simple
         $('#estado_id').empty().append(`<option value="${data.id_estado}" selected>${data.estado || 'Estado Pre-cargado'}</option>`).prop('disabled', true);
@@ -458,6 +471,7 @@ $(document).ready(function() {
     function limpiarYEditarDatosInstitucion() {
         $('#nombre_institucion').val('').prop('disabled', false);
         $('#tipo_organizacion').val('').prop('disabled', false);
+        $('#tipo_gestion').val('publica').prop('disabled', false);
         
         // Recargar estados
         cargarEstados();
@@ -522,7 +536,7 @@ $(document).ready(function() {
         
         // Deshabilitar de nuevo para evitar desconfiguración si falla
         if (selectedInstitutionId !== null) {
-            $('#nombre_institucion, #tipo_organizacion, #estado_id, #municipio_id, #ciudad_id, #parroquia_id, #detalles_direccion').prop('disabled', true);
+            $('#nombre_institucion, #tipo_organizacion, #tipo_gestion, #estado_id, #municipio_id, #ciudad_id, #parroquia_id, #detalles_direccion').prop('disabled', true);
         }
 
         $btn.prop('disabled', true).text('Guardando cita...');
@@ -553,6 +567,90 @@ $(document).ready(function() {
             }
         });
     }
+
+    // =========================================================================
+    // 5.5 EDICIÓN DE CITA (GET + POST)
+    // =========================================================================
+    $(document).on('click', '.btn-editar-cita', function() {
+        const id = $(this).data('id');
+        
+        $('#formEditarCita')[0].reset();
+
+        $.ajax({
+            url: `controllers/CitaController.php?action=obtener&id=${id}`,
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    const cita = response.data;
+                    $('#edit_cita_id').val(cita.id);
+                    $('#edit_recorrido_id').val(cita.recorrido_id || '');
+                    $('#edit_fecha_visita').val(cita.fecha_visita);
+                    
+                    // Asegurar que la hora tenga el formato HH:MM (por ejemplo '09:00:00' -> '09:00')
+                    let hora = cita.hora_inicio;
+                    if (hora && hora.length > 5) {
+                        hora = hora.substring(0, 5);
+                    }
+                    $('#edit_hora_inicio').val(hora);
+                    
+                    $('#edit_metodo_pago').val(cita.metodo_pago);
+                    $('#edit_pago_estado').val(cita.pago_estado);
+                    $('#edit_estatus').val(cita.estatus);
+
+                    $('#modalEditarCita').modal('show');
+                } else {
+                    showGlobalAlert(response.message, 'danger');
+                }
+            },
+            error: function() {
+                showGlobalAlert('Error al conectar con el servidor para obtener los datos de la cita.', 'danger');
+            }
+        });
+    });
+
+    $('#formEditarCita').on('submit', function(e) {
+        e.preventDefault();
+        const $btn = $('#btnGuardarEditCita');
+
+        // Validaciones básicas
+        const fecha = $('#edit_fecha_visita').val();
+        const hora = $('#edit_hora_inicio').val();
+        const metodo = $('#edit_metodo_pago').val();
+        const estatus = $('#edit_estatus').val();
+
+        if (!fecha || !hora || !metodo || !estatus) {
+            alert('Por favor, rellene todos los campos obligatorios.');
+            return;
+        }
+
+        $btn.prop('disabled', true).text('Guardando...');
+
+        $.ajax({
+            url: 'controllers/CitaController.php?action=editar',
+            method: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            success: function(response) {
+                $btn.prop('disabled', false).text('Guardar Cambios');
+                if (response.status === 'success') {
+                    $('#modalEditarCita').modal('hide');
+                    showGlobalAlert(response.message, 'success');
+                    listarCitas();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).text('Guardar Cambios');
+                let errorMsg = 'Error en el servidor al intentar actualizar la cita.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                alert(errorMsg);
+            }
+        });
+    });
 
     // =========================================================================
     // 6. ELIMINAR CITA
@@ -906,23 +1004,21 @@ $(document).ready(function() {
     // 8. AUXILIARES
     // =========================================================================
     // BOTÓN: VER VISITANTES (Abre modal con listado de asistentes)
-    $(document).on('click', '.btn-ver-visitantes', function() {
-        const id = $(this).data('id');
-        const name = $(this).data('name');
+    let currentVisitorIds = [];
+
+    function cargarVisitantesCita(id) {
+        $('#tablaVerVisitantesBody').empty().append('<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-success" role="status"></div><br><small class="text-muted mt-2 d-block">Cargando listado de visitantes...</small></td></tr>');
         
-        $('#verVisitantesCitaNombreSpan').text(`#CIT-${id} - ${name}`);
-        $('#tablaVerVisitantesBody').empty().append('<tr><td colspan="4" class="text-center py-4"><div class="spinner-border text-success" role="status"></div><br><small class="text-muted mt-2 d-block">Cargando listado de visitantes...</small></td></tr>');
-        
-        $('#modalVerVisitantes').modal('show');
-        
-        $.ajax({
+        return $.ajax({
             url: `controllers/CitaController.php?action=listar_visitantes&cita_id=${id}`,
             method: 'GET',
             dataType: 'json',
             success: function(response) {
                 $('#tablaVerVisitantesBody').empty();
+                currentVisitorIds = [];
                 if (response.status === 'success' && response.data.length > 0) {
                     response.data.forEach(function(v, idx) {
+                        currentVisitorIds.push(parseInt(v.id));
                         const cedula = v.cedula ? v.cedula : '<span class="text-muted italic">Sin Cédula (Menor)</span>';
                         const fechaNac = v.fecha_nacimiento ? formatDate(v.fecha_nacimiento) : '<span class="text-muted italic">N/E</span>';
                         $('#tablaVerVisitantesBody').append(`
@@ -931,11 +1027,14 @@ $(document).ready(function() {
                                 <td><strong>${cedula}</strong></td>
                                 <td>${v.nombres} ${v.apellidos}</td>
                                 <td class="text-center">${fechaNac}</td>
+                                <td class="text-center">
+                                    <button type="button" class="btn-quitar-visitante-asistencia btn-remove-contact" data-visitante-id="${v.id}" title="Remover de la asistencia" style="width:24px; height:24px; font-size:10px; padding:0; display:inline-flex; align-items:center; justify-content:center;">✕</button>
+                                </td>
                             </tr>
                         `);
                     });
                 } else {
-                    $('#tablaVerVisitantesBody').append('<tr><td colspan="4" class="text-center text-muted py-4">No se encontraron visitantes registrados para esta cita.</td></tr>');
+                    $('#tablaVerVisitantesBody').append('<tr><td colspan="5" class="text-center text-muted py-4">No se encontraron visitantes registrados para esta cita.</td></tr>');
                 }
             },
             error: function(xhr) {
@@ -943,10 +1042,264 @@ $(document).ready(function() {
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMsg = xhr.responseJSON.message;
                 }
-                $('#tablaVerVisitantesBody').html(`<tr><td colspan="4" class="text-center text-danger py-4"><strong>✕ Error:</strong> ${errorMsg}</td></tr>`);
+                $('#tablaVerVisitantesBody').html(`<tr><td colspan="5" class="text-center text-danger py-4"><strong>✕ Error:</strong> ${errorMsg}</td></tr>`);
+            }
+        });
+    }
+
+    $(document).on('click', '.btn-ver-visitantes', function() {
+        const id = $(this).data('id');
+        const name = $(this).data('name');
+        
+        $('#modalVerVisitantes').data('cita-id', id);
+        $('#verVisitantesCitaNombreSpan').text(`#CIT-${id} - ${name}`);
+        
+        // Resetear y ocultar panel de asistencia
+        $('#panelAgregarAsistencia').hide();
+        if ($('#formRegistrarYAgregarAsistencia').length) {
+            $('#formRegistrarYAgregarAsistencia')[0].reset();
+        }
+        $('#inputBuscarVisitantesSistema').val('');
+        
+        // Cargar
+        cargarVisitantesCita(id);
+        
+        $('#modalVerVisitantes').modal('show');
+    });
+
+    // Alternar visibilidad de panelAgregarAsistencia
+    $(document).on('click', '#btnToggleAgregarAsistencia', function() {
+        const $panel = $('#panelAgregarAsistencia');
+        if ($panel.is(':hidden')) {
+            $panel.slideDown(250);
+            
+            // Forzar volver a la primera pestaña (Registrados)
+            const firstTab = document.querySelector('#pills-existente-tab');
+            if (firstTab) {
+                bootstrap.Tab.getInstance(firstTab)?.show() || new bootstrap.Tab(firstTab).show();
+            }
+            
+            cargarVisitantesSistemaChecklist();
+        } else {
+            $panel.slideUp(250);
+        }
+    });
+
+    // Ocultar panelAgregarAsistencia
+    $(document).on('click', '#btnCancelarAgregarAsistencia, #btnCancelarAgregarNuevoAsistencia', function() {
+        $('#panelAgregarAsistencia').slideUp(250);
+    });
+
+    // Cargar todos los visitantes del sistema para el checklist
+    function cargarVisitantesSistemaChecklist() {
+        const $tbody = $('#listaVisitantesSistemaChecklist');
+        $tbody.empty().append('<tr><td colspan="3" class="text-center py-3"><div class="spinner-border spinner-border-sm text-success" role="status"></div> Cargando visitantes...</td></tr>');
+
+        $.ajax({
+            url: 'controllers/VisitanteController.php?action=listar',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                $tbody.empty();
+                if (response.status === 'success' && response.data.length > 0) {
+                    response.data.forEach(function(v) {
+                        const isAttending = currentVisitorIds.includes(parseInt(v.id));
+                        const checkbox = isAttending 
+                            ? `<input type="checkbox" checked disabled class="form-check-input">`
+                            : `<input type="checkbox" value="${v.id}" class="form-check-input check-visitante-sistema">`;
+                        
+                        const badge = isAttending 
+                            ? `<span class="badge badge-asistencia ms-2">En asistencia</span>`
+                            : '';
+
+                        const cedula = v.cedula ? v.cedula : '<span class="text-muted">Sin Cédula</span>';
+
+                        $tbody.append(`
+                            <tr class="fila-visitante-sistema" data-buscar="${v.cedula} ${v.nombres.toLowerCase()} ${v.apellidos.toLowerCase()}">
+                                <td class="text-center">${checkbox}</td>
+                                <td><strong>${cedula}</strong></td>
+                                <td>${v.nombres} ${v.apellidos} ${badge}</td>
+                            </tr>
+                        `);
+                    });
+                } else {
+                    $tbody.append('<tr><td colspan="3" class="text-center text-muted py-3">No hay visitantes registrados en el sistema.</td></tr>');
+                }
+            },
+            error: function() {
+                $tbody.html('<tr><td colspan="3" class="text-center text-danger py-3">Error al cargar visitantes del sistema.</td></tr>');
+            }
+        });
+    }
+
+    // Buscador en tiempo real de visitantes del sistema
+    $(document).on('keyup', '#inputBuscarVisitantesSistema', function() {
+        const term = $(this).val().toLowerCase().trim();
+        $('.fila-visitante-sistema').each(function() {
+            const searchData = $(this).data('buscar');
+            if (searchData.includes(term)) {
+                $(this).show();
+            } else {
+                $(this).hide();
             }
         });
     });
+
+    // Guardar selección de asistencia
+    $(document).on('click', '#btnGuardarSeleccionAsistencia', function() {
+        const citaId = $('#modalVerVisitantes').data('cita-id');
+        const selectedIds = [];
+        
+        $('.check-visitante-sistema:checked').each(function() {
+            selectedIds.push($(this).val());
+        });
+
+        if (selectedIds.length === 0) {
+            alert('Debe seleccionar al menos un visitante para agregar.');
+            return;
+        }
+
+        const $btn = $(this);
+        $btn.prop('disabled', true).text('Guardando...');
+
+        $.ajax({
+            url: 'controllers/CitaController.php?action=vincular_visitantes',
+            method: 'POST',
+            data: {
+                cita_id: citaId,
+                visitante_ids: selectedIds
+            },
+            dataType: 'json',
+            success: function(response) {
+                $btn.prop('disabled', false).text('Agregar Seleccionados');
+                if (response.status === 'success') {
+                    showGlobalAlert(response.message, 'success');
+                    $('#panelAgregarAsistencia').slideUp(250);
+                    cargarVisitantesCita(citaId);
+                    listarCitas(); // Refrescar tabla del dashboard principal
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).text('Agregar Seleccionados');
+                let errorMsg = 'Error al intentar vincular visitantes.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                alert(errorMsg);
+            }
+        });
+    });
+
+    // Registrar nuevo visitante y agregar a la asistencia
+    $(document).on('submit', '#formRegistrarYAgregarAsistencia', function(e) {
+        e.preventDefault();
+        
+        const citaId = $('#modalVerVisitantes').data('cita-id');
+        const cedula = $('#reg_visitante_cedula').val().trim();
+        const nombres = $('#reg_visitante_nombres').val().trim();
+        const apellidos = $('#reg_visitante_apellidos').val().trim();
+        const fechaNac = $('#reg_visitante_fecha_nac').val().trim();
+
+        if (!nombres || !apellidos || !fechaNac) {
+            alert('Por favor, rellene todos los campos obligatorios (*).');
+            return;
+        }
+
+        const newVisitor = {
+            cedula: cedula,
+            nombres: nombres,
+            apellidos: apellidos,
+            fecha_nacimiento: fechaNac
+        };
+
+        const $btn = $('#btnRegistrarYAgregarAsistencia');
+        $btn.prop('disabled', true).text('Registrando...');
+
+        $.ajax({
+            url: 'controllers/CitaController.php?action=importar_visitantes',
+            method: 'POST',
+            data: {
+                cita_id: citaId,
+                visitantes_json: JSON.stringify([newVisitor])
+            },
+            dataType: 'json',
+            success: function(response) {
+                $btn.prop('disabled', false).text('Registrar y Agregar');
+                if (response.status === 'success') {
+                    showGlobalAlert(response.message, 'success');
+                    $('#formRegistrarYAgregarAsistencia')[0].reset();
+                    $('#panelAgregarAsistencia').slideUp(250);
+                    cargarVisitantesCita(citaId);
+                    listarCitas(); // Refrescar tabla principal
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).text('Registrar y Agregar');
+                let errorMsg = 'Error al registrar y agregar al visitante.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                alert(errorMsg);
+            }
+        });
+    });
+
+    // Remover visitante de la asistencia
+    $(document).on('click', '.btn-quitar-visitante-asistencia', function() {
+        const visitanteId = $(this).data('visitante-id');
+        const $row = $(this).closest('tr');
+        const name = $row.find('td').eq(2).text().trim();
+        
+        $('#quitar_asistente_visitante_id').val(visitanteId);
+        $('#quitarAsistenteNombreSpan').text(name);
+        $('#modalConfirmarEliminarAsistente').modal('show');
+    });
+
+    $(document).on('click', '#btnConfirmarQuitarAsistenteModal', function() {
+        const citaId = $('#modalVerVisitantes').data('cita-id');
+        const visitanteId = $('#quitar_asistente_visitante_id').val();
+        const $btn = $(this);
+
+        $btn.prop('disabled', true).text('Removiendo...');
+
+        $.ajax({
+            url: 'controllers/CitaController.php?action=desvincular_visitante',
+            method: 'POST',
+            data: {
+                cita_id: citaId,
+                visitante_id: visitanteId
+            },
+            dataType: 'json',
+            success: function(response) {
+                $btn.prop('disabled', false).text('Remover Asistencia');
+                $('#modalConfirmarEliminarAsistente').modal('hide');
+                
+                if (response.status === 'success') {
+                    showGlobalAlert(response.message, 'success');
+                    cargarVisitantesCita(citaId);
+                    listarCitas(); // Refrescar tabla principal
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).text('Remover Asistencia');
+                $('#modalConfirmarEliminarAsistente').modal('hide');
+                let errorMsg = 'Error al intentar remover al visitante de la asistencia.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    errorMsg = xhr.responseJSON.message;
+                }
+                alert(errorMsg);
+            }
+        });
+    });
+
+
+
 
     function showGlobalAlert(message, type) {
         const $alert = $('#alertFeedbackGlobal');
@@ -978,6 +1331,290 @@ $(document).ready(function() {
         
         hour = hour % 12;
         hour = hour ? hour : 12; // 0 debe ser 12
+        
+        return `${hour}:${minutes} ${ampm}`;
+    }
+
+    // =========================================================================
+    // LÓGICA DE CAPACIDAD Y SUGERENCIAS DE FECHAS ALTERNATIVAS
+    // =========================================================================
+    function inicializarCalendarioReserva() {
+        const calendarEl = document.getElementById('calendarReserva');
+        if (!calendarEl) return;
+
+        // Agrupar citas por fecha para calcular la densidad
+        const citasPorFecha = {};
+        cacheCitas.forEach(function(c) {
+            citasPorFecha[c.fecha_visita] = (citasPorFecha[c.fecha_visita] || 0) + 1;
+        });
+
+        // Eventos para el calendario de reserva
+        const events = cacheCitas.map(function(c) {
+            return {
+                title: `${c.razon_social}`,
+                start: `${c.fecha_visita}T${c.hora_inicio}`,
+                className: `fc-event-status-${c.estatus || 'pendiente'}`
+            };
+        });
+
+        if (bookingCalendar) {
+            bookingCalendar.destroy();
+        }
+
+        bookingCalendar = new FullCalendar.Calendar(calendarEl, {
+            initialView: 'dayGridMonth',
+            locale: 'es',
+            firstDay: 1, // Lunes
+            headerToolbar: {
+                left: 'prev,next',
+                center: 'title',
+                right: 'today'
+            },
+            buttonText: {
+                today: 'Hoy'
+            },
+            dayMaxEvents: 3, // límite de eventos por celda (máximo 3, si hay más muestra link)
+            slotEventOverlap: false, // evitar superposición en vistas de tiempo
+            height: 'auto',
+            moreLinkText: 'Ver más',
+            events: events,
+            selectable: true,
+            dateClick: function(info) {
+                // Rellenar fecha al hacer clic en un día
+                $('#fecha_visita').val(info.dateStr).trigger('change');
+            },
+            dayCellDidMount: function(info) {
+                const dateStr = info.date.toLocaleDateString('sv-SE');
+                const count = citasPorFecha[dateStr] || 0;
+                
+                if (count === 1) {
+                    info.el.classList.add('fc-day-density-low');
+                } else if (count === 2) {
+                    info.el.classList.add('fc-day-density-medium');
+                } else if (count >= 3) {
+                    info.el.classList.add('fc-day-density-high');
+                }
+            }
+        });
+
+        bookingCalendar.render();
+
+        // Validar capacidad de la fecha precargada si existe
+        const currentVal = $('#fecha_visita').val();
+        if (currentVal) {
+            validarCapacidadFecha(currentVal);
+        }
+    }
+
+    $(document).on('change', '#fecha_visita', function() {
+        const fechaSeleccionada = $(this).val();
+        validarCapacidadFecha(fechaSeleccionada);
+    });
+
+    $(document).on('click', '.booking-suggestion-btn', function() {
+        const fecha = $(this).data('fecha');
+        $('#fecha_visita').val(fecha).trigger('change');
+        if (bookingCalendar) {
+            bookingCalendar.gotoDate(fecha);
+        }
+    });
+
+    function validarCapacidadFecha(fecha) {
+        const $alertDiv = $('#bookingCapacityAlert');
+        if (!fecha) {
+            $alertDiv.hide().empty();
+            return;
+        }
+
+        // Buscar citas agendadas para este día
+        const citasDelDia = cacheCitas.filter(function(c) {
+            return c.fecha_visita === fecha;
+        });
+
+        const count = citasDelDia.length;
+        let alertHtml = '';
+
+        if (count === 0) {
+            alertHtml = `
+                <div class="booking-capacity-warning info">
+                    <div class="booking-capacity-title">
+                        <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill: currentColor; margin-right: 4px; vertical-align: text-bottom;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                        Día Disponible para Agendar
+                    </div>
+                    <span>No hay citas programadas para el <strong>${formatLongDate(fecha)}</strong>. Capacidad libre.</span>
+                </div>
+            `;
+            $alertDiv.html(alertHtml).fadeIn(200);
+        } else {
+            // Generar listado de citas existentes
+            let citasHtml = `
+                <div class="booking-existing-appointments">
+                    <strong style="display: block; margin-bottom: 4px;">Citas existentes para este día:</strong>
+            `;
+            citasDelDia.forEach(function(c) {
+                citasHtml += `
+                    <div class="booking-existing-item">
+                        • <strong>${formatTime(c.hora_inicio)}</strong> - ${c.razon_social} (${c.recorrido_nombre || 'Libre'})
+                    </div>
+                `;
+            });
+            citasHtml += `</div>`;
+
+            if (count < 3) {
+                alertHtml = `
+                    <div class="booking-capacity-warning warning" style="background-color: #F0FDF4; border-color: #BBF7D0; color: #166534;">
+                        <div class="booking-capacity-title" style="color: #166534;">
+                            <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill: currentColor; margin-right: 4px; vertical-align: text-bottom;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                            Ocupación Moderada (${count} de 3 citas diarias)
+                        </div>
+                        <span>El día seleccionado tiene disponibilidad. Puede agendar cuidando no colisionar las horas.</span>
+                        ${citasHtml}
+                    </div>
+                `;
+                $alertDiv.html(alertHtml).fadeIn(200);
+            } else {
+                // Advertencia de sobrecarga: count >= 3
+                const sugerencias = obtenerSugerenciasFechas(fecha, cacheCitas);
+                let sugerenciasHtml = '';
+
+                if (sugerencias.length > 0) {
+                    sugerenciasHtml = `
+                        <div style="margin-top: 10px;">
+                            <strong style="display: block; margin-bottom: 6px;">Fechas alternativas recomendadas (con menor ocupación):</strong>
+                            <div class="booking-suggestions-list">
+                    `;
+                    sugerencias.forEach(function(sug) {
+                        const labelOcupacion = sug.cantidad === 0 ? 'Libre' : (sug.cantidad === 1 ? '1 cita' : `${sug.cantidad} citas`);
+                        const colorClass = sug.cantidad === 0 ? 'text-success' : 'text-warning';
+                        sugerenciasHtml += `
+                            <button type="button" class="booking-suggestion-btn ${colorClass}" data-fecha="${sug.fecha}">
+                                📅 ${formatShortDate(sug.fecha)} (${labelOcupacion})
+                            </button>
+                        `;
+                    });
+                    sugerenciasHtml += `
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    sugerenciasHtml = `
+                        <div style="margin-top: 10px; font-style: italic; font-size: 0.8rem;">
+                            No se encontraron días hábiles alternativos con disponibilidad en las próximas semanas.
+                        </div>
+                    `;
+                }
+
+                alertHtml = `
+                    <div class="booking-capacity-warning warning">
+                        <div class="booking-capacity-title">
+                            <svg viewBox="0 0 24 24" style="width:16px; height:16px; fill: currentColor; margin-right: 4px; vertical-align: text-bottom;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+                            Capacidad Recomendada Excedida (${count} citas)
+                        </div>
+                        <span style="display: block; margin-bottom: 8px;">Se sugiere evitar agendar más de 3 citas al día para no sobrecargar al personal. Sin embargo, puede proceder si lo considera conveniente.</span>
+                        ${sugerenciasHtml}
+                        ${citasHtml}
+                    </div>
+                `;
+                $alertDiv.html(alertHtml).fadeIn(200);
+            }
+        }
+    }
+
+    function obtenerSugerenciasFechas(fechaSeleccionadaStr, citas) {
+        const selectDate = new Date(fechaSeleccionadaStr + 'T00:00:00');
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+
+        // Agrupar citas por fecha
+        const citasPorFecha = {};
+        citas.forEach(function(c) {
+            citasPorFecha[c.fecha_visita] = (citasPorFecha[c.fecha_visita] || 0) + 1;
+        });
+
+        function obtenerCandidatosParaRango(limiteDias) {
+            const candidatos = [];
+            const offsets = [];
+            // Generar offsets intercalados: 1, -1, 2, -2, etc.
+            for (let i = 1; i <= limiteDias; i++) {
+                offsets.push(i);
+                offsets.push(-i);
+            }
+
+            offsets.forEach(function(offset) {
+                const tempDate = new Date(selectDate);
+                tempDate.setDate(selectDate.getDate() + offset);
+                tempDate.setHours(0,0,0,0);
+
+                // No recomendar fechas pasadas
+                if (tempDate < hoy) return;
+
+                // Excluir fines de semana (0 = Domingo, 6 = Sábado)
+                const dayOfWeek = tempDate.getDay();
+                if (dayOfWeek === 0 || dayOfWeek === 6) return;
+
+                const tempDateStr = tempDate.toLocaleDateString('sv-SE');
+                const count = citasPorFecha[tempDateStr] || 0;
+
+                if (count < 3) {
+                    candidatos.push({
+                        fecha: tempDateStr,
+                        cantidad: count,
+                        distancia: Math.abs(offset)
+                    });
+                }
+            });
+
+            // Ordenar por cercanía (distancia absoluta)
+            candidatos.sort(function(a, b) {
+                if (a.distancia !== b.distancia) {
+                    return a.distancia - b.distancia;
+                }
+                return new Date(a.fecha) - new Date(b.fecha);
+            });
+
+            return candidatos;
+        }
+
+        // Buscar primero en ±3 días hábiles
+        let sugerencias = obtenerCandidatosParaRango(3);
+
+        // Si no hay candidatos, ampliar a ±7 días hábiles
+        if (sugerencias.length === 0) {
+            sugerencias = obtenerCandidatosParaRango(7);
+        }
+
+        return sugerencias.slice(0, 3);
+    }
+
+    function formatShortDate(dateStr) {
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+        const diasSemana = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+        const dayName = diasSemana[d.getDay()];
+        return `${dayName} ${parts[2]}/${parts[1]}`;
+    }
+
+    function formatLongDate(dateStr) {
+        const parts = dateStr.split('-');
+        if (parts.length !== 3) return dateStr;
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+        const opciones = { weekday: 'long', day: 'numeric', month: 'long' };
+        let formatted = d.toLocaleDateString('es-ES', opciones);
+        return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+    }
+
+    function formatTime(timeString) {
+        if (!timeString) return '';
+        const parts = timeString.split(':');
+        if (parts.length < 2) return timeString;
+        
+        let hour = parseInt(parts[0]);
+        const minutes = parts[1];
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        
+        hour = hour % 12;
+        hour = hour ? hour : 12;
         
         return `${hour}:${minutes} ${ampm}`;
     }

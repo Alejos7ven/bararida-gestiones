@@ -136,16 +136,17 @@ function crearInstitucionAction($db) {
     $documento = isset($_POST['documento']) ? trim($_POST['documento']) : '';
     $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
     $tipo_organizacion = isset($_POST['tipo_organizacion']) ? trim($_POST['tipo_organizacion']) : '';
+    $tipo_gestion = isset($_POST['tipo_gestion']) ? trim($_POST['tipo_gestion']) : 'publica';
     $ciudad_id = isset($_POST['ciudad_id']) ? $_POST['ciudad_id'] : '';
     $parroquia_id = isset($_POST['parroquia_id']) ? $_POST['parroquia_id'] : '';
     $detalles_direccion = isset($_POST['detalles_direccion']) ? trim($_POST['detalles_direccion']) : '';
     $contactosRaw = isset($_POST['contactos']) ? $_POST['contactos'] : [];
 
-    if (empty($documento) || empty($nombre) || empty($tipo_organizacion) || empty($ciudad_id) || empty($parroquia_id)) {
+    if (empty($documento) || empty($nombre) || empty($tipo_organizacion) || empty($tipo_gestion) || empty($ciudad_id) || empty($parroquia_id)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Todos los campos de la institución son obligatorios (RIF, Razón Social, Tipo, Ciudad y Parroquia)."
+            "message" => "Todos los campos de la institución son obligatorios (RIF, Razón Social, Tipo, Gestión, Ciudad y Parroquia)."
         ]);
         return;
     }
@@ -156,6 +157,7 @@ function crearInstitucionAction($db) {
         $instModel->setDocumento($documento);
         $instModel->setNombre($nombre);
         $instModel->setTipoOrganizacion($tipo_organizacion);
+        $instModel->setTipoGestion($tipo_gestion);
         $instModel->setCiudadId($ciudad_id);
         $instModel->setParroquiaId($parroquia_id);
         $instModel->setDetallesDireccion($detalles_direccion);
@@ -209,6 +211,7 @@ function actualizarInstitucionAction($db) {
     $documento = isset($_POST['documento']) ? trim($_POST['documento']) : '';
     $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
     $tipo_organizacion = isset($_POST['tipo_organizacion']) ? trim($_POST['tipo_organizacion']) : '';
+    $tipo_gestion = isset($_POST['tipo_gestion']) ? trim($_POST['tipo_gestion']) : 'publica';
     $ciudad_id = isset($_POST['ciudad_id']) ? $_POST['ciudad_id'] : '';
     $parroquia_id = isset($_POST['parroquia_id']) ? $_POST['parroquia_id'] : '';
     $detalles_direccion = isset($_POST['detalles_direccion']) ? trim($_POST['detalles_direccion']) : '';
@@ -223,11 +226,11 @@ function actualizarInstitucionAction($db) {
         return;
     }
 
-    if (empty($documento) || empty($nombre) || empty($tipo_organizacion) || empty($ciudad_id) || empty($parroquia_id)) {
+    if (empty($documento) || empty($nombre) || empty($tipo_organizacion) || empty($tipo_gestion) || empty($ciudad_id) || empty($parroquia_id)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Todos los campos de la institución son obligatorios (RIF, Razón Social, Tipo, Ciudad y Parroquia)."
+            "message" => "Todos los campos de la institución son obligatorios (RIF, Razón Social, Tipo, Gestión, Ciudad y Parroquia)."
         ]);
         return;
     }
@@ -240,6 +243,7 @@ function actualizarInstitucionAction($db) {
         $instModel->setDocumento($documento);
         $instModel->setNombre($nombre);
         $instModel->setTipoOrganizacion($tipo_organizacion);
+        $instModel->setTipoGestion($tipo_gestion);
         $instModel->setCiudadId($ciudad_id);
         $instModel->setParroquiaId($parroquia_id);
         $instModel->setDetallesDireccion($detalles_direccion);

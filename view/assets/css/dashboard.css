@@ -94,7 +94,7 @@ body {
 }
 
 .sidebar-logo {
-    width: 72px;
+    width: 110px;
     height: auto;
     margin-bottom: 10px;
     filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.15));
@@ -539,72 +539,303 @@ body {
     .avatar-circle { width: 35px; height: 35px; font-size: 0.88rem; }
 }
 
-/* Estilos Premium para el Calendario del Dashboard */
-.calendar-grid-body {
-    align-content: stretch;
+/* Estilos Premium para FullCalendar en el Dashboard */
+.fc {
+    font-family: 'Outfit', sans-serif !important;
+    --fc-border-color: #E2E8F0 !important;
+    --fc-today-bg-color: rgba(37, 99, 235, 0.04) !important;
+    background: #ffffff;
+    border-radius: 14px;
+    padding: 10px;
 }
-.calendar-day {
-    background-color: #ffffff;
-    border: 1px solid var(--border-color);
-    border-radius: 10px;
-    padding: 6px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    justify-content: space-between;
-    min-height: 48px;
-    font-family: 'Outfit', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--text-color);
-    position: relative;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+.fc .fc-toolbar {
+    margin-bottom: 12px !important;
 }
-.calendar-day.empty {
-    background-color: transparent !important;
-    border: none !important;
-    pointer-events: none;
+.fc .fc-toolbar-title {
+    font-size: 1rem !important;
+    font-weight: 700 !important;
+    color: var(--text-color) !important;
+    font-family: 'Outfit', sans-serif !important;
 }
-.calendar-day.has-visit {
+.fc .fc-button {
+    padding: 5px 10px !important;
+    font-size: 0.82rem !important;
+    border-radius: 8px !important;
+    font-weight: 600 !important;
+}
+.fc .fc-button-group > .fc-button {
+    margin-right: 6px !important;
+    border-radius: 8px !important;
+}
+.fc .fc-button-group > .fc-button:last-child {
+    margin-right: 0 !important;
+}
+.fc .fc-button-primary {
+    background-color: var(--primary-color) !important;
     border-color: var(--primary-color) !important;
-    background-color: var(--primary-light) !important;
-    cursor: pointer;
+    color: #ffffff !important;
+    transition: all 0.2s ease;
 }
-.calendar-day.has-visit:hover {
-    background-color: #d2edd6 !important;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 10px rgba(13, 144, 57, 0.15);
+.fc .fc-button-primary:hover {
+    background-color: var(--primary-hover) !important;
+    border-color: var(--primary-hover) !important;
 }
-.calendar-day .day-number {
-    font-size: 0.78rem;
-    font-weight: 700;
+.fc .fc-button-primary:disabled {
+    background-color: #CBD5E1 !important;
+    border-color: #CBD5E1 !important;
+    color: #64748B !important;
 }
-.calendar-day .visit-badge {
-    background-color: var(--primary-color);
-    color: #ffffff;
-    font-size: 0.6rem;
-    font-weight: 700;
-    padding: 2px 4px;
-    border-radius: 4px;
-    width: 100%;
-    text-align: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    margin-top: 4px;
-    box-shadow: 0 2px 4px rgba(13, 144, 57, 0.1);
+.fc .fc-col-header-cell {
+    background-color: #F8FAFC !important;
+    padding: 8px 0 !important;
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+    color: #64748b !important;
+    text-transform: uppercase;
 }
-.calendar-day.today {
-    border: 2px solid #2563eb !important;
+.fc .fc-daygrid-day-number {
+    font-size: 0.8rem !important;
+    font-weight: 700 !important;
+    color: var(--text-color) !important;
+    padding: 6px !important;
+    text-decoration: none !important;
 }
-.calendar-day.today::after {
-    content: '';
-    position: absolute;
-    top: 4px;
-    right: 4px;
-    width: 6px;
-    height: 6px;
-    background-color: #2563eb;
+.fc-theme-standard td, .fc-theme-standard th {
+    border: 1px solid #E2E8F0 !important;
+}
+.fc .fc-daygrid-day.fc-day-today {
+    background-color: rgba(37, 99, 235, 0.03) !important;
+}
+.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
+    color: #2563eb !important;
+    background-color: rgba(37, 99, 235, 0.08);
     border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    margin: 4px;
+    padding: 0 !important;
+}
+/* Estilización de los eventos en el calendario */
+.fc-event {
+    border-radius: 6px !important;
+    border: none !important;
+    padding: 2px 4px !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.04) !important;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.fc-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.08) !important;
+}
+.fc-event-title {
+    font-weight: 600 !important;
+    font-size: 0.72rem !important;
+    font-family: 'Outfit', sans-serif !important;
+}
+.fc-event-time {
+    font-weight: 700 !important;
+    font-size: 0.68rem !important;
 }
 
+/* Colores de eventos según estatus */
+.fc-event-status-pendiente {
+    background-color: #3182CE !important; /* Azul */
+    color: #ffffff !important;
+}
+.fc-event-status-aprobado {
+    background-color: #0D9039 !important; /* Verde */
+    color: #ffffff !important;
+}
+.fc-event-status-completado {
+    background-color: #2D3748 !important; /* Gris oscuro */
+    color: #ffffff !important;
+}
+.fc-event-status-cancelado {
+    background-color: #E53E3E !important; /* Rojo */
+    color: #ffffff !important;
+}
+
+/* Densidad de ocupación de las celdas del día */
+.fc-day-density-low {
+    background-color: rgba(131, 212, 118, 0.08) !important; /* Verde suave: 1 cita */
+}
+.fc-day-density-medium {
+    background-color: rgba(245, 158, 11, 0.08) !important; /* Amarillo/Naranja suave: 2 citas */
+}
+.fc-day-density-high {
+    background-color: rgba(239, 68, 68, 0.08) !important; /* Rojo suave: 3 o más citas */
+}
+
+/* Panel de alertas de capacidad */
+.capacity-warning-card {
+    background: #FFF5F5;
+    border: 1px solid #FEB2B2;
+    border-radius: 12px;
+    padding: 14px 18px;
+    color: #C53030;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    animation: fadeInStep 0.3s ease;
+}
+.capacity-warning-card h5 {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    margin-bottom: 6px;
+    font-size: 0.92rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.capacity-warning-item {
+    margin-bottom: 4px;
+    padding-left: 12px;
+    position: relative;
+}
+.capacity-warning-item::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: #E53E3E;
+    font-weight: bold;
+}
+.capacity-warning-item:last-child {
+    margin-bottom: 0;
+}
+
+/* Correcciones de responsividad y estabilidad del calendario */
+#dashboardFullCalendar {
+    width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: auto !important;
+    position: relative !important; /* Contexto de posicionamiento para que los modales/popovers no se desborden del contenedor */
+}
+
+@media (max-width: 768px) {
+    #dashboardFullCalendar .fc {
+        min-width: 600px !important;
+    }
+}
+
+/* Estilo premium para el Popover de FullCalendar (evento +más) */
+.fc-popover {
+    border-radius: 12px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+    border: 1px solid #E2E8F0 !important;
+    background: #ffffff !important;
+    font-family: 'Outfit', sans-serif !important;
+    overflow: hidden;
+    z-index: 2000 !important;
+    max-width: 290px !important; /* Prevenir que el popover sea más ancho que las columnas */
+    width: 90% !important;
+    max-height: 280px !important; /* Límite de altura para evitar desborde inferior en el contenedor */
+    display: flex !important;
+    flex-direction: column !important;
+}
+.fc-popover-header {
+    background: #F8FAFC !important;
+    padding: 8px 12px !important;
+    font-weight: 700 !important;
+    color: var(--text-color) !important;
+    border-bottom: 1px solid #E2E8F0 !important;
+    flex-shrink: 0 !important;
+}
+.fc-popover-close {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+}
+.fc-popover-close:hover {
+    opacity: 1;
+}
+.fc-popover-body {
+    padding: 10px !important;
+    overflow-y: auto !important; /* Habilitar scroll vertical interno si hay muchas citas */
+    flex: 1 1 auto !important;
+}
+.fc-popover-body .fc-event {
+    margin-bottom: 4px !important;
+}
+
+/* Evento agrupado con gradiente premium */
+.fc-event-grouped {
+    background: linear-gradient(135deg, #0D9039 0%, #83D476 100%) !important;
+    color: #ffffff !important;
+    border: none !important;
+    box-shadow: 0 3px 6px rgba(13, 144, 57, 0.15) !important;
+}
+
+/* Botón "Ver más" dentro de los eventos agrupados en el calendario */
+.btn-fc-ver-mas {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #ffffff;
+    color: #0D9039;
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 2.5px 8px;
+    border-radius: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border: 1px solid #ffffff;
+    margin-top: 4px;
+}
+
+.fc-event-grouped:hover .btn-fc-ver-mas {
+    background-color: #ffffff;
+    color: #0A732D; /* Primary hover */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.18);
+    transform: translateY(-1px) scale(1.04);
+}
+
+.fc-event-grouped:active .btn-fc-ver-mas {
+    transform: translateY(0) scale(0.96);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+
+/* Estilo para las píldoras del calendario mensual */
+.fc-event-month-pill {
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    display: inline-block !important;
+    width: 100% !important;
+}
+
+/* Botón "Ver más" nativo de FullCalendar (cuando hay > 3 citas en un día) */
+.fc-more-link {
+    display: block !important;
+    text-align: center !important;
+    background-color: #ffffff !important;
+    color: var(--primary-color) !important;
+    border: 1px solid var(--primary-color) !important;
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    padding: 3.5px 6px !important;
+    border-radius: 6px !important;
+    margin: 3px 0 0 0 !important; /* Sin márgenes laterales para alinear perfectamente con las tarjetas de citas */
+    width: 100% !important;
+    box-sizing: border-box !important;
+    text-decoration: none !important;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+}
+
+.fc-more-link:hover {
+    background-color: var(--primary-hover) !important;
+    color: #ffffff !important;
+    border-color: var(--primary-hover) !important;
+    transform: translateY(-0.5px) scale(1.02) !important;
+    box-shadow: 0 4px 8px rgba(13, 144, 57, 0.2) !important;
+}
+
+.fc-more-link:active {
+    transform: translateY(0) scale(0.98) !important;
+    box-shadow: 0 1px 2px rgba(13, 144, 57, 0.1) !important;
+}

@@ -60,11 +60,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'crear':
             crearCitaAction($db);
             break;
+        case 'editar':
+            editarCitaAction($db);
+            break;
         case 'eliminar':
             eliminarCitaAction($db);
             break;
         case 'importar_visitantes':
             importarVisitantesAction($db);
+            break;
+        case 'vincular_visitantes':
+            vincularVisitantesAction($db);
+            break;
+        case 'desvincular_visitante':
+            desvincularVisitanteAction($db);
             break;
         default:
             http_response_code(400);
@@ -78,6 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($action) {
         case 'listar':
             listarCitasAction($db);
+            break;
+        case 'obtener':
+            obtenerCitaAction($db);
             break;
         case 'comprobar_institucion':
             comprobarInstitucionAction($db);
@@ -195,16 +207,17 @@ function crearCitaAction($db) {
             $documento = isset($_POST['documento']) ? trim($_POST['documento']) : '';
             $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
             $tipo_organizacion = isset($_POST['tipo_organizacion']) ? trim($_POST['tipo_organizacion']) : '';
+            $tipo_gestion = isset($_POST['tipo_gestion']) ? trim($_POST['tipo_gestion']) : 'publica';
             $ciudad_id = isset($_POST['ciudad_id']) ? $_POST['ciudad_id'] : '';
             $parroquia_id = isset($_POST['parroquia_id']) ? $_POST['parroquia_id'] : '';
             $detalles_direccion = isset($_POST['detalles_direccion']) ? trim($_POST['detalles_direccion']) : '';
             $contactosRaw = isset($_POST['contactos']) ? $_POST['contactos'] : [];
 
-            if (empty($documento) || empty($nombre) || empty($tipo_organizacion) || empty($ciudad_id) || empty($parroquia_id)) {
+            if (empty($documento) || empty($nombre) || empty($tipo_organizacion) || empty($tipo_gestion) || empty($ciudad_id) || empty($parroquia_id)) {
                 http_response_code(400);
                 echo json_encode([
                     "status" => "error",
-                    "message" => "Para registrar la institución se requiere RIF, Razón Social, Tipo de Organización, Ciudad y Parroquia."
+                    "message" => "Para registrar la institución se requiere RIF, Razón Social, Tipo, Gestión, Ciudad y Parroquia."
                 ]);
                 return;
             }
@@ -214,6 +227,7 @@ function crearCitaAction($db) {
             $instModel->setDocumento($documento);
             $instModel->setNombre($nombre);
             $instModel->setTipoOrganizacion($tipo_organizacion);
+            $instModel->setTipoGestion($tipo_gestion);
             $instModel->setCiudadId($ciudad_id);
             $instModel->setParroquiaId($parroquia_id);
             $instModel->setDetallesDireccion($detalles_direccion);
@@ -541,4 +555,233 @@ function obtenerDatosDashboardAction($db) {
         ]);
     }
 }
+
+/**
+ * Obtiene los detalles de una cita específica por su ID
+ */
+function obtenerCitaAction($db) {
+    $id = isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : null;
+
+    if (!$id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "ID de cita inválido o no suministrado."
+        ]);
+        return;
+    }
+
+    $cita = Cita::obtenerPorId($db, $id);
+
+    if ($cita) {
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "data" => $cita
+        ]);
+    } else {
+        http_response_code(404);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La cita no existe en el sistema."
+        ]);
+    }
+}
+
+/**
+ * Modifica una cita existente
+ */
+function editarCitaAction($db) {
+    $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
+    
+    if (!$id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El ID de la cita es requerido para editar."
+        ]);
+        return;
+    }
+
+    $recorrido_id = isset($_POST['recorrido_id']) ? $_POST['recorrido_id'] : '';
+    $fecha_visita = isset($_POST['fecha_visita']) ? trim($_POST['fecha_visita']) : '';
+    $hora_inicio = isset($_POST['hora_inicio']) ? trim($_POST['hora_inicio']) : '';
+    $metodo_pago = isset($_POST['metodo_pago']) ? trim($_POST['metodo_pago']) : '';
+    $pago_estado = isset($_POST['pago_estado']) ? trim($_POST['pago_estado']) : 'pendiente';
+    $estatus = isset($_POST['estatus']) ? trim($_POST['estatus']) : 'pendiente';
+
+    if (empty($fecha_visita) || empty($hora_inicio) || empty($metodo_pago) || empty($estatus)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Los campos fecha de visita, hora de inicio, método de pago y estado de la cita son requeridos."
+        ]);
+        return;
+    }
+
+    try {
+        // Obtener la cita actual para verificar existencia
+        $citaActual = Cita::obtenerPorId($db, $id);
+        if (!$citaActual) {
+            http_response_code(404);
+            echo json_encode([
+                "status" => "error",
+                "message" => "La cita seleccionada no existe en el sistema."
+            ]);
+            return;
+        }
+
+        $citaModel = new Cita($db);
+        $citaModel->setId($id);
+        $citaModel->setInstitucionId($citaActual['institucion_id']); // mantener institución asociada
+        $citaModel->setRecorridoId($recorrido_id);
+        $citaModel->setFechaVisita($fecha_visita);
+        $citaModel->setHoraInicio($hora_inicio);
+        $citaModel->setMetodoPago($metodo_pago);
+        $citaModel->setPagoEstado($pago_estado);
+        $citaModel->setEstatus($estatus);
+
+        if ($citaModel->actualizar()) {
+            http_response_code(200);
+            echo json_encode([
+                "status" => "success",
+                "message" => "La cita ha sido modificada con éxito."
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode([
+                "status" => "error",
+                "message" => "No se pudo actualizar la cita en la base de datos."
+            ]);
+        }
+    } catch (InvalidArgumentException $e) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => $e->getMessage()
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Error interno al actualizar la cita: " . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Vincula una lista de visitantes existentes a una cita
+ */
+function vincularVisitantesAction($db) {
+    $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
+    $visitante_ids = isset($_POST['visitante_ids']) ? $_POST['visitante_ids'] : [];
+
+    if (!$cita_id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El ID de la cita es requerido."
+        ]);
+        return;
+    }
+
+    if (!is_array($visitante_ids) || empty($visitante_ids)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Debe seleccionar al menos un visitante para vincular."
+        ]);
+        return;
+    }
+
+    try {
+        $db->beginTransaction();
+
+        $stmtVerificarLink = $db->prepare("SELECT id FROM asistencia_cita WHERE cita_id = :cita_id AND visitante_id = :visitante_id LIMIT 1");
+        $stmtInsertarLink = $db->prepare("INSERT INTO asistencia_cita (cita_id, visitante_id) VALUES (:cita_id, :visitante_id)");
+
+        $vinculados = 0;
+        foreach ($visitante_ids as $vid) {
+            $vidClean = filter_var($vid, FILTER_VALIDATE_INT);
+            if (!$vidClean) continue;
+
+            // Verificar si ya está vinculado
+            $stmtVerificarLink->bindParam(":cita_id", $cita_id, PDO::PARAM_INT);
+            $stmtVerificarLink->bindParam(":visitante_id", $vidClean, PDO::PARAM_INT);
+            $stmtVerificarLink->execute();
+            $linkExists = $stmtVerificarLink->fetchColumn();
+
+            if (!$linkExists) {
+                $stmtInsertarLink->bindParam(":cita_id", $cita_id, PDO::PARAM_INT);
+                $stmtInsertarLink->bindParam(":visitante_id", $vidClean, PDO::PARAM_INT);
+                $stmtInsertarLink->execute();
+                $vinculados++;
+            }
+        }
+
+        $db->commit();
+
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "message" => "Se han vinculado {$vinculados} visitantes a la cita exitosamente."
+        ]);
+    } catch (Exception $e) {
+        if ($db->inTransaction()) {
+            $db->rollBack();
+        }
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Error interno al vincular visitantes: " . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Remueve un visitante de la asistencia a una cita
+ */
+function desvincularVisitanteAction($db) {
+    $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
+    $visitante_id = isset($_POST['visitante_id']) ? filter_var($_POST['visitante_id'], FILTER_VALIDATE_INT) : null;
+
+    if (!$cita_id || !$visitante_id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El ID de la cita y del visitante son requeridos."
+        ]);
+        return;
+    }
+
+    try {
+        $query = "DELETE FROM asistencia_cita WHERE cita_id = :cita_id AND visitante_id = :visitante_id";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(":cita_id", $cita_id, PDO::PARAM_INT);
+        $stmt->bindParam(":visitante_id", $visitante_id, PDO::PARAM_INT);
+
+        if ($stmt->execute()) {
+            http_response_code(200);
+            echo json_encode([
+                "status" => "success",
+                "message" => "Visitante removido de la asistencia con éxito."
+            ]);
+        } else {
+            http_response_code(500);
+            echo json_encode([
+                "status" => "error",
+                "message" => "No se pudo remover al visitante de la asistencia."
+            ]);
+        }
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Error interno al remover visitante: " . $e->getMessage()
+        ]);
+    }
+}
+
+
+
 
