@@ -38,10 +38,7 @@ class Ruta {
     }
 
     public function setRecorridoId($recorrido_id) {
-        $this->recorrido_id = filter_var($recorrido_id, FILTER_VALIDATE_INT) ? (int)$recorrido_id : null;
-        if ($this->recorrido_id === null) {
-            throw new InvalidArgumentException("ID de recorrido inválido.");
-        }
+        $this->recorrido_id = (int)$recorrido_id;
     }
 
     public function getZonaId() {
@@ -49,10 +46,7 @@ class Ruta {
     }
 
     public function setZonaId($zona_id) {
-        $this->zona_id = filter_var($zona_id, FILTER_VALIDATE_INT) ? (int)$zona_id : null;
-        if ($this->zona_id === null) {
-            throw new InvalidArgumentException("ID de zona inválido.");
-        }
+        $this->zona_id = (int)$zona_id;
     }
 
     public function getOrden() {
@@ -60,10 +54,7 @@ class Ruta {
     }
 
     public function setOrden($orden) {
-        $this->orden = (filter_var($orden, FILTER_VALIDATE_INT) !== false) ? (int)$orden : null;
-        if ($this->orden === null || $this->orden < 0) {
-            throw new InvalidArgumentException("El orden debe ser un número entero no negativo.");
-        }
+        $this->orden = (int)$orden;
     }
 
     // =========================================================================

@@ -159,6 +159,25 @@ CREATE TABLE IF NOT EXISTS `directorio` (
     FOREIGN KEY (`entidad_id`) REFERENCES `entidades` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS modulos (
+  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `nombre` varchar(50) NOT NULL UNIQUE,
+  `label` varchar(100) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS permisos (
+  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `rol_id` int NOT NULL,
+  `modulo_id` int NOT NULL,
+  `puede_acceder` tinyint(1) NOT NULL DEFAULT '0',
+  CONSTRAINT fk_permisos_rol
+    FOREIGN KEY (`rol_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_permisos_modulo
+    FOREIGN KEY (`modulo_id`) REFERENCES `modulos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT uq_permiso UNIQUE (`rol_id`, `modulo_id`)
+);
+
+
 -- Carga de datos
 INSERT INTO `recorrido` (`nombre`) VALUES
 ('Abogados I'),
@@ -180,8 +199,7 @@ INSERT INTO `zonas` (`nombre`, `coordenadas`) VALUES
 ('Entrada Morán', '82.54,50.90');
 
 INSERT INTO `entidades` (`tipo_documento`, `documento`, `nombre`, `apellido`, `tipo_entidad`) VALUES
-('V', '28286982', 'Jose', 'De Marzo', 'persona'),
-('J', '009090', 's7ven', NULL, 'institucion');
+('V', '0000', 'Admin', 'Maestro', 'persona');
 
 INSERT INTO `roles` (`nombre`) VALUES
 ('superadmin'),
@@ -193,4 +211,43 @@ INSERT INTO `personal` (`entidad_id`, `rol_id`, `password`, `created_at`, `updat
 
 INSERT INTO `instituciones` (`entidad_id`, `tipo_organizacion`) VALUES
 (2, 'personal'); 
+
+-- Catálogo de módulos del sistema
+INSERT INTO `modulos` (`nombre`, `label`) VALUES
+('dashboard', 'Dashboard'),
+('citas', 'Citas'),
+('instituciones', 'Instituciones'),
+('recorridos', 'Recorridos'),
+('visitantes', 'Visitantes'),
+('personal', 'Personal'),
+('app', 'Configuración');
+
+-- Permisos por rol (rol_id: 1=superadmin, 2=admin, 3=guia | modulo_id según orden de INSERT)
+-- superadmin: acceso total
+INSERT INTO `permisos` (`rol_id`, `modulo_id`, `puede_acceder`) VALUES
+(1, 1, 1), -- superadmin > dashboard
+(1, 2, 1), -- superadmin > citas
+(1, 3, 1), -- superadmin > instituciones
+(1, 4, 1), -- superadmin > recorridos
+(1, 5, 1), -- superadmin > visitantes
+(1, 6, 1); -- superadmin > personal
+
+-- admin: sin acceso a personal
+INSERT INTO `permisos` (`rol_id`, `modulo_id`, `puede_acceder`) VALUES
+(2, 1, 1), -- admin > dashboard
+(2, 2, 1), -- admin > citas
+(2, 3, 1), -- admin > instituciones
+(2, 4, 1), -- admin > recorridos
+(2, 5, 1), -- admin > visitantes
+(2, 6, 0); -- admin > personal (denegado)
+
+-- guia: solo citas
+INSERT INTO `permisos` (`rol_id`, `modulo_id`, `puede_acceder`) VALUES
+(3, 1, 1), -- guia > dashboard
+(3, 2, 1), -- guia > citas
+(3, 3, 0), -- guia > instituciones (denegado)
+(3, 4, 0), -- guia > recorridos (denegado)
+(3, 5, 0), -- guia > visitantes (denegado)
+(3, 6, 0); -- guia > personal (denegado)
+
 COMMIT; 

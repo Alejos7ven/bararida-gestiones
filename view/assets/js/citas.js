@@ -15,9 +15,29 @@ $(document).ready(function() {
     let cacheCitas = [];
     let bookingCalendar = null;
 
+    // Variables de paginación de citas
+    let filteredCitas = [];
+    let currentPageCitas = 1;
+    const itemsPerPage = 10;
+
+    // Variables de paginación para el modal de visitantes
+    let cacheModalVisitantes = [];
+    let filteredModalVisitantes = [];
+    let currentPageModalVisitantes = 1;
+    const itemsPerPageModal = 10;
+
     // Cargar citas al iniciar
     listarCitas();
     cargarEstados();
+    cargarRecorridosDropdown();
+
+    // Abrir modal de agendar si viene del dashboard
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('agendar') === '1') {
+        setTimeout(function() {
+            $('#modalCrearCita').modal('show');
+        }, 300);
+    }
 
     // =========================================================================
     // 1. LISTAR CITAS (AJAX)
@@ -25,6 +45,7 @@ $(document).ready(function() {
     function listarCitas() {
         $tablaCitas.hide();
         $loader.show();
+        $('#paginacionCitas').hide();
 
         $.ajax({
             url: 'controllers/CitaController.php?action=listar',
@@ -32,80 +53,24 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 $loader.hide();
-                $tablaCitas.empty();
-
                 if (response.status === 'success') {
                     cacheCitas = response.data || [];
-                    if (cacheCitas.length > 0) {
-                    response.data.forEach(function(c) {
-                        // Badge de estatus de la cita
-                        let badgeEstatus = '';
-                        if (c.estatus === 'aprobado') {
-                            badgeEstatus = '<span class="badge-premium badge-premium-admin">Aprobada</span>';
-                        } else if (c.estatus === 'completado') {
-                            badgeEstatus = '<span class="badge-premium badge-premium-superadmin">Completada</span>';
-                        } else if (c.estatus === 'cancelado') {
-                            badgeEstatus = '<span class="badge-premium badge-premium-danger">Cancelada</span>';
-                        } else {
-                            badgeEstatus = '<span class="badge-premium badge-premium-guia">Pendiente</span>';
-                        }
-
-                        // Badge del estado del pago
-                        const badgePago = c.pago_estado === 'pagado' 
-                            ? '<span class="badge-premium badge-payment-paid">Pagado</span>'
-                            : '<span class="badge-premium badge-payment-pending">Pendiente</span>';
-
-                        // Badge de cantidad de visitantes
-                        const badgeVisitantes = `<span class="badge-premium btn-ver-visitantes ${parseInt(c.total_visitantes) > 0 ? 'badge-premium-info' : 'bg-secondary'}" data-id="${c.id}" data-name="${c.razon_social}" style="cursor: pointer;">${c.total_visitantes} visitantes</span>`;
-
-                        const btnImportarHtml = `
-                                        <button class="btn-action btn-action-edit btn-importar-visitantes" data-id="${c.id}" data-name="${c.razon_social}" title="Importar Visitantes (CSV)">
-                                            <!-- SVG Import -->
-                                            <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-                                        </button>
-                        `;
-
-                        const rowHtml = `
-                            <tr class="cita-row" data-search="${c.razon_social.toLowerCase()} ${c.RIF} ${c.id}">
-                                <td><strong>#CIT-${c.id}</strong></td>
-                                <td>
-                                    <span style="white-space: nowrap;"><strong>${c.tipo_documento}-${c.RIF}</strong></span><br>
-                                    <small class="text-muted" style="font-size:0.8rem;">${c.razon_social}</small>
-                                </td>
-                                <td>
-                                    ${formatDate(c.fecha_visita)}<br>
-                                    <small class="text-success fw-600">${formatTime(c.hora_inicio)}</small>
-                                </td>
-                                <td>${badgeVisitantes}</td>
-                                <td><span class="text-muted italic">Carlos Rodríguez</span></td>
-                                <td>${badgeEstatus}</td>
-                                <td>${badgePago}</td>
-                                <td>
-                                    <div class="table-actions">
-                                        ${btnImportarHtml}
-                                        <button class="btn-action btn-action-edit btn-editar-cita" data-id="${c.id}" title="Editar Cita">
-                                            <!-- SVG Edit -->
-                                            <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                                        </button>
-                                        <a href="controllers/CitaController.php?action=descargar_plantilla&cita_id=${c.id}" class="btn-action btn-action-edit" title="Descargar Plantilla Excel/CSV" target="_blank">
-                                            <!-- SVG Download -->
-                                            <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-                                        </a>
-                                        <button class="btn-action btn-action-delete btn-eliminar-cita" data-id="${c.id}" data-name="${c.razon_social}" title="Eliminar Cita">
-                                            <!-- SVG Trash -->
-                                            <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
-                        $tablaCitas.append(rowHtml);
-                    });
-                    $tablaCitas.fadeIn(300);
+                    
+                    // Al recargar, intentar mantener la búsqueda actual
+                    const query = $('#searchCitas').val().toLowerCase().trim();
+                    if (query === '') {
+                        filteredCitas = cacheCitas;
                     } else {
-                        $tablaCitas.append('<tr><td colspan="8" class="text-center text-muted py-4">No hay citas agendadas registradas en el sistema.</td></tr>');
-                        $tablaCitas.fadeIn(300);
+                        filteredCitas = cacheCitas.filter(function(c) {
+                            const searchStr = `${c.razon_social.toLowerCase()} ${c.RIF.toLowerCase()} ${c.id} ${c.tipo_documento.toLowerCase()}`;
+                            return searchStr.indexOf(query) > -1;
+                        });
                     }
+
+                    renderCitasTable();
+                } else {
+                    $tablaCitas.empty().append('<tr><td colspan="8" class="text-center text-muted py-4">No se pudo cargar el listado de citas.</td></tr>');
+                    $tablaCitas.fadeIn(300);
                 }
             },
             error: function(xhr) {
@@ -115,22 +80,194 @@ $(document).ready(function() {
         });
     }
 
+    function renderCitasTable() {
+        $tablaCitas.empty();
+        const totalRecords = filteredCitas.length;
+
+        if (totalRecords === 0) {
+            $tablaCitas.append('<tr><td colspan="8" class="text-center text-muted py-4">No se encontraron citas registradas.</td></tr>');
+            $('#paginacionCitas').hide();
+            $tablaCitas.fadeIn(300);
+            return;
+        }
+
+        const totalPages = Math.ceil(totalRecords / itemsPerPage);
+
+        if (currentPageCitas > totalPages) {
+            currentPageCitas = totalPages;
+        }
+        if (currentPageCitas < 1) {
+            currentPageCitas = 1;
+        }
+
+        const startIdx = (currentPageCitas - 1) * itemsPerPage;
+        const endIdx = Math.min(startIdx + itemsPerPage, totalRecords);
+        const pageData = filteredCitas.slice(startIdx, endIdx);
+
+        pageData.forEach(function(c) {
+            let badgeEstatus = '';
+            if (c.estatus === 'aprobado') {
+                badgeEstatus = '<span class="badge-premium badge-premium-admin">Aprobada</span>';
+            } else if (c.estatus === 'completado') {
+                badgeEstatus = '<span class="badge-premium badge-premium-superadmin">Completada</span>';
+            } else if (c.estatus === 'cancelado') {
+                badgeEstatus = '<span class="badge-premium badge-premium-danger">Cancelada</span>';
+            } else {
+                badgeEstatus = '<span class="badge-premium badge-premium-guia">Pendiente</span>';
+            }
+
+            const badgePago = c.pago_estado === 'pagado' 
+                ? '<span class="badge-premium badge-payment-paid">Pagado</span>'
+                : '<span class="badge-premium badge-payment-pending">Pendiente</span>';
+
+            const badgeVisitantes = `<span class="badge-premium btn-ver-visitantes ${parseInt(c.total_visitantes) > 0 ? 'badge-premium-info' : 'bg-secondary'}" data-id="${c.id}" data-name="${c.razon_social}" style="cursor: pointer;">${c.total_visitantes} visitantes</span>`;
+
+            const btnImportarHtml = `
+                <button class="btn-action btn-action-edit btn-importar-visitantes" data-id="${c.id}" data-name="${c.razon_social}" title="Importar Visitantes (CSV)">
+                    <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                </button>
+            `;
+
+            // Guía asignado o pendiente
+            const guiaAsignado = c.guia_nombre ? `${c.guia_nombre} ${c.guia_apellido || ''}` : '<span class="text-muted italic">No asignado</span>';
+
+            const rowHtml = `
+                <tr class="cita-row">
+                    <td><strong>#CIT-${c.id}</strong></td>
+                    <td>
+                        <span style="white-space: nowrap;"><strong>${c.tipo_documento}-${c.RIF}</strong></span><br>
+                        <small class="text-muted" style="font-size:0.8rem;">${c.razon_social}</small>
+                    </td>
+                    <td>
+                        ${formatDate(c.fecha_visita)}<br>
+                        <small class="text-success fw-600">${formatTime(c.hora_inicio)}</small>
+                    </td>
+                    <td>${badgeVisitantes}</td>
+                    <td><span class="text-muted italic">${guiaAsignado}</span></td>
+                    <td>${badgeEstatus}</td>
+                    <td>${badgePago}</td>
+                    <td>
+                        <div class="table-actions">
+                            ${btnImportarHtml}
+                            <button class="btn-action btn-action-edit btn-editar-cita" data-id="${c.id}" title="Editar Cita">
+                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                            </button>
+                            <a href="controllers/CitaController.php?action=descargar_plantilla&cita_id=${c.id}" class="btn-action btn-action-edit" title="Descargar Plantilla Excel (.xlsx)" target="_blank">
+                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                            </a>
+                            <button class="btn-action btn-action-delete btn-eliminar-cita" data-id="${c.id}" data-name="${c.razon_social}" title="Eliminar Cita">
+                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            $tablaCitas.append(rowHtml);
+        });
+
+        // Actualizar datos informativos
+        $('#pagStartCitas').text(startIdx + 1);
+        $('#pagEndCitas').text(endIdx);
+        $('#pagTotalCitas').text(totalRecords);
+
+        // Renderizar controles de paginación
+        const $controls = $('#paginationControlsCitas');
+        $controls.empty();
+
+        const prevDisabled = currentPageCitas === 1 ? 'disabled' : '';
+        $controls.append(`
+            <li class="page-item ${prevDisabled}">
+                <a class="page-link btn-pag-citas" data-page="${currentPageCitas - 1}" href="javascript:void(0)">&laquo; Anterior</a>
+            </li>
+        `);
+
+        // Botones de Páginas (Ventana Deslizante de Máximo 10)
+        const maxVisibleCitas = 10;
+        let startPageCitas = Math.max(1, currentPageCitas - Math.floor(maxVisibleCitas / 2));
+        let endPageCitas = Math.min(totalPages, startPageCitas + maxVisibleCitas - 1);
+
+        if (endPageCitas - startPageCitas + 1 < maxVisibleCitas) {
+            startPageCitas = Math.max(1, endPageCitas - maxVisibleCitas + 1);
+        }
+
+        for (let i = startPageCitas; i <= endPageCitas; i++) {
+            const activeClass = currentPageCitas === i ? 'active' : '';
+            $controls.append(`
+                <li class="page-item ${activeClass}">
+                    <a class="page-link btn-pag-citas" data-page="${i}" href="javascript:void(0)">${i}</a>
+                </li>
+            `);
+        }
+
+        const nextDisabled = currentPageCitas === totalPages ? 'disabled' : '';
+        $controls.append(`
+            <li class="page-item ${nextDisabled}">
+                <a class="page-link btn-pag-citas" data-page="${currentPageCitas + 1}" href="javascript:void(0)">Siguiente &raquo;</a>
+            </li>
+        `);
+
+        $('#paginacionCitas').removeClass('d-none').show();
+        $tablaCitas.fadeIn(300);
+    }
+
+    // Clicks en paginación de citas
+    $(document).on('click', '.btn-pag-citas', function(e) {
+        e.preventDefault();
+        const page = parseInt($(this).data('page'));
+        if (page && page !== currentPageCitas) {
+            currentPageCitas = page;
+            renderCitasTable();
+        }
+    });
+
     // Buscador en tiempo real de citas
     $('#searchCitas').on('input', function() {
         const query = $(this).val().toLowerCase().trim();
         if (query === '') {
-            $('.cita-row').show();
-            return;
+            filteredCitas = cacheCitas;
+        } else {
+            filteredCitas = cacheCitas.filter(function(c) {
+                const searchStr = `${c.razon_social.toLowerCase()} ${c.RIF.toLowerCase()} ${c.id} ${c.tipo_documento.toLowerCase()}`;
+                return searchStr.indexOf(query) > -1;
+            });
         }
-        $('.cita-row').each(function() {
-            const searchText = $(this).data('search');
-            if (searchText.indexOf(query) > -1) {
-                $(this).show();
-            } else {
-                $(this).hide();
+        currentPageCitas = 1;
+        renderCitasTable();
+    });
+
+    // =========================================================================
+    // 1.5. CARGAR RECORRIDOS DINÁMICAMENTE PARA SELECTORES (AJAX)
+    // =========================================================================
+    function cargarRecorridosDropdown() {
+        const $recorridoSelect = $('#recorrido_id');
+        const $editRecorridoSelect = $('#edit_recorrido_id');
+        if ($recorridoSelect.length === 0 && $editRecorridoSelect.length === 0) return;
+
+        $.ajax({
+            url: 'controllers/RecorridoController.php?action=listar_recorridos_simple',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    const recorridos = response.data || [];
+                    
+                    // Rellenar select de crear cita
+                    $recorridoSelect.empty().append('<option value="">Ninguno / Recorrido Libre</option>');
+                    // Rellenar select de editar cita
+                    $editRecorridoSelect.empty().append('<option value="">Ninguno / Recorrido Libre</option>');
+                    
+                    recorridos.forEach(function(rec) {
+                        $recorridoSelect.append(`<option value="${rec.id}">${rec.nombre}</option>`);
+                        $editRecorridoSelect.append(`<option value="${rec.id}">${rec.nombre}</option>`);
+                    });
+                }
+            },
+            error: function() {
+                $recorridoSelect.empty().append('<option value="">Error al cargar recorridos</option>');
+                $editRecorridoSelect.empty().append('<option value="">Error al cargar recorridos</option>');
             }
         });
-    });
+    }
 
     // =========================================================================
     // 2. CARGA DE UBICACIONES EN CASCADA
@@ -164,22 +301,7 @@ $(document).ready(function() {
 
         if (!estadoId) return;
 
-        // Cargar Municipios
-        $.ajax({
-            url: `controllers/LocationController.php?action=municipios&estado_id=${estadoId}`,
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    $selectMun.prop('disabled', false);
-                    response.data.forEach(function(m) {
-                        $selectMun.append(`<option value="${m.id_municipio}">${m.municipio}</option>`);
-                    });
-                }
-            }
-        });
-
-        // Cargar Ciudades
+        // Cargar Ciudades al seleccionar Estado
         $.ajax({
             url: `controllers/LocationController.php?action=ciudades&estado_id=${estadoId}`,
             method: 'GET',
@@ -195,6 +317,33 @@ $(document).ready(function() {
         });
     });
 
+    $('#ciudad_id').on('change', function() {
+        const ciudadId = $(this).val();
+        const estadoId = $('#estado_id').val();
+        const $selectMun = $('#municipio_id');
+        const $selectPar = $('#parroquia_id');
+
+        $selectMun.empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
+        $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
+
+        if (!ciudadId || !estadoId) return;
+
+        // Cargar Municipios al seleccionar Ciudad (usando el estadoId actual)
+        $.ajax({
+            url: `controllers/LocationController.php?action=municipios&estado_id=${estadoId}`,
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    $selectMun.prop('disabled', false);
+                    response.data.forEach(function(m) {
+                        $selectMun.append(`<option value="${m.id_municipio}">${m.municipio}</option>`);
+                    });
+                }
+            }
+        });
+    });
+
     $('#municipio_id').on('change', function() {
         const municipioId = $(this).val();
         const $selectPar = $('#parroquia_id');
@@ -203,7 +352,7 @@ $(document).ready(function() {
 
         if (!municipioId) return;
 
-        // Cargar Parroquias
+        // Cargar Parroquias al seleccionar Municipio
         $.ajax({
             url: `controllers/LocationController.php?action=parroquias&municipio_id=${municipioId}`,
             method: 'GET',
@@ -301,75 +450,159 @@ $(document).ready(function() {
     }
 
     // BOTÓN: VERIFICAR RIF (PASO 1)
-    $('#btnVerificarRif').on('click', function() {
-        const tipoDoc = $('#tipo_documento_check').val();
-        const RIF = $('#cedula_check').val().trim();
-        const $btn = $(this);
+    // AUTOCUMPLETADO DE INSTITUCIONES (PASO 1)
+    let searchTimeout = null;
+
+    $('#buscar_institucion_autocomplete').on('input', function() {
+        const query = $(this).val().trim();
+        const $suggestions = $('#autocomplete_suggestions');
         const $statusBox = $('#rifCheckStatus');
 
-        if (RIF === '' || !/^\d+$/.test(RIF)) {
-            $statusBox.removeClass('alert-success alert-warning alert-danger')
-                      .addClass('alert-danger')
-                      .text('Por favor, ingrese un número de RIF válido (solo dígitos).')
-                      .fadeIn(200);
+        clearTimeout(searchTimeout);
+        $statusBox.hide();
+
+        if (query.length < 2) {
+            $suggestions.hide().empty();
+            $('#btnWizardNext').prop('disabled', true);
             return;
         }
 
-        $btn.prop('disabled', true).text('Verificando...');
-        $statusBox.hide();
+        searchTimeout = setTimeout(function() {
+            $.ajax({
+                url: `controllers/InstitucionController.php?action=buscar_autocomplete&q=${encodeURIComponent(query)}`,
+                method: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    $suggestions.empty();
+                    if (response.status === 'success') {
+                        const results = response.data;
+                        if (results.length > 0) {
+                            results.forEach(function(inst) {
+                                const itemHtml = `
+                                    <button type="button" class="dropdown-item py-2 px-3 autocomplete-item" style="display: block; width: 100%; text-align: left;" data-json='${JSON.stringify(inst)}'>
+                                        <div class="fw-bold text-success">${inst.nombre}</div>
+                                        <small class="text-muted">${inst.tipo_documento}-${inst.documento} • ${inst.tipo_organizacion} (${inst.tipo_gestion})</small>
+                                    </button>
+                                `;
+                                $suggestions.append(itemHtml);
+                            });
+                        }
 
-        $.ajax({
-            url: `controllers/CitaController.php?action=comprobar_institucion&tipo_documento=${tipoDoc}&documento=${RIF}`,
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                $btn.prop('disabled', false).text('Verificar RIF');
-                
-                if (response.status === 'success') {
-                    // Pasar los valores de paso 1 al formulario final
-                    $('#final_tipo_documento').val(tipoDoc);
-                    $('#final_documento').val(RIF);
-
-                    if (response.exists) {
-                        // Guardar el ID de la institución
-                        selectedInstitutionId = response.data.institucion_id;
-                        $('#final_institucion_id').val(selectedInstitutionId);
-
-                        // Rellenar campos del Paso 2 (Solo Lectura)
-                        prellenarDatosInstitucion(response.data);
-
-                        $statusBox.removeClass('alert-danger alert-warning')
-                                  .addClass('alert-success')
-                                  .html(`<strong>✓ Institución Encontrada:</strong> ${response.data.nombre}. Redirigiendo...`)
-                                  .fadeIn(200);
-                    } else {
-                        // Habilitar campos del Paso 2 para creación
-                        selectedInstitutionId = null;
-                        $('#final_institucion_id').val('');
-                        limpiarYEditarDatosInstitucion();
-
-                        $statusBox.removeClass('alert-danger alert-success')
-                                  .addClass('alert-warning')
-                                  .html('<strong>⚠ Institución no registrada:</strong> Redirigiendo para registrar...')
-                                  .fadeIn(200);
+                        // Agregar opción para registrar como nueva institución
+                        const queryIsDoc = /^[JGVjgvEPep]?\d+$/.test(query.replace(/[-]/g, ''));
+                        const optionText = queryIsDoc ? `Registrar nueva con RIF: ${query}` : `Registrar nueva institución: "${query}"`;
+                        const addNewHtml = `
+                            <div class="dropdown-divider"></div>
+                            <button type="button" class="dropdown-item py-2 px-3 text-primary fw-bold" id="btn_new_inst_autocomplete" style="display: block; width: 100%; text-align: left;">
+                                <span class="me-1">+</span> ${optionText}
+                            </button>
+                        `;
+                        $suggestions.append(addNewHtml);
+                        $suggestions.show();
                     }
-                    
-                    // Habilitar avance del wizard y transición automática
-                    $('#btnWizardNext').prop('disabled', false);
-                    setTimeout(function() {
-                        currentStep = 2;
-                        showStep(currentStep);
-                    }, 800);
+                },
+                error: function() {
+                    console.error('Error al realizar búsqueda de autocompletado');
                 }
-            },
-            error: function() {
-                $btn.prop('disabled', false).text('Verificar RIF');
-                $statusBox.removeClass('alert-success alert-warning')
-                          .addClass('alert-danger')
-                          .text('Error de red al comprobar RIF. Intente nuevamente.')
-                          .fadeIn(200);
-            }
+            });
+        }, 300);
+    });
+
+    // Manejar selección de sugerencia
+    $(document).on('click', '.autocomplete-item', function() {
+        const inst = $(this).data('json');
+        selectedInstitutionId = inst.id;
+        
+        $('#buscar_institucion_autocomplete').val(`${inst.tipo_documento}-${inst.documento} - ${inst.nombre}`);
+        $('#autocomplete_suggestions').hide().empty();
+
+        // Rellenar datos
+        $('#final_tipo_documento').val(inst.tipo_documento);
+        $('#final_documento').val(inst.documento);
+        $('#final_institucion_id').val(selectedInstitutionId);
+
+        prellenarDatosInstitucion(inst);
+        $('#nueva_institucion_rif_row').hide();
+
+        $('#rifCheckStatus').removeClass('alert-danger alert-warning')
+                            .addClass('alert-success')
+                            .html(`<strong>✓ Institución Seleccionada:</strong> ${inst.nombre}. Redirigiendo...`)
+                            .fadeIn(200);
+
+        $('#btnWizardNext').prop('disabled', false);
+
+        // Transición automática al paso 2
+        setTimeout(function() {
+            currentStep = 2;
+            showStep(currentStep);
+        }, 800);
+    });
+
+    // Manejar registrar nueva institución desde autocompletado
+    $(document).on('click', '#btn_new_inst_autocomplete', function() {
+        const query = $('#buscar_institucion_autocomplete').val().trim();
+        $('#autocomplete_suggestions').hide().empty();
+
+        selectedInstitutionId = null;
+        $('#final_institucion_id').val('');
+        
+        // Intentar parsear el query para ver si es RIF o Nombre
+        let docPart = '';
+        let tipoDocPart = 'J';
+        let nombrePart = '';
+
+        // Ejemplos: J-12345678, J12345678, 12345678
+        const cleanQuery = query.replace(/[-]/g, '');
+        const docMatch = cleanQuery.match(/^([JGVjgvEPep])?(\d+)$/);
+        if (docMatch) {
+            tipoDocPart = docMatch[1] ? docMatch[1].toUpperCase() : 'J';
+            docPart = docMatch[2];
+        } else {
+            nombrePart = query;
+        }
+
+        limpiarYEditarDatosInstitucion();
+
+        $('#final_tipo_documento').val(tipoDocPart);
+        $('#final_documento').val(docPart);
+
+        // Mostrar y precargar campos RIF en Paso 2
+        $('#tipo_documento_inst').val(tipoDocPart);
+        $('#documento_inst').val(docPart);
+        $('#nueva_institucion_rif_row').show();
+
+        // Sincronizar inputs de RIF en tiempo real
+        $('#tipo_documento_inst').off('change').on('change', function() {
+            $('#final_tipo_documento').val($(this).val());
         });
+        $('#documento_inst').off('input').on('input', function() {
+            $('#final_documento').val($(this).val().replace(/[^0-9]/g, ''));
+        });
+
+        // Si se extraxo nombre, precargarlo en el formulario de paso 2
+        if (nombrePart) {
+            $('#nombre_institucion').val(nombrePart);
+        }
+
+        // Mostrar warning toast indicando que es nueva
+        $('#rifCheckStatus').removeClass('alert-danger alert-success')
+                            .addClass('alert-warning')
+                            .html('<strong>⚠ Institución no registrada:</strong> Redirigiendo para registrar...')
+                            .fadeIn(200);
+
+        $('#btnWizardNext').prop('disabled', false);
+
+        setTimeout(function() {
+            currentStep = 2;
+            showStep(currentStep);
+        }, 800);
+    });
+
+    // Cerrar sugerencias al hacer clic afuera
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#buscar_institucion_autocomplete, #autocomplete_suggestions').length) {
+            $('#autocomplete_suggestions').hide();
+        }
     });
 
     // BOTÓN: SIGUIENTE / GUARDAR
@@ -379,43 +612,17 @@ $(document).ready(function() {
             currentStep = 2;
             showStep(currentStep);
         } else if (currentStep === 2) {
-            // Validaciones Paso 2 (Solo si es nueva institución)
-            if (selectedInstitutionId === null) {
-                const nombre = $('#nombre_institucion').val().trim();
-                const tipoOrg = $('#tipo_organizacion').val();
-                const ciudadId = $('#ciudad_id').val();
-                const parroquiaId = $('#parroquia_id').val();
-                
-                if (nombre === '' || !tipoOrg || !ciudadId || !parroquiaId) {
-                    alert('Por favor, rellene todos los campos obligatorios de la institución.');
-                    return;
-                }
-
-                // Validar contactos
-                let contactoValido = false;
-                $('.contact-input').each(function() {
-                    if ($(this).val().trim() !== '') {
-                        contactoValido = true;
-                    }
-                });
-
-                if (!contactoValido) {
-                    alert('Debe registrar al menos un número de contacto válido en el directorio.');
-                    return;
-                }
+            // Validaciones Paso 2 usando jquery-validate
+            if (!$('#formCrearCita').valid()) {
+                return;
             }
 
             // Ir al paso 3
             currentStep = 3;
             showStep(currentStep);
         } else if (currentStep === 3) {
-            // Validaciones Paso 3 (Cita)
-            const fechaVisita = $('#fecha_visita').val();
-            const horaInicio = $('#hora_inicio').val();
-            const metodoPago = $('#metodo_pago').val();
-
-            if (!fechaVisita || !horaInicio || !metodoPago) {
-                alert('Por favor, ingrese todos los datos obligatorios para agendar la cita.');
+            // Validaciones Paso 3 usando jquery-validate
+            if (!$('#formCrearCita').valid()) {
                 return;
             }
 
@@ -611,19 +818,13 @@ $(document).ready(function() {
 
     $('#formEditarCita').on('submit', function(e) {
         e.preventDefault();
-        const $btn = $('#btnGuardarEditCita');
+        const $form = $(this);
 
-        // Validaciones básicas
-        const fecha = $('#edit_fecha_visita').val();
-        const hora = $('#edit_hora_inicio').val();
-        const metodo = $('#edit_metodo_pago').val();
-        const estatus = $('#edit_estatus').val();
-
-        if (!fecha || !hora || !metodo || !estatus) {
-            alert('Por favor, rellene todos los campos obligatorios.');
+        if (!$form.valid()) {
             return;
         }
 
+        const $btn = $('#btnGuardarEditCita');
         $btn.prop('disabled', true).text('Guardando...');
 
         $.ajax({
@@ -759,12 +960,12 @@ $(document).ready(function() {
     function handleFileSelect(file) {
         if (!file) return;
 
-        // Validar extensión (.csv)
+        // Aceptar .xlsx y .csv
         const name = file.name;
         const extension = name.split('.').pop().toLowerCase();
 
-        if (extension !== 'csv') {
-            alert('Por favor, seleccione únicamente un archivo en formato CSV.');
+        if (extension !== 'csv' && extension !== 'xlsx') {
+            alert('Por favor, seleccione un archivo Excel (.xlsx) o CSV (.csv).');
             $fileInput.val('');
             selectedCsvFile = null;
             $fileInfo.hide();
@@ -777,7 +978,8 @@ $(document).ready(function() {
 
         // Mostrar detalles del archivo
         const sizeKB = (file.size / 1024).toFixed(2);
-        $fileInfo.html(`📂 Archivo listo: <strong>${name}</strong> (${sizeKB} KB)`).fadeIn(200);
+        const icon = extension === 'xlsx' ? '📊' : '📂';
+        $fileInfo.html(`${icon} Archivo listo: <strong>${name}</strong> (${sizeKB} KB)`).fadeIn(200);
         $('#btnSiguientePrevisualizar').prop('disabled', false);
     }
 
@@ -785,28 +987,69 @@ $(document).ready(function() {
     $('#btnSiguientePrevisualizar').on('click', function() {
         if (!selectedCsvFile) return;
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            const text = e.target.result;
-            const visitors = parseCsvToJSON(text);
+        const extension = selectedCsvFile.name.split('.').pop().toLowerCase();
 
+        function renderPreview(visitors) {
             $('#importPreviewTableBody').empty();
             if (visitors.length > 0) {
                 visitors.forEach(function(v) {
                     $('#importPreviewTableBody').append(renderPreviewRow(v));
                 });
             } else {
-                // Si está vacío, agregar al menos una fila en blanco
                 $('#importPreviewTableBody').append(renderPreviewRow({cedula: '', nombres: '', apellidos: '', fecha_nacimiento: ''}));
             }
-
             // Cambiar visibilidad de paneles
             $('#importUploadPanel').hide();
             $('#importUploadFooter').attr('style', 'display: none !important;');
             $('#importPreviewPanel').show();
             $('#importPreviewFooter').attr('style', 'display: flex !important;');
-        };
-        reader.readAsText(selectedCsvFile);
+        }
+
+        if (extension === 'xlsx') {
+            // ── Parsear con SheetJS ──────────────────────────────────────────
+            if (typeof XLSX === 'undefined') {
+                alert('La librería de lectura Excel no está disponible. Intente recargar la página.');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const workbook  = XLSX.read(e.target.result, { type: 'array', cellDates: false });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet     = workbook.Sheets[sheetName];
+                    // Convertir a array de arrays (sin encabezado, raw strings)
+                    const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', raw: false });
+
+                    const visitors = [];
+                    for (let i = 1; i < rawRows.length; i++) { // i=1 salta la fila de cabecera
+                        const row = rawRows[i];
+                        const ced  = String(row[0] || '').trim();
+                        const nom  = String(row[1] || '').trim();
+                        const ape  = String(row[2] || '').trim();
+                        const fNac = String(row[3] || '').trim();
+
+                        // Omitir fila de ejemplo y filas vacías
+                        if (ced === '12345678' && nom === 'Pedro' && ape === 'Pérez') continue;
+                        if (nom === '' && ape === '') continue;
+
+                        visitors.push({ cedula: ced, nombres: nom, apellidos: ape, fecha_nacimiento: sanitizeCsvDate(fNac) });
+                    }
+                    renderPreview(visitors);
+                } catch (err) {
+                    alert('No se pudo leer el archivo Excel. Asegúrese de que no esté dañado o protegido.\n\nDetalle: ' + err.message);
+                }
+            };
+            reader.readAsArrayBuffer(selectedCsvFile);
+
+        } else {
+            // ── Parsear CSV (comportamiento existente) ───────────────────────
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const visitors = parseCsvToJSON(e.target.result);
+                renderPreview(visitors);
+            };
+            reader.readAsText(selectedCsvFile);
+        }
     });
 
     // Botón: Atrás (Volver a carga de archivo)
@@ -1008,7 +1251,8 @@ $(document).ready(function() {
 
     function cargarVisitantesCita(id) {
         $('#tablaVerVisitantesBody').empty().append('<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-success" role="status"></div><br><small class="text-muted mt-2 d-block">Cargando listado de visitantes...</small></td></tr>');
-        
+        $('#paginacionModalVisitantes').hide();
+
         return $.ajax({
             url: `controllers/CitaController.php?action=listar_visitantes&cita_id=${id}`,
             method: 'GET',
@@ -1016,23 +1260,20 @@ $(document).ready(function() {
             success: function(response) {
                 $('#tablaVerVisitantesBody').empty();
                 currentVisitorIds = [];
-                if (response.status === 'success' && response.data.length > 0) {
-                    response.data.forEach(function(v, idx) {
+                if (response.status === 'success') {
+                    cacheModalVisitantes = response.data || [];
+                    
+                    cacheModalVisitantes.forEach(function(v) {
                         currentVisitorIds.push(parseInt(v.id));
-                        const cedula = v.cedula ? v.cedula : '<span class="text-muted italic">Sin Cédula (Menor)</span>';
-                        const fechaNac = v.fecha_nacimiento ? formatDate(v.fecha_nacimiento) : '<span class="text-muted italic">N/E</span>';
-                        $('#tablaVerVisitantesBody').append(`
-                            <tr>
-                                <td class="text-center fw-600">${idx + 1}</td>
-                                <td><strong>${cedula}</strong></td>
-                                <td>${v.nombres} ${v.apellidos}</td>
-                                <td class="text-center">${fechaNac}</td>
-                                <td class="text-center">
-                                    <button type="button" class="btn-quitar-visitante-asistencia btn-remove-contact" data-visitante-id="${v.id}" title="Remover de la asistencia" style="width:24px; height:24px; font-size:10px; padding:0; display:inline-flex; align-items:center; justify-content:center;">✕</button>
-                                </td>
-                            </tr>
-                        `);
                     });
+
+                    filteredModalVisitantes = cacheModalVisitantes;
+                    // Mantener en la misma página si es posible o ir a la 1
+                    if (currentPageModalVisitantes < 1) {
+                        currentPageModalVisitantes = 1;
+                    }
+                    
+                    renderModalVisitantesTable();
                 } else {
                     $('#tablaVerVisitantesBody').append('<tr><td colspan="5" class="text-center text-muted py-4">No se encontraron visitantes registrados para esta cita.</td></tr>');
                 }
@@ -1046,6 +1287,100 @@ $(document).ready(function() {
             }
         });
     }
+
+    function renderModalVisitantesTable() {
+        $('#tablaVerVisitantesBody').empty();
+        const totalRecords = filteredModalVisitantes.length;
+
+        if (totalRecords === 0) {
+            $('#tablaVerVisitantesBody').append('<tr><td colspan="5" class="text-center text-muted py-4">No se encontraron visitantes registrados para esta cita.</td></tr>');
+            $('#paginacionModalVisitantes').hide();
+            return;
+        }
+
+        const totalPages = Math.ceil(totalRecords / itemsPerPageModal);
+
+        if (currentPageModalVisitantes > totalPages) {
+            currentPageModalVisitantes = totalPages;
+        }
+        if (currentPageModalVisitantes < 1) {
+            currentPageModalVisitantes = 1;
+        }
+
+        const startIdx = (currentPageModalVisitantes - 1) * itemsPerPageModal;
+        const endIdx = Math.min(startIdx + itemsPerPageModal, totalRecords);
+        const pageData = filteredModalVisitantes.slice(startIdx, endIdx);
+
+        pageData.forEach(function(v, idx) {
+            const actualIdx = startIdx + idx + 1;
+            const cedula = v.cedula ? v.cedula : '<span class="text-muted italic">Sin Cédula (Menor)</span>';
+            const fechaNac = v.fecha_nacimiento ? formatDate(v.fecha_nacimiento) : '<span class="text-muted italic">N/E</span>';
+            $('#tablaVerVisitantesBody').append(`
+                <tr>
+                    <td class="text-center fw-600">${actualIdx}</td>
+                    <td><strong>${cedula}</strong></td>
+                    <td>${v.nombres} ${v.apellidos}</td>
+                    <td class="text-center">${fechaNac}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn-quitar-visitante-asistencia btn-remove-contact" data-visitante-id="${v.id}" title="Remover de la asistencia" style="width:24px; height:24px; font-size:10px; padding:0; display:inline-flex; align-items:center; justify-content:center;">✕</button>
+                    </td>
+                </tr>
+            `);
+        });
+
+        // Actualizar datos informativos
+        $('#pagStartModalVisitantes').text(startIdx + 1);
+        $('#pagEndModalVisitantes').text(endIdx);
+        $('#pagTotalModalVisitantes').text(totalRecords);
+
+        // Renderizar controles de paginación
+        const $controls = $('#paginationControlsModalVisitantes');
+        $controls.empty();
+
+        const prevDisabled = currentPageModalVisitantes === 1 ? 'disabled' : '';
+        $controls.append(`
+            <li class="page-item ${prevDisabled}">
+                <a class="page-link btn-pag-modal-visitantes" data-page="${currentPageModalVisitantes - 1}" href="javascript:void(0)">&laquo; Anterior</a>
+            </li>
+        `);
+
+        // Botones de Páginas (Ventana Deslizante de Máximo 10)
+        const maxVisibleModal = 10;
+        let startPageModal = Math.max(1, currentPageModalVisitantes - Math.floor(maxVisibleModal / 2));
+        let endPageModal = Math.min(totalPages, startPageModal + maxVisibleModal - 1);
+
+        if (endPageModal - startPageModal + 1 < maxVisibleModal) {
+            startPageModal = Math.max(1, endPageModal - maxVisibleModal + 1);
+        }
+
+        for (let i = startPageModal; i <= endPageModal; i++) {
+            const activeClass = currentPageModalVisitantes === i ? 'active' : '';
+            $controls.append(`
+                <li class="page-item ${activeClass}">
+                    <a class="page-link btn-pag-modal-visitantes" data-page="${i}" href="javascript:void(0)">${i}</a>
+                </li>
+            `);
+        }
+
+        const nextDisabled = currentPageModalVisitantes === totalPages ? 'disabled' : '';
+        $controls.append(`
+            <li class="page-item ${nextDisabled}">
+                <a class="page-link btn-pag-modal-visitantes" data-page="${currentPageModalVisitantes + 1}" href="javascript:void(0)">Siguiente &raquo;</a>
+            </li>
+        `);
+
+        $('#paginacionModalVisitantes').removeClass('d-none').show();
+    }
+
+    // Clicks en paginación del modal
+    $(document).on('click', '.btn-pag-modal-visitantes', function(e) {
+        e.preventDefault();
+        const page = parseInt($(this).data('page'));
+        if (page && page !== currentPageModalVisitantes) {
+            currentPageModalVisitantes = page;
+            renderModalVisitantesTable();
+        }
+    });
 
     $(document).on('click', '.btn-ver-visitantes', function() {
         const id = $(this).data('id');

@@ -33,6 +33,7 @@ if (!isset($_SESSION['personal'])) {
 
 // Incluir dependencias
 require_once __DIR__ . "/../config/Database.php";
+require_once __DIR__ . "/../config/ExcelHelper.php";
 require_once __DIR__ . "/../models/Institucion.php";
 require_once __DIR__ . "/../models/Cita.php";
 require_once __DIR__ . "/../models/Visitante.php";
@@ -75,6 +76,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'desvincular_visitante':
             desvincularVisitanteAction($db);
             break;
+        case 'asignar_guia':
+            asignarGuiaAction($db);
+            break;
+        case 'desasignar_guia':
+            desasignarGuiaAction($db);
+            break;
         default:
             http_response_code(400);
             echo json_encode([
@@ -102,6 +109,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             break;
         case 'obtener_datos_dashboard':
             obtenerDatosDashboardAction($db);
+            break;
+        case 'citas_hoy':
+            citasHoyAction($db);
+            break;
+        case 'listar_guias':
+            listarGuiasAction($db);
+            break;
+        case 'guias_cita':
+            guiasCitaAction($db);
             break;
         default:
             http_response_code(400);
@@ -200,6 +216,51 @@ function crearCitaAction($db) {
         return;
     }
 
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_visita)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La fecha de la visita debe tener el formato AAAA-MM-DD."
+        ]);
+        return;
+    }
+
+    if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $hora_inicio)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La hora de inicio de la visita no es válida."
+        ]);
+        return;
+    }
+
+    if (strlen($metodo_pago) > 50) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El método de pago no es válido."
+        ]);
+        return;
+    }
+
+    if (!in_array($pago_estado, ['pendiente', 'pagado'], true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El estado de pago no es válido."
+        ]);
+        return;
+    }
+
+    if (!empty($recorrido_id) && !filter_var($recorrido_id, FILTER_VALIDATE_INT)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El recorrido seleccionado no es válido."
+        ]);
+        return;
+    }
+
     try {
         // 1. Si no existe ID de institución, registrarla primero
         if (!$institucion_id) {
@@ -222,16 +283,78 @@ function crearCitaAction($db) {
                 return;
             }
 
-            $instModel = new Institucion($db);
-            $instModel->setTipoDocumento($tipo_documento);
-            $instModel->setDocumento($documento);
-            $instModel->setNombre($nombre);
-            $instModel->setTipoOrganizacion($tipo_organizacion);
-            $instModel->setTipoGestion($tipo_gestion);
-            $instModel->setCiudadId($ciudad_id);
-            $instModel->setParroquiaId($parroquia_id);
-            $instModel->setDetallesDireccion($detalles_direccion);
-            
+            if (!in_array($tipo_documento, ['J', 'G', 'V', 'E', 'P'], true)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Tipo de documento inválido para la institución."
+                ]);
+                return;
+            }
+
+            if (strlen($documento) > 50) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "El número de documento/RIF no es válido."
+                ]);
+                return;
+            }
+
+            if (strlen($nombre) > 150) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "La razón social de la institución no es válida."
+                ]);
+                return;
+            }
+
+            if (strlen($tipo_organizacion) > 50) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "El tipo de organización no es válido."
+                ]);
+                return;
+            }
+
+            if (!in_array($tipo_gestion, ['publica', 'privada'], true)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "El tipo de gestión proporcionado no es válido."
+                ]);
+                return;
+            }
+
+            if (!filter_var($ciudad_id, FILTER_VALIDATE_INT)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Ciudad seleccionada inválida."
+                ]);
+                return;
+            }
+
+            if (!filter_var($parroquia_id, FILTER_VALIDATE_INT)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Parroquia seleccionada inválida."
+                ]);
+                return;
+            }
+
+            if (strlen($detalles_direccion) > 150) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Los detalles de la dirección superan el límite permitido de 150 caracteres."
+                ]);
+                return;
+            }
+
             // Mapear contactos
             $contactos = [];
             if (is_array($contactosRaw)) {
@@ -244,6 +367,25 @@ function crearCitaAction($db) {
                     }
                 }
             }
+
+            if (empty($contactos)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Debe ingresar al menos un número de contacto válido."
+                ]);
+                return;
+            }
+
+            $instModel = new Institucion($db);
+            $instModel->setTipoDocumento($tipo_documento);
+            $instModel->setDocumento($documento);
+            $instModel->setNombre($nombre);
+            $instModel->setTipoOrganizacion($tipo_organizacion);
+            $instModel->setTipoGestion($tipo_gestion);
+            $instModel->setCiudadId($ciudad_id);
+            $instModel->setParroquiaId($parroquia_id);
+            $instModel->setDetallesDireccion($detalles_direccion);
             $instModel->setContactos($contactos);
 
             // Guardar institución
@@ -346,21 +488,18 @@ function descargarPlantillaAction($db) {
         die("La cita no existe en el sistema.");
     }
 
-    // Configurar cabeceras de descarga de archivo CSV
-    $filename = "plantilla_visitantes.csv";
-    header("Content-Type: text/csv; charset=UTF-8");
-    header("Content-Disposition: attachment; filename=\"$filename\"");
-    header("Pragma: no-cache");
-    header("Expires: 0");
+    // Generar archivo Excel (.xlsx) con cabecera verde institucional y fila de ejemplo
+    $writer = new ExcelWriter();
+    $writer->setSheetName('Visitantes');
+    $writer->setHeaders(
+        ['Cédula', 'Nombres', 'Apellidos', 'Fecha Nacimiento (AAAA-MM-DD)'],
+        [18, 28, 28, 26]   // anchos de columna
+    );
+    // Fila de ejemplo (será ignorada automáticamente al importar)
+    $writer->addRow(['12345678', 'Pedro', 'Pérez', '2010-05-15']);
 
-    // Imprimir el BOM de UTF-8 para garantizar que Excel abra el archivo con acentos/eñes correctos
-    echo "\xEF\xBB\xBF";
-
-    // Cabeceras de las columnas (Utilizamos punto y coma ';' como delimitador estándar para Excel en español)
-    echo "Cédula;Nombres;Apellidos;Fecha Nacimiento (AAAA-MM-DD)\r\n";
-    // Fila de ejemplo
-    echo "12345678;Pedro;Pérez;2010-05-15\r\n";
-    exit;
+    $filename = "plantilla_visitantes_cita_{$cita_id}.xlsx";
+    $writer->download($filename);
 }
 
 /**
@@ -557,6 +696,31 @@ function obtenerDatosDashboardAction($db) {
 }
 
 /**
+ * Retorna las citas programadas para el día de hoy, según el rol y sesión del usuario
+ */
+function citasHoyAction($db) {
+    try {
+        $personal = $_SESSION['personal'];
+        $rol = $personal['rol'];
+        $personalId = (int)$personal['id'];
+
+        $citas = Cita::obtenerCitasHoy($db, $rol, $personalId);
+
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "data" => $citas
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Error al obtener las citas de hoy: " . $e->getMessage()
+        ]);
+    }
+}
+
+/**
  * Obtiene los detalles de una cita específica por su ID
  */
 function obtenerCitaAction($db) {
@@ -615,6 +779,60 @@ function editarCitaAction($db) {
         echo json_encode([
             "status" => "error",
             "message" => "Los campos fecha de visita, hora de inicio, método de pago y estado de la cita son requeridos."
+        ]);
+        return;
+    }
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_visita)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La fecha de la visita debe tener el formato AAAA-MM-DD."
+        ]);
+        return;
+    }
+
+    if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $hora_inicio)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La hora de inicio de la visita no es válida."
+        ]);
+        return;
+    }
+
+    if (strlen($metodo_pago) > 50) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El método de pago no es válido."
+        ]);
+        return;
+    }
+
+    if (!in_array($pago_estado, ['pendiente', 'pagado'], true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El estado de pago no es válido."
+        ]);
+        return;
+    }
+
+    if (!empty($recorrido_id) && !filter_var($recorrido_id, FILTER_VALIDATE_INT)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El recorrido seleccionado no es válido."
+        ]);
+        return;
+    }
+
+    if (!in_array($estatus, ['pendiente', 'aprobado', 'completado', 'cancelado'], true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El estado de la cita proporcionado no es válido."
         ]);
         return;
     }
@@ -778,6 +996,143 @@ function desvincularVisitanteAction($db) {
         echo json_encode([
             "status" => "error",
             "message" => "Error interno al remover visitante: " . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Lista todos los guías de campo activos en el sistema
+ */
+function listarGuiasAction($db) {
+    try {
+        $query = "SELECT p.id, e.nombre, e.apellido 
+                  FROM personal p
+                  INNER JOIN entidades e ON p.entidad_id = e.id
+                  INNER JOIN roles r ON p.rol_id = r.id
+                  WHERE r.nombre = 'guia'
+                  ORDER BY e.nombre ASC, e.apellido ASC";
+        $stmt = $db->prepare($query);
+        $stmt->execute();
+        $guias = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "data" => $guias
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Error al obtener el listado de guías: " . $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Asigna un guía a una cita específica
+ */
+function asignarGuiaAction($db) {
+    $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
+    $personal_id = isset($_POST['personal_id']) ? filter_var($_POST['personal_id'], FILTER_VALIDATE_INT) : null;
+    $rol_guia = isset($_POST['rol_guia']) ? trim($_POST['rol_guia']) : 'principal';
+
+    if (!$cita_id || !$personal_id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El ID de cita y el ID de personal son obligatorios."
+        ]);
+        return;
+    }
+
+    $success = Cita::asignarGuia($db, $cita_id, $personal_id, $rol_guia);
+
+    if ($success) {
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "message" => "Guía asignado exitosamente."
+        ]);
+    } else {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "No se pudo asignar el guía a la cita."
+        ]);
+    }
+}
+
+/**
+ * Elimina una asignación de guía de una cita
+ */
+function desasignarGuiaAction($db) {
+    $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
+    $personal_id = isset($_POST['personal_id']) ? filter_var($_POST['personal_id'], FILTER_VALIDATE_INT) : null;
+
+    if (!$cita_id || !$personal_id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El ID de cita y el ID de personal son obligatorios."
+        ]);
+        return;
+    }
+
+    $success = Cita::desasignarGuia($db, $cita_id, $personal_id);
+
+    if ($success) {
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "message" => "Guía desasignado exitosamente."
+        ]);
+    } else {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "No se pudo desasignar el guía de la cita."
+        ]);
+    }
+}
+
+/**
+ * Lista los guías asignados a una cita específica
+ */
+function guiasCitaAction($db) {
+    $cita_id = isset($_GET['cita_id']) ? filter_var($_GET['cita_id'], FILTER_VALIDATE_INT) : null;
+
+    if (!$cita_id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El ID de la cita es obligatorio."
+        ]);
+        return;
+    }
+
+    try {
+        $query = "SELECT ga.personal_id, e.nombre, e.apellido, ga.rol_guia 
+                  FROM guia_asignado ga
+                  INNER JOIN personal p ON ga.personal_id = p.id
+                  INNER JOIN entidades e ON p.entidad_id = e.id
+                  WHERE ga.cita_id = :cita_id
+                  ORDER BY ga.rol_guia ASC";
+        $stmt = $db->prepare($query);
+        $stmt->bindParam(':cita_id', $cita_id, PDO::PARAM_INT);
+        $stmt->execute();
+        $asignados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "data" => $asignados
+        ]);
+    } catch (PDOException $e) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Error al obtener los guías de la cita: " . $e->getMessage()
         ]);
     }
 }

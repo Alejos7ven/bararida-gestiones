@@ -82,6 +82,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'listar':
             listarAction($db);
             break;
+        case 'listar_roles':
+            listarRolesAction($db);
+            break;
         case 'obtener':
             obtenerAction($db);
             break;
@@ -188,6 +191,60 @@ function crearAction($db) {
         return;
     }
 
+    // Validar formato de tipo de documento
+    $validTypes = ['V', 'E', 'J', 'G', 'P'];
+    if (!in_array($tipo_documento, $validTypes, true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El tipo de documento proporcionado no es válido."
+        ]);
+        return;
+    }
+
+    // Validar formato de cédula
+    $cleanCedula = preg_replace('/[^0-9]/', '', $cedula);
+    if (strlen($cleanCedula) < 6 || strlen($cleanCedula) > 15) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La cédula debe contener solo números y tener entre 6 y 15 dígitos."
+        ]);
+        return;
+    }
+
+    // Validar longitud de nombre
+    $cleanNombre = strip_tags(trim($nombre));
+    if (empty($cleanNombre) || strlen($cleanNombre) > 50) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre no es válido o supera los 50 caracteres."
+        ]);
+        return;
+    }
+
+    // Validar longitud de apellido
+    $cleanApellido = strip_tags(trim($apellido));
+    if (empty($cleanApellido) || strlen($cleanApellido) > 50) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El apellido no es válido o supera los 50 caracteres."
+        ]);
+        return;
+    }
+
+    // Validar longitud de contraseña
+    if (strlen($password) < 6) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La contraseña debe tener al menos 6 caracteres."
+        ]);
+        return;
+    }
+
     // Obtener roles válidos desde la base de datos (excluyendo superadmin)
     $validRoles = [];
     try {
@@ -270,6 +327,60 @@ function actualizarAction($db) {
         echo json_encode([
             "status" => "error",
             "message" => "Los campos ID, tipo de documento, documento, nombre, apellido y rol son requeridos."
+        ]);
+        return;
+    }
+
+    // Validar formato de tipo de documento
+    $validTypes = ['V', 'E', 'J', 'G', 'P'];
+    if (!in_array($tipo_documento, $validTypes, true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El tipo de documento proporcionado no es válido."
+        ]);
+        return;
+    }
+
+    // Validar formato de cédula
+    $cleanCedula = preg_replace('/[^0-9]/', '', $cedula);
+    if (strlen($cleanCedula) < 6 || strlen($cleanCedula) > 15) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La cédula debe contener solo números y tener entre 6 y 15 dígitos."
+        ]);
+        return;
+    }
+
+    // Validar longitud de nombre
+    $cleanNombre = strip_tags(trim($nombre));
+    if (empty($cleanNombre) || strlen($cleanNombre) > 50) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre no es válido o supera los 50 caracteres."
+        ]);
+        return;
+    }
+
+    // Validar longitud de apellido
+    $cleanApellido = strip_tags(trim($apellido));
+    if (empty($cleanApellido) || strlen($cleanApellido) > 50) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El apellido no es válido o supera los 50 caracteres."
+        ]);
+        return;
+    }
+
+    // Validar longitud de contraseña si se provee
+    if (!empty($password) && strlen($password) < 6) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La contraseña debe tener al menos 6 caracteres."
         ]);
         return;
     }
@@ -424,3 +535,24 @@ function eliminarAction($db) {
         ]);
     }
 }
+
+/**
+ * Obtiene y retorna los roles del personal
+ */
+function listarRolesAction($db) {
+    try {
+        $roles = Personal::obtenerRolesList($db);
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "data" => $roles
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Error al obtener el listado de roles: " . $e->getMessage()
+        ]);
+    }
+}
+

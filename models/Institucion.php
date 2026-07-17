@@ -39,102 +39,58 @@ class Institucion {
 
     public function getTipoDocumento() { return $this->tipo_documento; }
     public function setTipoDocumento($tipo) {
-        $validTypes = ['J', 'G', 'V', 'E', 'P'];
-        $clean = strtoupper(trim($tipo));
-        if (in_array($clean, $validTypes, true)) {
-            $this->tipo_documento = $clean;
-        } else {
-            throw new InvalidArgumentException("Tipo de documento inválido para la institución.");
-        }
+        $this->tipo_documento = strtoupper(trim($tipo));
     }
 
     public function getDocumento() { return $this->documento; }
     public function setDocumento($doc) {
-        $clean = preg_replace('/[^0-9A-Za-z-]/', '', trim($doc));
-        if (!empty($clean) && strlen($clean) <= 50) {
-            $this->documento = $clean;
-        } else {
-            throw new InvalidArgumentException("El número de documento/RIF no es válido.");
-        }
+        $this->documento = preg_replace('/[^0-9A-Za-z-]/', '', trim($doc));
     }
 
     public function getNombre() { return $this->nombre; }
     public function setNombre($nombre) {
-        $clean = strip_tags(trim($nombre));
-        if (!empty($clean) && strlen($clean) <= 150) {
-            $this->nombre = $clean;
-        } else {
-            throw new InvalidArgumentException("La razón social de la institución no es válida.");
-        }
+        $this->nombre = strip_tags(trim($nombre));
     }
 
     public function getTipoOrganizacion() { return $this->tipo_organizacion; }
     public function setTipoOrganizacion($tipo) {
-        $clean = strip_tags(trim($tipo));
-        if (!empty($clean) && strlen($clean) <= 50) {
-            $this->tipo_organizacion = $clean;
-        } else {
-            throw new InvalidArgumentException("El tipo de organización no es válido.");
-        }
+        $this->tipo_organizacion = strip_tags(trim($tipo));
     }
 
     public function getCiudadId() { return $this->ciudad_id; }
     public function setCiudadId($ciudad_id) {
-        $this->ciudad_id = filter_var($ciudad_id, FILTER_VALIDATE_INT) ? (int)$ciudad_id : null;
-        if ($this->ciudad_id === null) {
-            throw new InvalidArgumentException("Ciudad seleccionada inválida.");
-        }
+        $this->ciudad_id = (int)$ciudad_id;
     }
 
     public function getParroquiaId() { return $this->parroquia_id; }
     public function setParroquiaId($parroquia_id) {
-        $this->parroquia_id = filter_var($parroquia_id, FILTER_VALIDATE_INT) ? (int)$parroquia_id : null;
-        if ($this->parroquia_id === null) {
-            throw new InvalidArgumentException("Parroquia seleccionada inválida.");
-        }
+        $this->parroquia_id = (int)$parroquia_id;
     }
 
     public function getDetallesDireccion() { return $this->detalles_direccion; }
     public function setDetallesDireccion($detalles) {
-        $clean = strip_tags(trim($detalles));
-        if (strlen($clean) <= 150) {
-            $this->detalles_direccion = $clean;
-        } else {
-            throw new InvalidArgumentException("Los detalles de la dirección superan el límite permitido.");
-        }
+        $this->detalles_direccion = strip_tags(trim($detalles));
     }
 
     public function getTipoGestion() { return $this->tipo_gestion; }
     public function setTipoGestion($tipo) {
-        $valid = ['publica', 'privada'];
-        $clean = strtolower(trim($tipo));
-        if (in_array($clean, $valid, true)) {
-            $this->tipo_gestion = $clean;
-        } else {
-            throw new InvalidArgumentException("El tipo de gestión proporcionado no es válido.");
-        }
+        $this->tipo_gestion = strtolower(trim($tipo));
     }
 
     public function getContactos() { return $this->contactos; }
     public function setContactos($contactos) {
-        if (!is_array($contactos)) {
-            throw new InvalidArgumentException("Los contactos del directorio deben ser un listado válido.");
-        }
-        
         $this->contactos = [];
-        foreach ($contactos as $c) {
-            $contactoVal = strip_tags(trim($c['contacto'] ?? ''));
-            $tipoVal = strip_tags(trim($c['tipo'] ?? 'principal'));
-            if (!empty($contactoVal)) {
-                $this->contactos[] = [
-                    'contacto' => $contactoVal,
-                    'tipo' => $tipoVal
-                ];
+        if (is_array($contactos)) {
+            foreach ($contactos as $c) {
+                $contactoVal = strip_tags(trim($c['contacto'] ?? ''));
+                $tipoVal = strip_tags(trim($c['tipo'] ?? 'principal'));
+                if (!empty($contactoVal)) {
+                    $this->contactos[] = [
+                        'contacto' => $contactoVal,
+                        'tipo' => $tipoVal
+                    ];
+                }
             }
-        }
-        
-        if (empty($this->contactos)) {
-            throw new InvalidArgumentException("Debe ingresar al menos un número de contacto válido.");
         }
     }
 
@@ -307,6 +263,64 @@ class Institucion {
         } catch (PDOException $e) {
             error_log("Error en Institucion::listarTodas: " . $e->getMessage());
             throw $e;
+        }
+    }
+
+    /**
+     * Busca instituciones por coincidencia parcial de su nombre o documento (RIF).
+     */
+    public static function buscarPorTermino($db, $term) {
+        if (!$db) return [];
+        try {
+            $query = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre, i.tipo_organizacion, i.tipo_gestion,
+                             d.ciudad_id, d.parroquia_id, d.detalles AS detalles_direccion,
+                             c.ciudad, p.parroquia, m.municipio, est.estado, est.id_estado, m.id_municipio
+                      FROM instituciones i
+                      INNER JOIN entidades e ON i.entidad_id = e.id
+                      LEFT JOIN direccion d ON d.institucion_id = i.id
+                      LEFT JOIN ciudades c ON d.ciudad_id = c.id_ciudad
+                      LEFT JOIN parroquias p ON d.parroquia_id = p.id_parroquia
+                      LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
+                      LEFT JOIN estados est ON m.id_estado = est.id_estado
+                      WHERE e.nombre LIKE :term1 
+                         OR e.documento LIKE :term2 
+                         OR CONCAT(e.tipo_documento, '-', e.documento) LIKE :term3
+                      ORDER BY e.nombre ASC
+                      LIMIT 10";
+            $stmt = $db->prepare($query);
+            $likeTerm = '%' . $term . '%';
+            $stmt->bindValue(':term1', $likeTerm, PDO::PARAM_STR);
+            $stmt->bindValue(':term2', $likeTerm, PDO::PARAM_STR);
+            $stmt->bindValue(':term3', $likeTerm, PDO::PARAM_STR);
+            $stmt->execute();
+            $instituciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            // Cargar contactos
+            if (!empty($instituciones)) {
+                $entidadIds = array_column($instituciones, 'entidad_id');
+                $placeholders = implode(',', array_fill(0, count($entidadIds), '?'));
+                $queryContacts = "SELECT entidad_id, contacto, tipo FROM directorio WHERE entidad_id IN ($placeholders)";
+                $stmtContacts = $db->prepare($queryContacts);
+                $stmtContacts->execute($entidadIds);
+                $allContacts = $stmtContacts->fetchAll(PDO::FETCH_ASSOC);
+
+                $contactsMap = [];
+                foreach ($allContacts as $c) {
+                    $contactsMap[$c['entidad_id']][] = [
+                        'contacto' => $c['contacto'],
+                        'tipo' => $c['tipo']
+                    ];
+                }
+
+                foreach ($instituciones as &$inst) {
+                    $inst['contactos'] = $contactsMap[$inst['entidad_id']] ?? [];
+                }
+            }
+
+            return $instituciones;
+        } catch (PDOException $e) {
+            error_log("Error en buscarPorTermino: " . $e->getMessage());
+            return [];
         }
     }
 

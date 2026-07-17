@@ -9,6 +9,12 @@ $(document).ready(function() {
     const $loader = $('#loaderVisitantes');
     const $searchVisitantes = $('#searchVisitantes');
 
+    // Variables de paginación
+    let cacheVisitantes = [];
+    let filteredVisitantes = [];
+    let currentPageVisitantes = 1;
+    const itemsPerPage = 10;
+
     // Inicializar
     listarVisitantes();
 
@@ -18,6 +24,7 @@ $(document).ready(function() {
     function listarVisitantes() {
         $tablaVisitantes.hide();
         $loader.show();
+        $('#paginacionVisitantes').hide();
 
         $.ajax({
             url: 'controllers/VisitanteController.php?action=listar',
@@ -25,40 +32,23 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 $loader.hide();
-                $tablaVisitantes.empty();
+                if (response.status === 'success') {
+                    cacheVisitantes = response.data || [];
+                    
+                    // Mantener búsqueda si la hay
+                    const query = $searchVisitantes.val().toLowerCase().trim();
+                    if (query === '') {
+                        filteredVisitantes = cacheVisitantes;
+                    } else {
+                        filteredVisitantes = cacheVisitantes.filter(function(v) {
+                            const searchString = `${(v.cedula || '').toLowerCase()} ${v.nombres.toLowerCase()} ${v.apellidos.toLowerCase()}`;
+                            return searchString.indexOf(query) > -1;
+                        });
+                    }
 
-                if (response.status === 'success' && response.data.length > 0) {
-                    response.data.forEach(function(v) {
-                        const cedula = v.cedula ? v.cedula : '<span class="text-muted italic">Sin Cédula (Menor)</span>';
-                        const fechaNac = v.fecha_nacimiento ? formatDate(v.fecha_nacimiento) : '<span class="text-muted">N/E</span>';
-                        const searchString = `${(v.cedula || '').toLowerCase()} ${v.nombres.toLowerCase()} ${v.apellidos.toLowerCase()}`;
-
-                        const rowHtml = `
-                            <tr class="visitor-row" data-search="${searchString}">
-                                <td><strong>#VIS-${v.id}</strong></td>
-                                <td><strong>${cedula}</strong></td>
-                                <td>${v.nombres}</td>
-                                <td>${v.apellidos}</td>
-                                <td>${fechaNac}</td>
-                                <td>
-                                    <div class="table-actions">
-                                        <button class="btn-action btn-action-edit btn-editar-visitor" data-id="${v.id}" title="Editar Visitante">
-                                            <!-- SVG Edit -->
-                                            <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                                        </button>
-                                        <button class="btn-action btn-action-delete btn-eliminar-visitor" data-id="${v.id}" data-name="${v.nombres} ${v.apellidos}" title="Eliminar Visitante">
-                                            <!-- SVG Trash -->
-                                            <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
-                        $tablaVisitantes.append(rowHtml);
-                    });
-                    $tablaVisitantes.fadeIn(300);
+                    renderVisitantesTable();
                 } else {
-                    $tablaVisitantes.append('<tr><td colspan="6" class="text-center text-muted py-4">No hay visitantes registrados en el sistema.</td></tr>');
+                    $tablaVisitantes.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">No se pudo cargar el listado de visitantes.</td></tr>');
                     $tablaVisitantes.fadeIn(300);
                 }
             },
@@ -69,21 +59,124 @@ $(document).ready(function() {
         });
     }
 
+    function renderVisitantesTable() {
+        $tablaVisitantes.empty();
+        const totalRecords = filteredVisitantes.length;
+
+        if (totalRecords === 0) {
+            $tablaVisitantes.append('<tr><td colspan="6" class="text-center text-muted py-4">No se encontraron visitantes registrados.</td></tr>');
+            $('#paginacionVisitantes').hide();
+            $tablaVisitantes.fadeIn(300);
+            return;
+        }
+
+        const totalPages = Math.ceil(totalRecords / itemsPerPage);
+
+        if (currentPageVisitantes > totalPages) {
+            currentPageVisitantes = totalPages;
+        }
+        if (currentPageVisitantes < 1) {
+            currentPageVisitantes = 1;
+        }
+
+        const startIdx = (currentPageVisitantes - 1) * itemsPerPage;
+        const endIdx = Math.min(startIdx + itemsPerPage, totalRecords);
+        const pageData = filteredVisitantes.slice(startIdx, endIdx);
+
+        pageData.forEach(function(v) {
+            const cedula = v.cedula ? v.cedula : '<span class="text-muted italic">Sin Cédula (Menor)</span>';
+            const fechaNac = v.fecha_nacimiento ? formatDate(v.fecha_nacimiento) : '<span class="text-muted">N/E</span>';
+
+            const rowHtml = `
+                <tr class="visitor-row">
+                    <td><strong>#VIS-${v.id}</strong></td>
+                    <td><strong>${cedula}</strong></td>
+                    <td>${v.nombres}</td>
+                    <td>${v.apellidos}</td>
+                    <td>${fechaNac}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="btn-action btn-action-edit btn-editar-visitor" data-id="${v.id}" title="Editar Visitante">
+                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                            </button>
+                            <button class="btn-action btn-action-delete btn-eliminar-visitor" data-id="${v.id}" data-name="${v.nombres} ${v.apellidos}" title="Eliminar Visitante">
+                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            $tablaVisitantes.append(rowHtml);
+        });
+
+        // Actualizar datos informativos
+        $('#pagStartVisitantes').text(startIdx + 1);
+        $('#pagEndVisitantes').text(endIdx);
+        $('#pagTotalVisitantes').text(totalRecords);
+
+        // Renderizar controles de paginación
+        const $controls = $('#paginationControlsVisitantes');
+        $controls.empty();
+
+        const prevDisabled = currentPageVisitantes === 1 ? 'disabled' : '';
+        $controls.append(`
+            <li class="page-item ${prevDisabled}">
+                <a class="page-link btn-pag-visitantes" data-page="${currentPageVisitantes - 1}" href="javascript:void(0)">&laquo; Anterior</a>
+            </li>
+        `);
+
+        // Botones de Páginas (Ventana Deslizante de Máximo 10)
+        const maxVisibleVis = 10;
+        let startPageVis = Math.max(1, currentPageVisitantes - Math.floor(maxVisibleVis / 2));
+        let endPageVis = Math.min(totalPages, startPageVis + maxVisibleVis - 1);
+
+        if (endPageVis - startPageVis + 1 < maxVisibleVis) {
+            startPageVis = Math.max(1, endPageVis - maxVisibleVis + 1);
+        }
+
+        for (let i = startPageVis; i <= endPageVis; i++) {
+            const activeClass = currentPageVisitantes === i ? 'active' : '';
+            $controls.append(`
+                <li class="page-item ${activeClass}">
+                    <a class="page-link btn-pag-visitantes" data-page="${i}" href="javascript:void(0)">${i}</a>
+                </li>
+            `);
+        }
+
+        const nextDisabled = currentPageVisitantes === totalPages ? 'disabled' : '';
+        $controls.append(`
+            <li class="page-item ${nextDisabled}">
+                <a class="page-link btn-pag-visitantes" data-page="${currentPageVisitantes + 1}" href="javascript:void(0)">Siguiente &raquo;</a>
+            </li>
+        `);
+
+        $('#paginacionVisitantes').removeClass('d-none').show();
+        $tablaVisitantes.fadeIn(300);
+    }
+
+    // Clicks en paginación
+    $(document).on('click', '.btn-pag-visitantes', function(e) {
+        e.preventDefault();
+        const page = parseInt($(this).data('page'));
+        if (page && page !== currentPageVisitantes) {
+            currentPageVisitantes = page;
+            renderVisitantesTable();
+        }
+    });
+
     // Buscador en tiempo real
     $searchVisitantes.on('input', function() {
         const query = $(this).val().toLowerCase().trim();
         if (query === '') {
-            $('.visitor-row').show();
-            return;
+            filteredVisitantes = cacheVisitantes;
+        } else {
+            filteredVisitantes = cacheVisitantes.filter(function(v) {
+                const searchString = `${(v.cedula || '').toLowerCase()} ${v.nombres.toLowerCase()} ${v.apellidos.toLowerCase()}`;
+                return searchString.indexOf(query) > -1;
+            });
         }
-        $('.visitor-row').each(function() {
-            const searchText = $(this).data('search');
-            if (searchText.indexOf(query) > -1) {
-                $(this).show();
-            } else {
-                $(this).hide();
-            }
-        });
+        currentPageVisitantes = 1;
+        renderVisitantesTable();
     });
 
     // =========================================================================
@@ -91,6 +184,12 @@ $(document).ready(function() {
     // =========================================================================
     $('#formCrearVisitante').on('submit', function(e) {
         e.preventDefault();
+        const $form = $(this);
+
+        if (!$form.valid()) {
+            return;
+        }
+
         const $btn = $('#btnConfirmarCrearVisitante');
         const $alert = $('#alertCrearVisitanteFeedback');
         
@@ -158,6 +257,12 @@ $(document).ready(function() {
 
     $('#formEditarVisitante').on('submit', function(e) {
         e.preventDefault();
+        const $form = $(this);
+
+        if (!$form.valid()) {
+            return;
+        }
+
         const $btn = $('#btnConfirmarEditarVisitante');
         const $alert = $('#alertEditarVisitanteFeedback');
 

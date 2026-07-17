@@ -37,12 +37,7 @@ class Zona {
     }
 
     public function setNombre($nombre) {
-        $cleanNombre = strip_tags(trim($nombre));
-        if (!empty($cleanNombre) && strlen($cleanNombre) <= 100) {
-            $this->nombre = $cleanNombre;
-        } else {
-            throw new InvalidArgumentException("El nombre de la zona es inválido o supera los 100 caracteres.");
-        }
+        $this->nombre = strip_tags(trim($nombre));
     }
 
     public function getCoordenadas() {
@@ -50,13 +45,7 @@ class Zona {
     }
 
     public function setCoordenadas($coordenadas) {
-        $cleanCoords = strip_tags(trim($coordenadas));
-        // Validar formato simple "X,Y" de porcentajes
-        if (preg_match('/^[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?$/', $cleanCoords)) {
-            $this->coordenadas = $cleanCoords;
-        } else {
-            throw new InvalidArgumentException("El formato de las coordenadas no es válido. Debe ser 'X,Y' (ej: 45.2,60.8).");
-        }
+        $this->coordenadas = strip_tags(trim($coordenadas));
     }
 
     // =========================================================================

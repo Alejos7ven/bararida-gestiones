@@ -67,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'obtener':
             obtenerInstitucionAction($db);
             break;
+        case 'buscar_autocomplete':
+            buscarAutocompleteAction($db);
+            break;
         default:
             http_response_code(400);
             echo json_encode([
@@ -151,6 +154,100 @@ function crearInstitucionAction($db) {
         return;
     }
 
+    if (!in_array($tipo_documento, ['J', 'G', 'V', 'E', 'P'], true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Tipo de documento inválido para la institución."
+        ]);
+        return;
+    }
+
+    if (strlen($documento) > 50) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El número de documento/RIF no es válido."
+        ]);
+        return;
+    }
+
+    if (strlen($nombre) > 150) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La razón social de la institución no es válida."
+        ]);
+        return;
+    }
+
+    if (strlen($tipo_organizacion) > 50) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El tipo de organización no es válido."
+        ]);
+        return;
+    }
+
+    if (!in_array($tipo_gestion, ['publica', 'privada'], true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El tipo de gestión proporcionado no es válido."
+        ]);
+        return;
+    }
+
+    if (!filter_var($ciudad_id, FILTER_VALIDATE_INT)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Ciudad seleccionada inválida."
+        ]);
+        return;
+    }
+
+    if (!filter_var($parroquia_id, FILTER_VALIDATE_INT)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Parroquia seleccionada inválida."
+        ]);
+        return;
+    }
+
+    if (strlen($detalles_direccion) > 150) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Los detalles de la dirección superan el límite permitido de 150 caracteres."
+        ]);
+        return;
+    }
+
+    // Mapear contactos
+    $contactos = [];
+    if (is_array($contactosRaw)) {
+        foreach ($contactosRaw as $c) {
+            if (!empty(trim($c['contacto'] ?? ''))) {
+                $contactos[] = [
+                    'contacto' => trim($c['contacto']),
+                    'tipo' => trim($c['tipo'] ?? 'principal')
+                ];
+            }
+        }
+    }
+
+    if (empty($contactos)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Debe ingresar al menos un número de contacto válido."
+        ]);
+        return;
+    }
+
     try {
         $instModel = new Institucion($db);
         $instModel->setTipoDocumento($tipo_documento);
@@ -162,17 +259,6 @@ function crearInstitucionAction($db) {
         $instModel->setParroquiaId($parroquia_id);
         $instModel->setDetallesDireccion($detalles_direccion);
 
-        $contactos = [];
-        if (is_array($contactosRaw)) {
-            foreach ($contactosRaw as $c) {
-                if (!empty(trim($c['contacto'] ?? ''))) {
-                    $contactos[] = [
-                        'contacto' => trim($c['contacto']),
-                        'tipo' => trim($c['tipo'] ?? 'principal')
-                    ];
-                }
-            }
-        }
         $instModel->setContactos($contactos);
 
         if ($instModel->crear()) {
@@ -235,6 +321,100 @@ function actualizarInstitucionAction($db) {
         return;
     }
 
+    if (!in_array($tipo_documento, ['J', 'G', 'V', 'E', 'P'], true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Tipo de documento inválido para la institución."
+        ]);
+        return;
+    }
+
+    if (strlen($documento) > 50) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El número de documento/RIF no es válido."
+        ]);
+        return;
+    }
+
+    if (strlen($nombre) > 150) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La razón social de la institución no es válida."
+        ]);
+        return;
+    }
+
+    if (strlen($tipo_organizacion) > 50) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El tipo de organización no es válido."
+        ]);
+        return;
+    }
+
+    if (!in_array($tipo_gestion, ['publica', 'privada'], true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El tipo de gestión proporcionado no es válido."
+        ]);
+        return;
+    }
+
+    if (!filter_var($ciudad_id, FILTER_VALIDATE_INT)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Ciudad seleccionada inválida."
+        ]);
+        return;
+    }
+
+    if (!filter_var($parroquia_id, FILTER_VALIDATE_INT)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Parroquia seleccionada inválida."
+        ]);
+        return;
+    }
+
+    if (strlen($detalles_direccion) > 150) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Los detalles de la dirección superan el límite permitido de 150 caracteres."
+        ]);
+        return;
+    }
+
+    // Mapear contactos
+    $contactos = [];
+    if (is_array($contactosRaw)) {
+        foreach ($contactosRaw as $c) {
+            if (!empty(trim($c['contacto'] ?? ''))) {
+                $contactos[] = [
+                    'contacto' => trim($c['contacto']),
+                    'tipo' => trim($c['tipo'] ?? 'principal')
+                ];
+            }
+        }
+    }
+
+    if (empty($contactos)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Debe ingresar al menos un número de contacto válido."
+        ]);
+        return;
+    }
+
     try {
         $instModel = new Institucion($db);
         $instModel->setId($id);
@@ -248,17 +428,6 @@ function actualizarInstitucionAction($db) {
         $instModel->setParroquiaId($parroquia_id);
         $instModel->setDetallesDireccion($detalles_direccion);
 
-        $contactos = [];
-        if (is_array($contactosRaw)) {
-            foreach ($contactosRaw as $c) {
-                if (!empty(trim($c['contacto'] ?? ''))) {
-                    $contactos[] = [
-                        'contacto' => trim($c['contacto']),
-                        'tipo' => trim($c['tipo'] ?? 'principal')
-                    ];
-                }
-            }
-        }
         $instModel->setContactos($contactos);
 
         if ($instModel->actualizar()) {
@@ -321,6 +490,34 @@ function eliminarInstitucionAction($db) {
         echo json_encode([
             "status" => "error",
             "message" => $e->getMessage()
+        ]);
+    }
+}
+
+/**
+ * Busca instituciones para sugerencias de autocompletado en tiempo real
+ */
+function buscarAutocompleteAction($db) {
+    $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+    if (strlen($q) < 2) {
+        echo json_encode([
+            "status" => "success",
+            "data" => []
+        ]);
+        return;
+    }
+
+    try {
+        $resultados = Institucion::buscarPorTermino($db, $q);
+        echo json_encode([
+            "status" => "success",
+            "data" => $resultados
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Error al buscar instituciones: " . $e->getMessage()
         ]);
     }
 }

@@ -106,12 +106,13 @@ function loginAction() {
         if ($personal->login($tipo_documento, $cedula, $password)) {
             // Guardamos la información del personal en la sesión para RBAC
             $_SESSION['personal'] = [
-                "id" => $personal->getId(),
+                "id"             => $personal->getId(),
                 "tipo_documento" => $personal->getTipoDocumento(),
-                "cedula" => $personal->getCedula(),
-                "nombre" => $personal->getNombre(),
-                "apellido" => $personal->getApellido(),
-                "rol" => $personal->getRol()
+                "cedula"         => $personal->getCedula(),
+                "nombre"         => $personal->getNombre(),
+                "apellido"       => $personal->getApellido(),
+                "rol"            => $personal->getRol(),
+                "rol_id"         => $personal->getRolId()
             ];
 
             // Retornamos respuesta exitosa

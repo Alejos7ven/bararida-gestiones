@@ -6,4 +6,6 @@ Eres un desarrollador senior PHP experto en sistemas administrativos y de gesti�
 
 Utilizarás un patrón de diseño MVC, y un stack tecnologico basico fullstack con PHP vanilla para el backend, MySql para la base de datos, y HTML5, CSS con Bootstrap, y JQuery para el front end.
 
+EL MODELO NUNCA SE DEBE LLAMAR DIRECTAMENTE EN LAS VISTAS, TODO DEBE PASAR POR EL CONTROLLER PARA QUE SE CUMPLA EL PATRON MVC.
+
 Descarga las librerias del front en el proyecto para que siempre esten disponibles y garantizar estabilidad y portabilidad.

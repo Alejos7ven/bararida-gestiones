@@ -14,8 +14,107 @@
     --sidebar-width: 280px;
     --sub-bg-color: #F8F9FA;
     --text-color: #2D3748;
+    --text-muted: #718096;
     --border-color: #E2E8F0;
+    --danger-color: #E53E3E;
+    --danger-light: #FFF5F5;
+    --warning-color: #DD6B20;
+    --warning-light: #FFFAF0;
     --topbar-height: 88px;
+}
+
+/* Botones Premium */
+.btn-premium-primary {
+    background-color: var(--primary-color);
+    color: #FFFFFF;
+    border: 1px solid var(--primary-color);
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.btn-premium-primary:hover {
+    background-color: var(--primary-hover);
+    border-color: var(--primary-hover);
+    box-shadow: 0 4px 12px rgba(13, 144, 57, 0.25);
+    color: #FFFFFF;
+}
+
+.btn-premium-primary svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+.btn-premium-secondary {
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 1.5px solid var(--primary-color);
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.btn-premium-secondary:hover {
+    background-color: var(--primary-color);
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(13, 144, 57, 0.2);
+}
+
+.btn-premium-secondary svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
+/* Acciones en Tablas (Botones de edición/ajustes) */
+.table-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-action {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-color);
+    background-color: #FFFFFF;
+    transition: all 0.2s ease;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.btn-action:hover {
+    color: #FFFFFF;
+    transform: translateY(-1px);
+}
+
+.btn-action-edit:hover {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+    box-shadow: 0 2px 6px rgba(13, 144, 57, 0.2);
+}
+
+.btn-action svg {
+    width: 16px;
+    height: 16px;
+    fill: currentColor;
 }
 
 /* --- Reset y base --- */
@@ -839,3 +938,133 @@ body {
     transform: translateY(0) scale(0.98) !important;
     box-shadow: 0 1px 2px rgba(13, 144, 57, 0.1) !important;
 }
+
+/* =========================================================
+   Módulo App — Configuración del Sistema (Gestión de Permisos)
+   ========================================================= */
+
+/* Tarjeta informativa del módulo app */
+.app-info-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    background: linear-gradient(135deg, rgba(13,144,57,0.06), rgba(131,212,118,0.08));
+    border: 1px solid rgba(13,144,57,0.2);
+    border-radius: 14px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+}
+
+.app-info-card .app-info-icon {
+    width: 28px;
+    height: 28px;
+    fill: var(--primary-color);
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.app-info-card strong {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.app-info-card p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+/* Tabla de permisos — matriz roles × módulos
+   El thead hereda los estilos de .table-premium (igual que las demás tablas del sistema).
+   Solo se añaden ajustes estructurales propios. */
+.permisos-matrix-table thead th {
+    white-space: nowrap;
+    text-align: center;
+}
+
+.permisos-matrix-table thead th:first-child {
+    text-align: left;
+    min-width: 160px;
+}
+
+.permisos-matrix-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.permisos-matrix-table tbody tr:hover {
+    background-color: rgba(13,144,57,0.015);
+}
+
+.permisos-matrix-table tbody td {
+    vertical-align: middle;
+}
+
+/* Toggle switch de permisos */
+.permiso-toggle {
+    width: 2.4em;
+    height: 1.3em;
+    cursor: pointer;
+    border-radius: 20px;
+    background-color: #dee2e6;
+    border-color: #adb5bd;
+    transition: background-color 0.2s, border-color 0.2s;
+}
+
+.permiso-toggle:checked {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.permiso-toggle:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* =====================================================================
+   PAGINACIÓN PREMIUM
+   ===================================================================== */
+.pagination-premium {
+    flex-wrap: wrap !important;
+    justify-content: center;
+}
+.pagination-premium .page-item {
+    margin-bottom: 4px;
+}
+.pagination-premium .page-link {
+    color: var(--primary-color) !important;
+    border-color: var(--border-color) !important;
+    font-weight: 600;
+    font-size: 0.88rem;
+    padding: 8px 14px;
+    border-radius: 8px;
+    margin: 0 2px;
+    transition: all 0.2s ease;
+    box-shadow: none !important;
+}
+.pagination-premium .page-link:hover {
+    color: var(--primary-hover) !important;
+    background-color: var(--primary-light) !important;
+    border-color: var(--border-color) !important;
+}
+.pagination-premium .page-item.active .page-link {
+    background-color: var(--primary-color) !important;
+    border-color: var(--primary-color) !important;
+    color: #FFFFFF !important;
+}
+.pagination-premium .page-item.disabled .page-link {
+    color: #A0AEC0 !important;
+    background-color: #F8F9FA !important;
+    border-color: var(--border-color) !important;
+    cursor: not-allowed;
+}
+.pagination-info-text {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.85rem;
+    color: #718096;
+    font-weight: 500;
+}
+

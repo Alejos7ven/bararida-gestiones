@@ -36,12 +36,7 @@ class Recorrido {
     }
 
     public function setNombre($nombre) {
-        $cleanNombre = strip_tags(trim($nombre));
-        if (!empty($cleanNombre) && strlen($cleanNombre) <= 100) {
-            $this->nombre = $cleanNombre;
-        } else {
-            throw new InvalidArgumentException("El nombre del recorrido es inválido o supera los 100 caracteres.");
-        }
+        $this->nombre = strip_tags(trim($nombre));
     }
 
     // =========================================================================

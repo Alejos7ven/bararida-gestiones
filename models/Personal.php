@@ -15,6 +15,7 @@ class Personal {
     private $nombre;
     private $apellido;
     private $rol;
+    private $rol_id;
     private $password;
     private $loginError;
 
@@ -48,13 +49,7 @@ class Personal {
     }
 
     public function setTipoDocumento($tipo_documento) {
-        $validTypes = ['V', 'E', 'J', 'G', 'P'];
-        $cleanType = strtoupper(trim($tipo_documento));
-        if (in_array($cleanType, $validTypes, true)) {
-            $this->tipo_documento = $cleanType;
-        } else {
-            throw new InvalidArgumentException("El tipo de documento proporcionado no es válido.");
-        }
+        $this->tipo_documento = strtoupper(trim($tipo_documento));
     }
 
     public function getCedula() {
@@ -62,18 +57,10 @@ class Personal {
     }
 
     /**
-     * Asigna y valida la cédula de identidad
-     * @param string|int $cedula Cédula del usuario (solo dígitos, longitud típica 6-15)
+     * Asigna la cédula de identidad
      */
     public function setCedula($cedula) {
-        // Limpiamos espacios y caracteres no numéricos
-        $cleanCedula = preg_replace('/[^0-9]/', '', trim($cedula));
-        
-        if (strlen($cleanCedula) >= 6 && strlen($cleanCedula) <= 15) {
-            $this->cedula = $cleanCedula;
-        } else {
-            throw new InvalidArgumentException("La cédula debe contener solo números y tener entre 6 y 15 dígitos.");
-        }
+        $this->cedula = preg_replace('/[^0-9]/', '', trim($cedula));
     }
 
     public function getNombre() {
@@ -81,16 +68,10 @@ class Personal {
     }
 
     /**
-     * Asigna y sanitiza el nombre
-     * @param string $nombre Nombre del usuario
+     * Asigna el nombre
      */
     public function setNombre($nombre) {
-        $cleanNombre = strip_tags(trim($nombre));
-        if (!empty($cleanNombre) && strlen($cleanNombre) <= 50) {
-            $this->nombre = $cleanNombre;
-        } else {
-            throw new InvalidArgumentException("El nombre no es válido o supera los 50 caracteres.");
-        }
+        $this->nombre = strip_tags(trim($nombre));
     }
 
     public function getApellido() {
@@ -98,16 +79,10 @@ class Personal {
     }
 
     /**
-     * Asigna y sanitiza el apellido
-     * @param string $apellido Apellido del usuario
+     * Asigna el apellido
      */
     public function setApellido($apellido) {
-        $cleanApellido = strip_tags(trim($apellido));
-        if (!empty($cleanApellido) && strlen($cleanApellido) <= 50) {
-            $this->apellido = $cleanApellido;
-        } else {
-            throw new InvalidArgumentException("El apellido no es válido o supera los 50 caracteres.");
-        }
+        $this->apellido = strip_tags(trim($apellido));
     }
 
     public function getRol() {
@@ -115,31 +90,18 @@ class Personal {
     }
 
     /**
-     * Asigna y valida el rol basado en RBAC
-     * @param string $rol Rol del usuario (superadmin, admin, guia)
+     * Asigna el rol
      */
     public function setRol($rol) {
-        $cleanRol = strtolower(trim($rol));
-        $validRoles = ['superadmin', 'admin', 'guia']; // Fallback por defecto
+        $this->rol = strtolower(trim($rol));
+    }
 
-        if ($this->db) {
-            try {
-                $stmt = $this->db->prepare("SELECT nombre FROM roles");
-                $stmt->execute();
-                $dbRoles = $stmt->fetchAll(PDO::FETCH_COLUMN);
-                if (!empty($dbRoles)) {
-                    $validRoles = $dbRoles;
-                }
-            } catch (PDOException $e) {
-                error_log("Error al consultar roles en setRol: " . $e->getMessage());
-            }
-        }
-        
-        if (in_array($cleanRol, $validRoles, true)) {
-            $this->rol = $cleanRol;
-        } else {
-            throw new InvalidArgumentException("El rol proporcionado no es válido.");
-        }
+    public function getRolId() {
+        return $this->rol_id;
+    }
+
+    public function setRolId($rol_id) {
+        $this->rol_id = filter_var($rol_id, FILTER_VALIDATE_INT) ? (int)$rol_id : null;
     }
 
     public function getPassword() {
@@ -148,7 +110,6 @@ class Personal {
 
     /**
      * Asigna el hash de la contraseña directamente
-     * @param string $passwordHash Contraseña ya hasheada
      */
     public function setPassword($passwordHash) {
         $this->password = $passwordHash;
@@ -156,15 +117,9 @@ class Personal {
 
     /**
      * Hashea y asigna una contraseña en texto plano
-     * @param string $plainPassword Contraseña en texto plano a ser encriptada
      */
     public function setPlainPassword($plainPassword) {
-        $trimmed = trim($plainPassword);
-        if (strlen($trimmed) >= 6) {
-            $this->password = password_hash($trimmed, PASSWORD_BCRYPT);
-        } else {
-            throw new InvalidArgumentException("La contraseña debe tener al menos 6 caracteres.");
-        }
+        $this->password = password_hash(trim($plainPassword), PASSWORD_BCRYPT);
     }
 
     // =========================================================================
@@ -198,7 +153,7 @@ class Personal {
             }
 
             // Consulta preparada con INNER JOIN para entidades y roles (insensible a mayúsculas/minúsculas en el tipo)
-            $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre, e.apellido, r.nombre AS rol, p.password 
+            $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre, e.apellido, r.id AS rol_id, r.nombre AS rol, p.password 
                       FROM " . $this->table_name . " p
                       INNER JOIN entidades e ON p.entidad_id = e.id
                       INNER JOIN roles r ON p.rol_id = r.id
@@ -223,6 +178,7 @@ class Personal {
                 $this->setCedula($row['cedula']);
                 $this->setNombre($row['nombre']);
                 $this->setApellido($row['apellido']);
+                $this->setRolId($row['rol_id']);
                 $this->setRol($row['rol']);
                 $this->setPassword($row['password']);
                 $this->loginError = null; // Limpiar cualquier error previo
@@ -527,7 +483,7 @@ class Personal {
     public static function obtenerRolesList($db) {
         if (!$db) return ['admin', 'guia'];
         try {
-            $query = "SELECT nombre FROM roles WHERE nombre != 'superadmin' ORDER BY id ASC";
+            $query = "SELECT DISTINCT nombre FROM roles WHERE nombre != 'superadmin' ORDER BY nombre ASC";
             $stmt = $db->prepare($query);
             $stmt->execute();
             $roles = $stmt->fetchAll(PDO::FETCH_COLUMN);

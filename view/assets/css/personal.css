@@ -169,6 +169,33 @@
     fill: currentColor;
 }
 
+/* Botón secundario (outline verde) — mismo tamaño y forma que btn-premium-primary */
+.btn-premium-secondary {
+    background-color: transparent;
+    color: var(--primary-color);
+    border: 1.5px solid var(--primary-color);
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.25s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-premium-secondary:hover {
+    background-color: var(--primary-color);
+    color: #FFFFFF;
+    box-shadow: 0 4px 12px rgba(13, 144, 57, 0.2);
+}
+
+.btn-premium-secondary svg {
+    width: 18px;
+    height: 18px;
+    fill: currentColor;
+}
+
 /* Tablas Premium */
 .table-responsive-premium {
     border-radius: 16px;

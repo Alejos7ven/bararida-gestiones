@@ -229,8 +229,12 @@ $(document).ready(function() {
         $('#formCrearZona').on('submit', function(e) {
             e.preventDefault();
             const $form = $(this);
-            const $btn = $('#btnGuardarZona');
 
+            if (!$form.valid()) {
+                return;
+            }
+
+            const $btn = $('#btnGuardarZona');
             $btn.prop('disabled', true).text('Guardando...');
 
             $.ajax({
@@ -334,6 +338,11 @@ $(document).ready(function() {
         $('#formCrearRecorrido').on('submit', function(e) {
             e.preventDefault();
             const $form = $(this);
+
+            if (!$form.valid()) {
+                return;
+            }
+
             const $btn = $('#btnGuardarRecorrido');
 
             if (recorridoZonasSeleccionadas.length < 1) {

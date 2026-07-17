@@ -29,32 +29,17 @@ class Visitante {
 
     public function getNombres() { return $this->nombres; }
     public function setNombres($nombres) {
-        $clean = strip_tags(trim($nombres));
-        if (!empty($clean) && strlen($clean) <= 100) {
-            $this->nombres = $clean;
-        } else {
-            throw new InvalidArgumentException("El nombre del visitante es requerido y debe tener menos de 100 caracteres.");
-        }
+        $this->nombres = strip_tags(trim($nombres));
     }
 
     public function getApellidos() { return $this->apellidos; }
     public function setApellidos($apellidos) {
-        $clean = strip_tags(trim($apellidos));
-        if (!empty($clean) && strlen($clean) <= 100) {
-            $this->apellidos = $clean;
-        } else {
-            throw new InvalidArgumentException("El apellido del visitante es requerido y debe tener menos de 100 caracteres.");
-        }
+        $this->apellidos = strip_tags(trim($apellidos));
     }
 
     public function getFechaNacimiento() { return $this->fecha_nacimiento; }
     public function setFechaNacimiento($fecha) {
-        $clean = trim($fecha);
-        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $clean)) {
-            $this->fecha_nacimiento = $clean;
-        } else {
-            throw new InvalidArgumentException("La fecha de nacimiento debe tener el formato AAAA-MM-DD.");
-        }
+        $this->fecha_nacimiento = trim($fecha);
     }
 
     /**

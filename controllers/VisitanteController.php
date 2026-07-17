@@ -162,6 +162,33 @@ function crearVisitanteAction($db) {
         exit;
     }
 
+    if (strlen($nombres) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre del visitante no es válido o supera los 100 caracteres."
+        ]);
+        exit;
+    }
+
+    if (strlen($apellidos) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El apellido del visitante no es válido o supera los 100 caracteres."
+        ]);
+        exit;
+    }
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_nacimiento)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La fecha de nacimiento debe tener el formato AAAA-MM-DD."
+        ]);
+        exit;
+    }
+
     try {
         $visitante = new Visitante($db);
         $visitante->setNombres($nombres);
@@ -215,6 +242,33 @@ function actualizarVisitanteAction($db) {
         echo json_encode([
             "status" => "error",
             "message" => "Todos los campos obligatorios (*) son requeridos."
+        ]);
+        exit;
+    }
+
+    if (strlen($nombres) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre del visitante no es válido o supera los 100 caracteres."
+        ]);
+        exit;
+    }
+
+    if (strlen($apellidos) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El apellido del visitante no es válido o supera los 100 caracteres."
+        ]);
+        exit;
+    }
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_nacimiento)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La fecha de nacimiento debe tener el formato AAAA-MM-DD."
         ]);
         exit;
     }

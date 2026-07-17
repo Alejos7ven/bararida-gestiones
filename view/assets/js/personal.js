@@ -9,8 +9,56 @@ $(document).ready(function() {
     const $loader = $('#loaderPersonal');
     const $alertFeedback = $('#alertFeedbackGlobal');
     
+    let DB_ROLES = [];
+    
+    // Variables de paginación
+    let cachePersonal = [];
+    let filteredPersonal = [];
+    let currentPagePersonal = 1;
+    const itemsPerPage = 10;
+
     // Cargar listado al iniciar
     listarPersonal();
+    cargarRoles();
+
+    function cargarRoles() {
+        $.ajax({
+            url: 'controllers/PersonalController.php?action=listar_roles',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    DB_ROLES = response.data;
+                    window.DB_ROLES = DB_ROLES;
+                    
+                    // Rellenar select de crear personal
+                    const $rol = $('#rol');
+                    if ($rol.length > 0) {
+                        $rol.empty().append('<option value="" disabled selected>Seleccione un rol...</option>');
+                        DB_ROLES.forEach(function(r) {
+                            let label = r;
+                            if (r === 'admin') label = 'Administrador';
+                            else if (r === 'guia') label = 'Guía de Campo';
+                            else label = r.charAt(0).toUpperCase() + r.slice(1);
+                            
+                            $rol.append(`<option value="${r}">${label}</option>`);
+                        });
+                    }
+                }
+            },
+            error: function() {
+                // Fallback a los roles por defecto en caso de error
+                DB_ROLES = ['admin', 'guia'];
+                window.DB_ROLES = DB_ROLES;
+                const $rol = $('#rol');
+                if ($rol.length > 0) {
+                    $rol.empty().append('<option value="" disabled selected>Seleccione un rol...</option>');
+                    $rol.append('<option value="admin">Administrador</option>');
+                    $rol.append('<option value="guia">Guía de Campo</option>');
+                }
+            }
+        });
+    }
 
     // =========================================================================
     // LISTAR PERSONAL (AJAX)
@@ -18,6 +66,7 @@ $(document).ready(function() {
     function listarPersonal() {
         $tablaPersonal.hide();
         $loader.show();
+        $('#paginacionPersonal').hide();
 
         $.ajax({
             url: 'controllers/PersonalController.php?action=listar',
@@ -25,50 +74,23 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 $loader.hide();
-                $tablaPersonal.empty();
-
-                if (response.status === 'success' && response.data.length > 0) {
-                    response.data.forEach(function(u) {
-                        // Badge de rol decorado
-                        let badgeRol = '';
-                        if (u.rol === 'superadmin') {
-                            badgeRol = '<span class="badge-premium badge-premium-superadmin">Super Admin</span>';
-                        } else if (u.rol === 'admin') {
-                            badgeRol = '<span class="badge-premium badge-premium-admin">Administrador</span>';
-                        } else {
-                            badgeRol = '<span class="badge-premium badge-premium-guia">Guía de Campo</span>';
-                        }
-
-                        // El Superadmin no puede ser eliminado del sistema
-                        const deleteDisabled = (u.rol === 'superadmin') ? 'disabled' : '';
-                        const nameFull = `${u.nombre} ${u.apellido}`;
-
-                        const rowHtml = `
-                            <tr class="personal-row" data-search="${u.cedula} ${u.nombre.toLowerCase()} ${u.apellido.toLowerCase()}">
-                                <td class="fw-600">#${u.id}</td>
-                                <td><strong>${u.tipo_documento}-${u.cedula}</strong></td>
-                                <td>${nameFull}</td>
-                                <td>${badgeRol}</td>
-                                <td>${u.created_at}</td>
-                                <td>
-                                    <div class="table-actions">
-                                        <button class="btn-action btn-action-edit btn-editar-personal" data-id="${u.id}" title="Editar Personal">
-                                            <!-- SVG Pencil -->
-                                            <svg viewBox="0 0 24 24"><path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/></svg>
-                                        </button>
-                                        <button class="btn-action btn-action-delete btn-eliminar-personal" data-id="${u.id}" data-name="${nameFull}" ${deleteDisabled} title="Eliminar Personal">
-                                            <!-- SVG Trash -->
-                                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        `;
-                        $tablaPersonal.append(rowHtml);
-                    });
-                    $tablaPersonal.fadeIn(300);
+                if (response.status === 'success') {
+                    cachePersonal = response.data || [];
+                    
+                    // Al recargar, intentar mantener la búsqueda actual
+                    const query = $('#searchUser').val().toLowerCase().trim();
+                    if (query === '') {
+                        filteredPersonal = cachePersonal;
+                    } else {
+                        filteredPersonal = cachePersonal.filter(function(u) {
+                            const searchString = `${u.cedula} ${u.nombre.toLowerCase()} ${u.apellido.toLowerCase()} ${u.tipo_documento.toLowerCase()}`;
+                            return searchString.indexOf(query) > -1;
+                        });
+                    }
+                    
+                    renderPersonalTable();
                 } else {
-                    $tablaPersonal.append('<tr><td colspan="6" class="text-center text-muted py-4">No hay personal registrado en el sistema.</td></tr>');
+                    $tablaPersonal.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">No se pudo cargar la lista de personal.</td></tr>');
                     $tablaPersonal.fadeIn(300);
                 }
             },
@@ -79,25 +101,139 @@ $(document).ready(function() {
         });
     }
 
-    // =========================================================================
-    // FILTRADO / BUSCADOR EN TIEMPO REAL
-    // =========================================================================
-    $('#searchPersonal').on('input', function() {
-        const query = $(this).val().toLowerCase().trim();
-        
-        if (query === '') {
-            $('.personal-row').show();
+    function renderPersonalTable() {
+        $tablaPersonal.empty();
+        const totalRecords = filteredPersonal.length;
+
+        if (totalRecords === 0) {
+            $tablaPersonal.append('<tr><td colspan="6" class="text-center text-muted py-4">No se encontraron registros de personal.</td></tr>');
+            $('#paginacionPersonal').hide();
+            $tablaPersonal.fadeIn(300);
             return;
         }
 
-        $('.personal-row').each(function() {
-            const searchText = $(this).data('search');
-            if (searchText.indexOf(query) > -1) {
-                $(this).show();
+        const totalPages = Math.ceil(totalRecords / itemsPerPage);
+        
+        if (currentPagePersonal > totalPages) {
+            currentPagePersonal = totalPages;
+        }
+        if (currentPagePersonal < 1) {
+            currentPagePersonal = 1;
+        }
+
+        const startIdx = (currentPagePersonal - 1) * itemsPerPage;
+        const endIdx = Math.min(startIdx + itemsPerPage, totalRecords);
+        const pageData = filteredPersonal.slice(startIdx, endIdx);
+
+        pageData.forEach(function(u) {
+            let badgeRol = '';
+            if (u.rol === 'superadmin') {
+                badgeRol = '<span class="badge-premium badge-premium-superadmin">Super Admin</span>';
+            } else if (u.rol === 'admin') {
+                badgeRol = '<span class="badge-premium badge-premium-admin">Administrador</span>';
             } else {
-                $(this).hide();
+                badgeRol = '<span class="badge-premium badge-premium-guia">Guía de Campo</span>';
             }
+
+            const deleteDisabled = (u.rol === 'superadmin') ? 'disabled' : '';
+            const nameFull = `${u.nombre} ${u.apellido}`;
+
+            const rowHtml = `
+                <tr class="personal-row">
+                    <td class="fw-600">#${u.id}</td>
+                    <td><strong>${u.tipo_documento}-${u.cedula}</strong></td>
+                    <td>${nameFull}</td>
+                    <td>${badgeRol}</td>
+                    <td>${u.created_at}</td>
+                    <td>
+                        <div class="table-actions">
+                            <button class="btn-action btn-action-edit btn-editar-personal" data-id="${u.id}" title="Editar Personal">
+                                <svg viewBox="0 0 24 24"><path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/></svg>
+                            </button>
+                            <button class="btn-action btn-action-delete btn-eliminar-personal" data-id="${u.id}" data-name="${nameFull}" ${deleteDisabled} title="Eliminar Personal">
+                                <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            $tablaPersonal.append(rowHtml);
         });
+
+        // Actualizar datos informativos
+        $('#pagStartPersonal').text(startIdx + 1);
+        $('#pagEndPersonal').text(endIdx);
+        $('#pagTotalPersonal').text(totalRecords);
+
+        // Renderizar controles de paginación
+        const $controls = $('#paginationControlsPersonal');
+        $controls.empty();
+
+        // Botón Anterior
+        const prevDisabled = currentPagePersonal === 1 ? 'disabled' : '';
+        $controls.append(`
+            <li class="page-item ${prevDisabled}">
+                <a class="page-link btn-pag-personal" data-page="${currentPagePersonal - 1}" href="javascript:void(0)">&laquo; Anterior</a>
+            </li>
+        `);
+
+        // Botones de Páginas (Ventana Deslizante de Máximo 10)
+        const maxVisible = 10;
+        let startPage = Math.max(1, currentPagePersonal - Math.floor(maxVisible / 2));
+        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
+
+        if (endPage - startPage + 1 < maxVisible) {
+            startPage = Math.max(1, endPage - maxVisible + 1);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const activeClass = currentPagePersonal === i ? 'active' : '';
+            $controls.append(`
+                <li class="page-item ${activeClass}">
+                    <a class="page-link btn-pag-personal" data-page="${i}" href="javascript:void(0)">${i}</a>
+                </li>
+            `);
+        }
+
+        // Botón Siguiente
+        const nextDisabled = currentPagePersonal === totalPages ? 'disabled' : '';
+        $controls.append(`
+            <li class="page-item ${nextDisabled}">
+                <a class="page-link btn-pag-personal" data-page="${currentPagePersonal + 1}" href="javascript:void(0)">Siguiente &raquo;</a>
+            </li>
+        `);
+
+        $('#paginacionPersonal').removeClass('d-none').show();
+        $tablaPersonal.fadeIn(300);
+    }
+
+    // Manejar clicks en paginación
+    $(document).on('click', '.btn-pag-personal', function(e) {
+        e.preventDefault();
+        const page = parseInt($(this).data('page'));
+        if (page && page !== currentPagePersonal) {
+            currentPagePersonal = page;
+            renderPersonalTable();
+        }
+    });
+
+    // =========================================================================
+    // FILTRADO / BUSCADOR EN TIEMPO REAL
+    // =========================================================================
+    $('#searchUser').on('input', function() {
+        const query = $(this).val().toLowerCase().trim();
+        
+        if (query === '') {
+            filteredPersonal = cachePersonal;
+        } else {
+            filteredPersonal = cachePersonal.filter(function(u) {
+                const searchString = `${u.cedula} ${u.nombre.toLowerCase()} ${u.apellido.toLowerCase()} ${u.tipo_documento.toLowerCase()}`;
+                return searchString.indexOf(query) > -1;
+            });
+        }
+        
+        currentPagePersonal = 1;
+        renderPersonalTable();
     });
 
     // =========================================================================
@@ -110,10 +246,7 @@ $(document).ready(function() {
         const $btn = $('#btnGuardarNuevo');
         const $alert = $('#alertCrearFeedback');
 
-        // Validaciones previas cliente
-        const password = $('#password').val();
-        if (password.length < 6) {
-            showAlert($alert, 'La contraseña debe tener al menos 6 caracteres.', 'danger');
+        if (!$form.valid()) {
             return;
         }
 
@@ -219,10 +352,7 @@ $(document).ready(function() {
         const $btn = $('#btnGuardarEditar');
         const $alert = $('#alertEditarFeedback');
 
-        // Validaciones previas cliente
-        const password = $('#edit_password').val();
-        if (password.length > 0 && password.length < 6) {
-            showAlert($alert, 'La nueva contraseña debe tener al menos 6 caracteres.', 'danger');
+        if (!$form.valid()) {
             return;
         }
 

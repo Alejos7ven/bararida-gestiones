@@ -586,8 +586,248 @@
         }, 50);
     });
 
+    let allGuias = [];
+
+    function cargarCitasHoy() {
+        const $loader = $('#loaderCitasHoy');
+        const $wrapper = $('#citasHoyWrapper');
+        const $body = $('#tablaCitasHoyBody');
+
+        if ($body.length === 0) return;
+
+        $wrapper.hide();
+        $loader.show();
+
+        $.ajax({
+            url: 'controllers/CitaController.php?action=citas_hoy',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                $loader.hide();
+                $body.empty();
+
+                if (response.status === 'success') {
+                    const citas = response.data || [];
+                    if (citas.length === 0) {
+                        $body.append('<tr><td colspan="6" class="text-center text-muted py-4">No hay visitas guiadas programadas para el día de hoy.</td></tr>');
+                        $wrapper.fadeIn(300);
+                        return;
+                    }
+
+                    citas.forEach(function(c) {
+                        const hora = formatTime(c.hora_inicio);
+                        let guiasHtml = '';
+                        
+                        // Si el usuario es administrador o superadmin, permitir asignación
+                        // Detectar rol del usuario desde el atributo data inyectado por PHP
+                        const userRol = $('#quickAccessCard').data('user-rol') || '';
+                        const esAdmin = userRol === 'superadmin' || userRol === 'admin';
+
+                        if (esAdmin) {
+                            if (c.guias_asignados) {
+                                // Tiene guías: mostrar nombres + botón de edición (btn-action-edit) idéntico al de otras tablas
+                                guiasHtml = `<div class="table-actions d-flex align-items-center justify-content-center gap-2 flex-wrap">
+                                    <span class="badge bg-success" style="font-size:0.75rem; font-weight:600;">${c.guias_asignados}</span>
+                                    <button class="btn-action btn-action-edit btn-gestionar-guia-dash" data-id="${c.id}" title="Gestionar guías asignados">
+                                        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                    </button>
+                                </div>`;
+                            } else {
+                                // Sin guía: solo el botón de asignar (btn-action-edit con ícono de agregar persona)
+                                guiasHtml = `<div class="table-actions justify-content-center">
+                                    <button class="btn-action btn-action-edit btn-gestionar-guia-dash" data-id="${c.id}" title="Asignar guía a esta cita">
+                                        <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                    </button>
+                                </div>`;
+                            }
+                        } else {
+                            // Guía de campo: solo ver
+                            guiasHtml = c.guias_asignados
+                                ? `<span class="badge bg-success" style="font-size:0.75rem; font-weight:600;">${c.guias_asignados}</span>`
+                                : '<span class="text-muted" style="font-size:0.8rem; font-style:italic;">No asignado</span>';
+                        }
+
+                        const rowHtml = `
+                            <tr>
+                                <td><strong>#CIT-${c.id}</strong></td>
+                                <td><strong>${hora}</strong></td>
+                                <td>
+                                    <strong>${c.tipo_documento}-${c.rif}</strong><br>
+                                    <small class="text-muted">${c.razon_social}</small>
+                                </td>
+                                <td>${c.recorrido_nombre || '<span class="text-muted" style="font-style:italic;">Sin recorrido</span>'}</td>
+                                <td><span class="badge bg-info text-dark" style="font-size:0.75rem; font-weight:600;">${c.total_visitantes}</span></td>
+                                <td>${guiasHtml}</td>
+                            </tr>
+                        `;
+                        $body.append(rowHtml);
+                    });
+                    $wrapper.fadeIn(300);
+                } else {
+                    $body.append(`<tr><td colspan="6" class="text-center text-danger py-4">No se pudo cargar la agenda del día: ${response.message}</td></tr>`);
+                    $wrapper.fadeIn(300);
+                }
+            },
+            error: function() {
+                $loader.hide();
+                $body.append('<tr><td colspan="6" class="text-center text-danger py-4">Error al cargar la agenda de hoy.</td></tr>');
+                $wrapper.fadeIn(300);
+            }
+        });
+    }
+
+    // Cargar guías disponibles en el sistema (roles 'guia')
+    function cargarGuiasDisponibles(callback) {
+        if (allGuias.length > 0) {
+            if (callback) callback(allGuias);
+            return;
+        }
+
+        $.ajax({
+            url: 'controllers/CitaController.php?action=listar_guias',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    allGuias = response.data || [];
+                    
+                    const $select = $('#selectGuiaDashboard');
+                    $select.empty().append('<option value="">Seleccione un guía...</option>');
+                    allGuias.forEach(function(g) {
+                        $select.append(`<option value="${g.id}">${g.nombre} ${g.apellido}</option>`);
+                    });
+
+                    if (callback) callback(allGuias);
+                } else {
+                    console.error('Error al cargar guías:', response.message);
+                }
+            },
+            error: function() {
+                console.error('Error de red al cargar guías.');
+            }
+        });
+    }
+
+    // Cargar guías asignados a la cita para mostrarlos en el modal
+    function cargarGuiasAsignadosCita(citaId) {
+        const $container = $('#guiasAsignadosActualesDashboard');
+        $container.empty().append('<div class="text-center text-muted py-2">Cargando guías asignados...</div>');
+
+        $.ajax({
+            url: `controllers/CitaController.php?action=guias_cita&cita_id=${citaId}`,
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                $container.empty();
+                if (response.status === 'success' && response.data && response.data.length > 0) {
+                    response.data.forEach(function(g) {
+                        const rolText = g.rol_guia === 'principal' ? 'Principal' : 'Apoyo';
+                        const badgeClass = g.rol_guia === 'principal' ? 'bg-success' : 'bg-secondary';
+                        const itemHtml = `
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded border bg-white">
+                                <div>
+                                    <strong>${g.nombre} ${g.apellido}</strong> 
+                                    <span class="badge ${badgeClass} ms-1" style="font-size: 0.65rem;">${rolText}</span>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-link text-danger p-0 btn-quitar-guia-dash" data-cita-id="${citaId}" data-guia-id="${g.personal_id}" style="text-decoration:none; font-weight:700;" title="Quitar asignación">✕ Quitar</button>
+                            </div>
+                        `;
+                        $container.append(itemHtml);
+                    });
+                } else {
+                    $container.append('<div class="text-center text-muted py-2 italic">Ningún guía asignado aún para esta visita.</div>');
+                }
+            },
+            error: function() {
+                $container.empty().append('<div class="text-center text-danger py-2">Error al cargar asignaciones.</div>');
+            }
+        });
+    }
+
+    // Evento: Abrir modal de asignación de guía
+    $(document).on('click', '.btn-gestionar-guia-dash', function() {
+        const citaId = $(this).data('id');
+        $('#assign_guia_cita_id').val(citaId);
+        
+        cargarGuiasDisponibles();
+        cargarGuiasAsignadosCita(citaId);
+        
+        $('#modalAsignarGuiaDashboard').modal('show');
+    });
+
+    // Evento: Enviar formulario de asignación de guía
+    $('#formAsignarGuiaDashboard').on('submit', function(e) {
+        e.preventDefault();
+        const citaId = $('#assign_guia_cita_id').val();
+        const $submitBtn = $(this).find('button[type="submit"]');
+        
+        $submitBtn.prop('disabled', true).text('Guardando...');
+
+        $.ajax({
+            url: 'controllers/CitaController.php?action=asignar_guia',
+            method: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            success: function(response) {
+                $submitBtn.prop('disabled', false).text('Asignar Guía');
+                if (response.status === 'success') {
+                    // Limpiar select
+                    $('#selectGuiaDashboard').val('');
+                    // Recargar guías asignados en el modal
+                    cargarGuiasAsignadosCita(citaId);
+                    // Recargar tabla de citas de hoy
+                    cargarCitasHoy();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function() {
+                $submitBtn.prop('disabled', false).text('Asignar Guía');
+                alert('Error al realizar la asignación de guía.');
+            }
+        });
+    });
+
+    // Evento: Quitar guía asignado
+    $(document).on('click', '.btn-quitar-guia-dash', function() {
+        const citaId = $(this).data('cita-id');
+        const personalId = $(this).data('guia-id');
+        const $btn = $(this);
+
+        if (!confirm('¿Está seguro de remover a este guía de la visita guiada?')) {
+            return;
+        }
+
+        $btn.prop('disabled', true).text('Removiendo...');
+
+        $.ajax({
+            url: 'controllers/CitaController.php?action=desasignar_guia',
+            method: 'POST',
+            data: { cita_id: citaId, personal_id: personalId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    cargarGuiasAsignadosCita(citaId);
+                    cargarCitasHoy();
+                } else {
+                    $btn.prop('disabled', false).text('✕ Quitar');
+                    alert(response.message);
+                }
+            },
+            error: function() {
+                $btn.prop('disabled', false).text('✕ Quitar');
+                alert('Error al remover la asignación de guía.');
+            }
+        });
+    });
+
     // Cargar los datos al iniciar la página
     $(document).ready(function() {
+        // Siempre cargar citas de hoy si el widget existe en el DOM
+        if ($('#tablaCitasHoyBody').length > 0) {
+            cargarCitasHoy();
+        }
+        // Cargar datos del calendario y estadísticas (requiere FullCalendar)
         cargarDatosDashboard();
     });
 })();

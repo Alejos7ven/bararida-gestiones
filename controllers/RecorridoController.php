@@ -104,6 +104,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'listar_recorridos':
             listarRecorridosAction($db);
             break;
+        case 'listar_recorridos_simple':
+            listarRecorridosSimpleAction($db);
+            break;
         case 'obtener_recorrido':
             obtenerRecorridoAction($db);
             break;
@@ -139,6 +142,24 @@ function crearZonaAction($db) {
         echo json_encode([
             "status" => "error",
             "message" => "El nombre de la zona y sus coordenadas son requeridos."
+        ]);
+        return;
+    }
+
+    if (strlen($nombre) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre de la zona supera los 100 caracteres."
+        ]);
+        return;
+    }
+
+    if (!preg_match('/^[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?$/', $coordenadas)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El formato de las coordenadas no es válido. Debe ser 'X,Y' (ej: 45.2,60.8)."
         ]);
         return;
     }
@@ -232,6 +253,15 @@ function crearRecorridoAction($db) {
         echo json_encode([
             "status" => "error",
             "message" => "El nombre del recorrido es obligatorio."
+        ]);
+        return;
+    }
+
+    if (strlen($nombre) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre del recorrido no es válido o supera los 100 caracteres."
         ]);
         return;
     }
@@ -355,6 +385,24 @@ function actualizarZonaCoordsAction($db) {
         return;
     }
 
+    if (!empty($nombre) && strlen($nombre) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre de la zona supera los 100 caracteres."
+        ]);
+        return;
+    }
+
+    if (!preg_match('/^[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?$/', $coordenadas)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El formato de las coordenadas no es válido. Debe ser 'X,Y' (ej: 45.2,60.8)."
+        ]);
+        return;
+    }
+
     try {
         $zona = new Zona($db);
         $result = false;
@@ -405,6 +453,15 @@ function actualizarRecorridoOrdenAction($db) {
         echo json_encode([
             "status" => "error",
             "message" => "El ID del recorrido es requerido."
+        ]);
+        return;
+    }
+
+    if (!empty($nombre) && strlen($nombre) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre del recorrido no es válido o supera los 100 caracteres."
         ]);
         return;
     }
@@ -541,3 +598,24 @@ function obtenerRecorridoAction($db) {
         ]);
     }
 }
+
+/**
+ * Obtiene el listado simple (id y nombre) de todos los recorridos
+ */
+function listarRecorridosSimpleAction($db) {
+    try {
+        $listado = Recorrido::obtenerListadoSimple($db);
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "data" => $listado
+        ]);
+    } catch (Exception $e) {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Error al obtener el listado simple de recorridos: " . $e->getMessage()
+        ]);
+    }
+}
+

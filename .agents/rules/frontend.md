@@ -11,3 +11,7 @@ Para la interfaz, utiliza fondos blancos, sub-fondos grises sutiles, el color pr
 Prioriza crear una interfaz moderna, unificada y elegante.
 
 Siempre separa la lógica del CSS y del JS en archivos separados para mantener el HTML limpio
+
+Cada vista debe tener un archivo independiente para que sea modular.
+
+Las validaciones en frontend se haran con jquery-validate en archivos separados y para cada formulario.
