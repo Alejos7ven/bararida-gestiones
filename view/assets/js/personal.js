@@ -83,7 +83,8 @@ $(document).ready(function() {
                         filteredPersonal = cachePersonal;
                     } else {
                         filteredPersonal = cachePersonal.filter(function(u) {
-                            const searchString = `${u.cedula} ${u.nombre.toLowerCase()} ${u.apellido.toLowerCase()} ${u.tipo_documento.toLowerCase()}`;
+                            const name = (u.nombre_completo || `${u.nombre || ''} ${u.apellido || ''}`).toLowerCase();
+                            const searchString = `${u.cedula} ${name} ${u.tipo_documento.toLowerCase()}`;
                             return searchString.indexOf(query) > -1;
                         });
                     }
@@ -136,7 +137,7 @@ $(document).ready(function() {
             }
 
             const deleteDisabled = (u.rol === 'superadmin') ? 'disabled' : '';
-            const nameFull = `${u.nombre} ${u.apellido}`;
+            const nameFull = u.nombre_completo || `${u.nombre || ''} ${u.apellido || ''}`.trim();
 
             const rowHtml = `
                 <tr class="personal-row">
@@ -303,8 +304,7 @@ $(document).ready(function() {
                     $('#edit_id').val(u.id);
                     $('#edit_tipo_documento').val(u.tipo_documento || 'V');
                     $('#edit_cedula').val(u.cedula);
-                    $('#edit_nombre').val(u.nombre);
-                    $('#edit_apellido').val(u.apellido);
+                    $('#edit_nombre_completo').val(u.nombre_completo || `${u.nombre || ''} ${u.apellido || ''}`.trim());
 
                     // Lógica Dinámica de Dropdown de Roles (Constraint de Superadmin)
                     $rolSelect.empty();
@@ -359,8 +359,6 @@ $(document).ready(function() {
         $btn.prop('disabled', true).text('Guardando...');
         $alert.hide();
 
-        // Si el rol select está deshabilitado (en caso del superadmin),
-        // serialize() de jQuery no lo incluye, por lo que agregamos manualmente el valor 'superadmin'
         let formData = $form.serialize();
         if ($('#edit_rol').is(':disabled')) {
             formData += '&rol=superadmin';
@@ -377,16 +375,13 @@ $(document).ready(function() {
                     $('#modalEditarPersonal').modal('hide');
                     showGlobalAlert(response.message, 'success');
                     
-                    // Si el superadmin editó sus propios datos, refrescamos el header superior al instante
                     const currentLoggedId = $('#currentLoggedUserId').val();
                     const editedId = $('#edit_id').val();
                     if (currentLoggedId === editedId) {
-                        const newNombre = $('#edit_nombre').val();
-                        const newApellido = $('#edit_apellido').val();
-                        $('.topbar .user-profile .name').text(`${newNombre} ${newApellido}`);
+                        const newNombreCompleto = $('#edit_nombre_completo').val();
+                        $('.topbar .user-profile .name').text(newNombreCompleto);
                         
-                        // Actualizar avatar
-                        const initials = (newNombre.substring(0,1) + newApellido.substring(0,1)).toUpperCase();
+                        const initials = newNombreCompleto.substring(0, 2).toUpperCase();
                         $('.topbar .user-profile .avatar-circle').text(initials);
                     }
 

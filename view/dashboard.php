@@ -18,10 +18,9 @@ if (!isset($_SESSION['personal'])) {
 $currentUser = $_SESSION['personal'];
 $userRol     = $currentUser['rol'];
 $userRolId   = isset($currentUser['rol_id']) ? (int)$currentUser['rol_id'] : 0;
-$userName    = htmlspecialchars($currentUser['nombre'] . ' ' . $currentUser['apellido']);
+$userName    = htmlspecialchars($currentUser['nombre_completo'] ?? ($currentUser['nombre'] ?? 'Usuario'));
 $userCedula  = htmlspecialchars(($currentUser['tipo_documento'] ?? 'V') . '-' . $currentUser['cedula']);
 
-// Cargar permisos del rol a través del controlador (MVC: la vista nunca accede al modelo)
 require_once __DIR__ . "/../controllers/DashboardController.php";
 $userPermissions = cargarPermisosUsuario($userRol, $userRolId);
 
@@ -50,17 +49,17 @@ if (!in_array($currentView, $validViews)) {
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Estilos Premium Personalizados del Dashboard -->
-    <link rel="stylesheet" href="view/assets/css/dashboard.css">
+    <link rel="stylesheet" href="view/assets/css/dashboard.css?v=<?php echo time(); ?>">
     
     <!-- Estilos Premium del Módulo de Recorridos y Zonas -->
-    <link rel="stylesheet" href="view/assets/css/recorridos.css?v=1.1">
+    <link rel="stylesheet" href="view/assets/css/recorridos.css?v=<?php echo time(); ?>">
 
     <!-- Cargar estilos específicos para CRUDs y Acceso Restringido si no estamos en el Dashboard de inicio -->
     <?php if ($currentView !== 'dashboard' && $currentView !== 'recorridos'): ?>
-        <link rel="stylesheet" href="view/assets/css/personal.css">
+        <link rel="stylesheet" href="view/assets/css/personal.css?v=<?php echo time(); ?>">
     <?php endif; ?>
     <?php if ($currentView === 'citas' || $currentView === 'instituciones' || $currentView === 'visitantes'): ?>
-        <link rel="stylesheet" href="view/assets/css/citas.css">
+        <link rel="stylesheet" href="view/assets/css/citas.css?v=<?php echo time(); ?>">
     <?php endif; ?>
 </head>
 <body>
@@ -190,7 +189,16 @@ if (!in_array($currentView, $validViews)) {
                         </span>
                     </div>
                     <div class="avatar-circle">
-                        <?php echo strtoupper(substr($currentUser['nombre'], 0, 1) . substr($currentUser['apellido'], 0, 1)); ?>
+                        <?php 
+                        $initials = 'US';
+                        if (!empty($currentUser['nombre_completo'])) {
+                            $parts = preg_split('/\s+/', trim($currentUser['nombre_completo']));
+                            $initials = strtoupper(substr($parts[0], 0, 1) . (isset($parts[1]) ? substr($parts[1], 0, 1) : ''));
+                        } else if (!empty($currentUser['nombre'])) {
+                            $initials = strtoupper(substr($currentUser['nombre'], 0, 1) . substr($currentUser['apellido'] ?? '', 0, 1));
+                        }
+                        echo $initials;
+                        ?>
                     </div>
                 </div>
             </div>
@@ -254,8 +262,8 @@ if (!in_array($currentView, $validViews)) {
 
     <!-- Vincular el script del CRUD de forma asíncrona solo si estamos en la vista de personal -->
     <?php if ($currentView === 'personal' && $userPermissions['personal']): ?>
-        <script src="view/assets/js/personal.js"></script>
-        <script src="view/assets/js/validations/personal-val.js"></script>
+        <script src="view/assets/js/personal.js?v=<?php echo time(); ?>"></script>
+        <script src="view/assets/js/validations/personal-val.js?v=<?php echo time(); ?>"></script>
     <?php endif; ?>
 
     <!-- Vincular la librería Chart.js de forma local para las estadísticas del dashboard -->
@@ -265,33 +273,33 @@ if (!in_array($currentView, $validViews)) {
 
     <!-- Vincular el script de recorridos dinámicamente si corresponde -->
     <?php if ($currentView === 'dashboard' || ($currentView === 'recorridos' && $userPermissions['recorridos'])): ?>
-        <script src="view/assets/js/recorridos.js?v=1.1"></script>
-        <script src="view/assets/js/validations/recorridos-val.js"></script>
+        <script src="view/assets/js/recorridos.js?v=<?php echo time(); ?>"></script>
+        <script src="view/assets/js/validations/recorridos-val.js?v=<?php echo time(); ?>"></script>
     <?php endif; ?>
 
     <!-- Vincular el script de citas dinámicamente si corresponde -->
     <?php if ($currentView === 'citas' && $userPermissions['citas']): ?>
         <!-- SheetJS: lectura de archivos Excel (.xlsx) en el frontend -->
         <script src="view/assets/js/xlsx.min.js"></script>
-        <script src="view/assets/js/citas.js?v=1.3"></script>
-        <script src="view/assets/js/validations/citas-val.js"></script>
+        <script src="view/assets/js/citas.js?v=<?php echo time(); ?>"></script>
+        <script src="view/assets/js/validations/citas-val.js?v=<?php echo time(); ?>"></script>
     <?php endif; ?>
 
     <!-- Vincular el script de instituciones dinámicamente si corresponde -->
     <?php if ($currentView === 'instituciones' && $userPermissions['instituciones']): ?>
-        <script src="view/assets/js/instituciones.js"></script>
-        <script src="view/assets/js/validations/instituciones-val.js"></script>
+        <script src="view/assets/js/instituciones.js?v=<?php echo time(); ?>"></script>
+        <script src="view/assets/js/validations/instituciones-val.js?v=<?php echo time(); ?>"></script>
     <?php endif; ?>
 
     <!-- Vincular el script de visitantes dinámicamente si corresponde -->
     <?php if ($currentView === 'visitantes' && $userPermissions['visitantes']): ?>
-        <script src="view/assets/js/visitantes.js"></script>
-        <script src="view/assets/js/validations/visitantes-val.js"></script>
+        <script src="view/assets/js/visitantes.js?v=<?php echo time(); ?>"></script>
+        <script src="view/assets/js/validations/visitantes-val.js?v=<?php echo time(); ?>"></script>
     <?php endif; ?>
 
     <!-- Vincular el script del módulo App (Configuración) solo si corresponde y es superadmin -->
     <?php if ($currentView === 'app' && $userRol === 'superadmin'): ?>
-        <script src="view/assets/js/app.js"></script>
+        <script src="view/assets/js/app.js?v=<?php echo time(); ?>"></script>
     <?php endif; ?>
 
     <!-- Lógica del Dashboard (sidebar responsivo) -->

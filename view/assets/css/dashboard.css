@@ -1068,3 +1068,33 @@ body {
     font-weight: 500;
 }
 
+/* ==========================================================================
+   Soporte para Modales Scrolleables con Formularios
+   ========================================================================== */
+.modal-dialog-scrollable {
+    max-height: calc(100% - 3.5rem);
+}
+
+.modal-dialog-scrollable .modal-content {
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.modal-dialog-scrollable form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.modal-dialog-scrollable form .modal-body,
+.modal-dialog-scrollable .modal-body {
+    overflow-y: auto !important;
+    max-height: calc(90vh - 140px);
+    flex: 1 1 auto;
+    min-height: 0;
+}
+

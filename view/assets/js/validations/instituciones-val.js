@@ -12,20 +12,15 @@ $(document).ready(function() {
                     minlength: 6,
                     maxlength: 12
                 },
-                nombre: {
+                nombre_completo: {
                     required: true,
-                    minlength: 3
+                    minlength: 3,
+                    maxlength: 150
                 },
                 tipo_organizacion: {
                     required: true
                 },
                 tipo_gestion: {
-                    required: true
-                },
-                parroquia_id: {
-                    required: true
-                },
-                ciudad_id: {
                     required: true
                 }
             },
@@ -35,17 +30,12 @@ $(document).ready(function() {
                     minlength: "Debe tener al menos 6 dígitos.",
                     maxlength: "No puede exceder los 12 dígitos."
                 },
-                nombre: {
+                nombre_completo: {
+                    required: "La Razón Social / Nombre Oficial es requerida.",
                     minlength: "La Razón Social debe tener al menos 3 caracteres."
                 },
                 tipo_organizacion: {
                     required: "Debe seleccionar o especificar un tipo de organización."
-                },
-                parroquia_id: {
-                    required: "Debe seleccionar la parroquia correspondiente."
-                },
-                ciudad_id: {
-                    required: "Debe seleccionar la ciudad correspondiente."
                 }
             }
         });
@@ -64,20 +54,15 @@ $(document).ready(function() {
                     minlength: 6,
                     maxlength: 12
                 },
-                nombre: {
+                nombre_completo: {
                     required: true,
-                    minlength: 3
+                    minlength: 3,
+                    maxlength: 150
                 },
                 tipo_organizacion: {
                     required: true
                 },
                 tipo_gestion: {
-                    required: true
-                },
-                parroquia_id: {
-                    required: true
-                },
-                ciudad_id: {
                     required: true
                 }
             },
@@ -87,17 +72,12 @@ $(document).ready(function() {
                     minlength: "Debe tener al menos 6 dígitos.",
                     maxlength: "No puede exceder los 12 dígitos."
                 },
-                nombre: {
+                nombre_completo: {
+                    required: "La Razón Social / Nombre Oficial es requerida.",
                     minlength: "La Razón Social debe tener al menos 3 caracteres."
                 },
                 tipo_organizacion: {
                     required: "Debe seleccionar o especificar un tipo de organización."
-                },
-                parroquia_id: {
-                    required: "Debe seleccionar la parroquia correspondiente."
-                },
-                ciudad_id: {
-                    required: "Debe seleccionar la ciudad correspondiente."
                 }
             }
         });

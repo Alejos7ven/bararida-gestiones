@@ -131,12 +131,21 @@ $(document).ready(function() {
             // Guía asignado o pendiente
             const guiaAsignado = c.guia_nombre ? `${c.guia_nombre} ${c.guia_apellido || ''}` : '<span class="text-muted italic">No asignado</span>';
 
+            const nombreInst = c.nombre_completo || c.razon_social || '';
+            let sedeInfo = '';
+            if (c.sede_ciudad || c.sede_estado) {
+                sedeInfo = `<div class="mt-1"><span class="badge bg-light text-dark border" style="font-size:0.7rem;">Sede: ${c.sede_ciudad || c.sede_estado}</span> <small class="text-muted">${c.sede_detalles || ''}</small></div>`;
+            } else if (c.estado) {
+                sedeInfo = `<div class="mt-1"><small class="text-muted">${c.estado}, ${c.ciudad || ''}</small></div>`;
+            }
+
             const rowHtml = `
                 <tr class="cita-row">
                     <td><strong>#CIT-${c.id}</strong></td>
                     <td>
                         <span style="white-space: nowrap;"><strong>${c.tipo_documento}-${c.RIF}</strong></span><br>
-                        <small class="text-muted" style="font-size:0.8rem;">${c.razon_social}</small>
+                        <strong class="text-success" style="font-size:0.88rem;">${nombreInst}</strong>
+                        ${sedeInfo}
                     </td>
                     <td>
                         ${formatDate(c.fecha_visita)}<br>
@@ -155,7 +164,7 @@ $(document).ready(function() {
                             <a href="controllers/CitaController.php?action=descargar_plantilla&cita_id=${c.id}" class="btn-action btn-action-edit" title="Descargar Plantilla Excel (.xlsx)" target="_blank">
                                 <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
                             </a>
-                            <button class="btn-action btn-action-delete btn-eliminar-cita" data-id="${c.id}" data-name="${c.razon_social}" title="Eliminar Cita">
+                            <button class="btn-action btn-action-delete btn-eliminar-cita" data-id="${c.id}" data-name="${nombreInst}" title="Eliminar Cita">
                                 <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                             </button>
                         </div>
@@ -453,6 +462,45 @@ $(document).ready(function() {
     // AUTOCUMPLETADO DE INSTITUCIONES (PASO 1)
     let searchTimeout = null;
 
+    // Asegurar que el contenedor de sugerencias resida directamente en el body para evitar overflow del modal
+    if ($('#autocomplete_suggestions').parent().is(':not(body)')) {
+        $('body').append($('#autocomplete_suggestions'));
+    }
+
+    // Función para posicionar dinámicamente las sugerencias fuera de las restricciones del modal
+    function posicionarAutocompleteSuggestions() {
+        const $input = $('#buscar_institucion_autocomplete');
+        const $suggestions = $('#autocomplete_suggestions');
+        if (!$input.length || !$suggestions.length) return;
+
+        const rect = $input[0].getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) return;
+
+        $suggestions.css({
+            position: 'fixed',
+            top: (rect.bottom + 4) + 'px',
+            left: rect.left + 'px',
+            width: rect.width + 'px',
+            zIndex: 9999999
+        });
+    }
+
+    $(window).on('resize scroll', function() {
+        if ($('#autocomplete_suggestions').is(':visible')) {
+            posicionarAutocompleteSuggestions();
+        }
+    });
+
+    $(document).on('scroll', '#modalCrearCita, #modalCrearCita .modal-body', function() {
+        if ($('#autocomplete_suggestions').is(':visible')) {
+            posicionarAutocompleteSuggestions();
+        }
+    });
+
+    $('#modalCrearCita').on('hidden.bs.modal', function() {
+        $('#autocomplete_suggestions').hide().empty();
+    });
+
     $('#buscar_institucion_autocomplete').on('input', function() {
         const query = $(this).val().trim();
         const $suggestions = $('#autocomplete_suggestions');
@@ -480,7 +528,7 @@ $(document).ready(function() {
                             results.forEach(function(inst) {
                                 const itemHtml = `
                                     <button type="button" class="dropdown-item py-2 px-3 autocomplete-item" style="display: block; width: 100%; text-align: left;" data-json='${JSON.stringify(inst)}'>
-                                        <div class="fw-bold text-success">${inst.nombre}</div>
+                                        <div class="fw-bold text-success">${inst.nombre_completo || inst.nombre}</div>
                                         <small class="text-muted">${inst.tipo_documento}-${inst.documento} • ${inst.tipo_organizacion} (${inst.tipo_gestion})</small>
                                     </button>
                                 `;
@@ -498,7 +546,9 @@ $(document).ready(function() {
                             </button>
                         `;
                         $suggestions.append(addNewHtml);
+                        posicionarAutocompleteSuggestions();
                         $suggestions.show();
+                        posicionarAutocompleteSuggestions();
                     }
                 },
                 error: function() {
@@ -508,12 +558,21 @@ $(document).ready(function() {
         }, 300);
     });
 
+    $('#buscar_institucion_autocomplete').on('focus', function() {
+        if ($(this).val().trim().length >= 2 && $('#autocomplete_suggestions').children().length > 0) {
+            posicionarAutocompleteSuggestions();
+            $('#autocomplete_suggestions').show();
+            posicionarAutocompleteSuggestions();
+        }
+    });
+
     // Manejar selección de sugerencia
     $(document).on('click', '.autocomplete-item', function() {
         const inst = $(this).data('json');
         selectedInstitutionId = inst.id;
+        const nombreInst = inst.nombre_completo || inst.nombre || '';
         
-        $('#buscar_institucion_autocomplete').val(`${inst.tipo_documento}-${inst.documento} - ${inst.nombre}`);
+        $('#buscar_institucion_autocomplete').val(`${inst.tipo_documento}-${inst.documento} - ${nombreInst}`);
         $('#autocomplete_suggestions').hide().empty();
 
         // Rellenar datos
@@ -524,34 +583,193 @@ $(document).ready(function() {
         prellenarDatosInstitucion(inst);
         $('#nueva_institucion_rif_row').hide();
 
+        // Cargar y mostrar selector de Sedes en Paso 1
+        cargarSedesParaInstitucion(inst.id);
+
         $('#rifCheckStatus').removeClass('alert-danger alert-warning')
                             .addClass('alert-success')
-                            .html(`<strong>✓ Institución Seleccionada:</strong> ${inst.nombre}. Redirigiendo...`)
+                            .html(`<strong>✓ Institución Seleccionada:</strong> ${nombreInst}. Verifique o seleccione la sede deseada y presione Siguiente.`)
                             .fadeIn(200);
 
-        $('#btnWizardNext').prop('disabled', false);
+        $('#btnWizardNext').prop('disabled', false).show();
+    });
 
-        // Transición automática al paso 2
-        setTimeout(function() {
-            currentStep = 2;
-            showStep(currentStep);
-        }, 800);
+    // Cargar sedes para institución existente
+    function cargarSedesParaInstitucion(institucionId) {
+        const $box = $('#wizardSedesSelectionBox');
+        const $list = $('#wizardSedesRadioList');
+        $box.show();
+        $list.empty().append('<div class="text-muted"><small>Cargando sedes registradas...</small></div>');
+        $('#wizardNuevaSedeForm').hide();
+        $('#final_crear_nueva_sede').val('0');
+
+        $.ajax({
+            url: `controllers/InstitucionController.php?action=obtener_sedes&institucion_id=${institucionId}`,
+            method: 'GET',
+            dataType: 'json',
+            success: function(resp) {
+                $list.empty();
+                if (resp.status === 'success' && resp.data && resp.data.length > 0) {
+                    resp.data.forEach(function(s, idx) {
+                        const isChecked = idx === 0 ? 'checked' : '';
+                        if (idx === 0) {
+                            $('#final_sede_id').val(s.id);
+                        }
+                        const num = idx + 1;
+                        const labelDetails = s.detalles ? ` - <small class="text-muted">${s.detalles}</small>` : '';
+                        const itemHtml = `
+                            <div class="form-check p-2 bg-white border rounded">
+                                <input class="form-check-input radio-sede-item" type="radio" name="wizard_selected_sede" id="sede_opt_${s.id}" value="${s.id}" ${isChecked}>
+                                <label class="form-check-label w-100 cursor-pointer" for="sede_opt_${s.id}">
+                                    <span class="badge bg-success me-1">Sede #${num}</span>
+                                    <strong>${s.estado}, ${s.ciudad} (${s.parroquia})</strong>
+                                    ${labelDetails}
+                                </label>
+                            </div>
+                        `;
+                        $list.append(itemHtml);
+                    });
+                } else {
+                    $list.append('<div class="text-muted"><small>No hay sedes registradas para esta institución. Puede agregar una nueva sede a continuación.</small></div>');
+                    $('#final_sede_id').val('');
+                }
+            }
+        });
+    }
+
+    $(document).on('change', '.radio-sede-item', function() {
+        $('#final_sede_id').val($(this).val());
+    });
+
+    // Toggle para agregar nueva sede en cita
+    $('#btnToggleNuevaSedeCita').on('click', function() {
+        const $form = $('#wizardNuevaSedeForm');
+        if ($form.is(':visible')) {
+            $form.slideUp(200);
+            $('#final_crear_nueva_sede').val('0');
+            $('.radio-sede-item').prop('disabled', false);
+            const firstRadio = $('.radio-sede-item:first');
+            if (firstRadio.length) {
+                firstRadio.prop('checked', true);
+                $('#final_sede_id').val(firstRadio.val());
+            }
+        } else {
+            $form.slideDown(200);
+            $('#final_crear_nueva_sede').val('1');
+            $('.radio-sede-item').prop('checked', false).prop('disabled', true);
+            $('#final_sede_id').val('');
+            cargarEstadosNuevaSedeCita();
+        }
+    });
+
+    function cargarEstadosNuevaSedeCita() {
+        const $selectEstado = $('#nueva_sede_cita_estado');
+        $.ajax({
+            url: 'controllers/LocationController.php?action=estados',
+            method: 'GET',
+            dataType: 'json',
+            success: function(resp) {
+                if (resp.status === 'success') {
+                    $selectEstado.empty().append('<option value="">Seleccione Estado</option>');
+                    resp.data.forEach(function(est) {
+                        $selectEstado.append(`<option value="${est.id_estado}">${est.estado}</option>`);
+                    });
+                }
+            }
+        });
+    }
+
+    $('#nueva_sede_cita_estado').on('change', function() {
+        const estadoId = $(this).val();
+        const $selectMun = $('#nueva_sede_cita_municipio');
+        const $selectCiu = $('#nueva_sede_cita_ciudad');
+        const $selectPar = $('#nueva_sede_cita_parroquia');
+
+        $selectMun.empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
+        $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>').prop('disabled', true);
+        $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
+
+        if (!estadoId) return;
+
+        $.ajax({
+            url: `controllers/LocationController.php?action=ciudades&estado_id=${estadoId}`,
+            method: 'GET',
+            dataType: 'json',
+            success: function(resp) {
+                if (resp.status === 'success') {
+                    $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>');
+                    resp.data.forEach(function(c) {
+                        $selectCiu.append(`<option value="${c.id_ciudad}">${c.ciudad}</option>`);
+                    });
+                    $selectCiu.prop('disabled', false);
+                }
+            }
+        });
+
+        $.ajax({
+            url: `controllers/LocationController.php?action=municipios&estado_id=${estadoId}`,
+            method: 'GET',
+            dataType: 'json',
+            success: function(resp) {
+                if (resp.status === 'success') {
+                    $selectMun.empty().append('<option value="">Seleccione Municipio</option>');
+                    resp.data.forEach(function(m) {
+                        $selectMun.append(`<option value="${m.id_municipio}">${m.municipio}</option>`);
+                    });
+                    $selectMun.prop('disabled', false);
+                }
+            }
+        });
+    });
+
+    $('#nueva_sede_cita_municipio').on('change', function() {
+        const munId = $(this).val();
+        const $selectPar = $('#nueva_sede_cita_parroquia');
+        $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
+
+        if (!munId) return;
+
+        $.ajax({
+            url: `controllers/LocationController.php?action=parroquias&municipio_id=${munId}`,
+            method: 'GET',
+            dataType: 'json',
+            success: function(resp) {
+                if (resp.status === 'success') {
+                    $selectPar.empty().append('<option value="">Seleccione Parroquia</option>');
+                    resp.data.forEach(function(p) {
+                        $selectPar.append(`<option value="${p.id_parroquia}">${p.parroquia}</option>`);
+                    });
+                    $selectPar.prop('disabled', false);
+                }
+            }
+        });
+    });
+
+    $('#nueva_sede_cita_ciudad').on('change', function() {
+        $('#final_nueva_sede_ciudad_id').val($(this).val());
+    });
+    $('#nueva_sede_cita_parroquia').on('change', function() {
+        $('#final_nueva_sede_parroquia_id').val($(this).val());
+    });
+    $('#nueva_sede_cita_detalles').on('input', function() {
+        $('#final_nueva_sede_detalles').val($(this).val());
     });
 
     // Manejar registrar nueva institución desde autocompletado
     $(document).on('click', '#btn_new_inst_autocomplete', function() {
         const query = $('#buscar_institucion_autocomplete').val().trim();
         $('#autocomplete_suggestions').hide().empty();
+        $('#wizardSedesSelectionBox').hide();
 
         selectedInstitutionId = null;
         $('#final_institucion_id').val('');
+        $('#final_sede_id').val('');
+        $('#final_crear_nueva_sede').val('0');
         
-        // Intentar parsear el query para ver si es RIF o Nombre
         let docPart = '';
         let tipoDocPart = 'J';
         let nombrePart = '';
 
-        // Ejemplos: J-12345678, J12345678, 12345678
         const cleanQuery = query.replace(/[-]/g, '');
         const docMatch = cleanQuery.match(/^([JGVjgvEPep])?(\d+)$/);
         if (docMatch) {
@@ -566,12 +784,10 @@ $(document).ready(function() {
         $('#final_tipo_documento').val(tipoDocPart);
         $('#final_documento').val(docPart);
 
-        // Mostrar y precargar campos RIF en Paso 2
         $('#tipo_documento_inst').val(tipoDocPart);
         $('#documento_inst').val(docPart);
         $('#nueva_institucion_rif_row').show();
 
-        // Sincronizar inputs de RIF en tiempo real
         $('#tipo_documento_inst').off('change').on('change', function() {
             $('#final_tipo_documento').val($(this).val());
         });
@@ -579,18 +795,16 @@ $(document).ready(function() {
             $('#final_documento').val($(this).val().replace(/[^0-9]/g, ''));
         });
 
-        // Si se extraxo nombre, precargarlo en el formulario de paso 2
         if (nombrePart) {
             $('#nombre_institucion').val(nombrePart);
         }
 
-        // Mostrar warning toast indicando que es nueva
         $('#rifCheckStatus').removeClass('alert-danger alert-success')
                             .addClass('alert-warning')
-                            .html('<strong>⚠ Institución no registrada:</strong> Redirigiendo para registrar...')
+                            .html('<strong>⚠ Institución no registrada:</strong> Ingrese los datos y la sede de la nueva institución en el siguiente paso.')
                             .fadeIn(200);
 
-        $('#btnWizardNext').prop('disabled', false);
+        $('#btnWizardNext').prop('disabled', false).show();
 
         setTimeout(function() {
             currentStep = 2;
@@ -640,7 +854,8 @@ $(document).ready(function() {
     });
 
     function prellenarDatosInstitucion(data) {
-        $('#nombre_institucion').val(data.nombre).prop('disabled', true);
+        const nombreInst = data.nombre_completo || data.nombre || '';
+        $('#nombre_institucion').val(nombreInst).prop('disabled', true);
         
         // Agregar dinámicamente la opción si no existe en el select
         if (data.tipo_organizacion && $('#tipo_organizacion option[value="' + data.tipo_organizacion + '"]').length === 0) {
@@ -649,13 +864,14 @@ $(document).ready(function() {
         $('#tipo_organizacion').val(data.tipo_organizacion).prop('disabled', true);
         $('#tipo_gestion').val(data.tipo_gestion || 'publica').prop('disabled', true);
         
-        // Limpiar selects geográficos y forzar a mostrar los nombres de forma simple
-        $('#estado_id').empty().append(`<option value="${data.id_estado}" selected>${data.estado || 'Estado Pre-cargado'}</option>`).prop('disabled', true);
-        $('#municipio_id').empty().append(`<option value="${data.id_municipio}" selected>${data.municipio || 'Municipio Pre-cargado'}</option>`).prop('disabled', true);
-        $('#ciudad_id').empty().append(`<option value="${data.ciudad_id}" selected>${data.ciudad || 'Ciudad Pre-cargada'}</option>`).prop('disabled', true);
-        $('#parroquia_id').empty().append(`<option value="${data.parroquia_id}" selected>${data.parroquia || 'Parroquia Pre-cargada'}</option>`).prop('disabled', true);
+        // Si tiene sedes, prellenar la primera sede
+        const primerSede = (data.sedes && data.sedes.length > 0) ? data.sedes[0] : data;
+        $('#estado_id').empty().append(`<option value="${primerSede.id_estado || ''}" selected>${primerSede.estado || 'Estado Pre-cargado'}</option>`).prop('disabled', true);
+        $('#municipio_id').empty().append(`<option value="${primerSede.id_municipio || ''}" selected>${primerSede.municipio || 'Municipio Pre-cargado'}</option>`).prop('disabled', true);
+        $('#ciudad_id').empty().append(`<option value="${primerSede.ciudad_id || ''}" selected>${primerSede.ciudad || 'Ciudad Pre-cargada'}</option>`).prop('disabled', true);
+        $('#parroquia_id').empty().append(`<option value="${primerSede.parroquia_id || ''}" selected>${primerSede.parroquia || 'Parroquia Pre-cargada'}</option>`).prop('disabled', true);
         
-        $('#detalles_direccion').val(data.detalles_direccion || '').prop('disabled', true);
+        $('#detalles_direccion').val(primerSede.detalles || primerSede.detalles_direccion || '').prop('disabled', true);
 
         // Prellenar contactos
         $('#contactsContainer').empty();
@@ -782,6 +998,8 @@ $(document).ready(function() {
         const id = $(this).data('id');
         
         $('#formEditarCita')[0].reset();
+        const $sedeSelect = $('#edit_sede_id');
+        $sedeSelect.empty().append('<option value="">Cargando sedes...</option>');
 
         $.ajax({
             url: `controllers/CitaController.php?action=obtener&id=${id}`,
@@ -794,7 +1012,6 @@ $(document).ready(function() {
                     $('#edit_recorrido_id').val(cita.recorrido_id || '');
                     $('#edit_fecha_visita').val(cita.fecha_visita);
                     
-                    // Asegurar que la hora tenga el formato HH:MM (por ejemplo '09:00:00' -> '09:00')
                     let hora = cita.hora_inicio;
                     if (hora && hora.length > 5) {
                         hora = hora.substring(0, 5);
@@ -804,6 +1021,25 @@ $(document).ready(function() {
                     $('#edit_metodo_pago').val(cita.metodo_pago);
                     $('#edit_pago_estado').val(cita.pago_estado);
                     $('#edit_estatus').val(cita.estatus);
+
+                    // Cargar sedes de la institución
+                    if (cita.institucion_id) {
+                        $.ajax({
+                            url: `controllers/InstitucionController.php?action=obtener_sedes&institucion_id=${cita.institucion_id}`,
+                            method: 'GET',
+                            dataType: 'json',
+                            success: function(sResp) {
+                                $sedeSelect.empty().append('<option value="">Seleccione Sede</option>');
+                                if (sResp.status === 'success' && sResp.data) {
+                                    sResp.data.forEach(function(s, idx) {
+                                        const sel = (cita.sede_id && cita.sede_id == s.id) ? 'selected' : '';
+                                        const det = s.detalles ? ' - ' + s.detalles : '';
+                                        $sedeSelect.append(`<option value="${s.id}" ${sel}>Sede #${idx+1}: ${s.estado}, ${s.ciudad} (${s.parroquia})${det}</option>`);
+                                    });
+                                }
+                            }
+                        });
+                    }
 
                     $('#modalEditarCita').modal('show');
                 } else {

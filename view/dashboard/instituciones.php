@@ -9,7 +9,7 @@ if (!isset($userPermissions)) {
         <div class="panel-header-section">
             <div class="panel-header-title">
                 <h3>Registro de Instituciones</h3>
-                <p>Historial y registro de colegios, liceos y empresas externas</p>
+                <p>Historial y registro de colegios, liceos y empresas externas con control de sedes</p>
             </div>
             <div>
                 <button class="btn-premium-primary" data-bs-toggle="modal" data-bs-target="#modalCrearInstitucion">
@@ -21,8 +21,8 @@ if (!isset($userPermissions)) {
 
         <div class="search-filter-row">
             <div class="search-input-group">
-                <svg class="search-icon-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                <input type="text" id="searchInstituciones" placeholder="Filtrar por RIF, Razón Social o Tipo...">
+                <svg class="search-icon-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 14z"/></svg>
+                <input type="text" id="searchInstituciones" placeholder="Filtrar por RIF, Razón Social, Sede o Tipo...">
             </div>
         </div>
 
@@ -40,9 +40,8 @@ if (!isset($userPermissions)) {
                         <th>Código RIF</th>
                         <th>Razón Social</th>
                         <th>Tipo Org.</th>
-                        <th>Gestión</th>
                         <th>Contactos</th>
-                        <th>Dirección Física</th>
+                        <th>Sedes Registradas</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
@@ -67,18 +66,18 @@ if (!isset($userPermissions)) {
 
     <!-- MODAL: REGISTRAR INSTITUCIÓN STANDALONE -->
     <div class="modal fade modal-premium" id="modalCrearInstitucion" tabindex="-1" aria-labelledby="modalCrearInstitucionLabel" aria-hidden="true" data-bs-backdrop="static">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
                     <h5 class="modal-title" id="modalCrearInstitucionLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Registrar Nueva Institución</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
-                <form id="formCrearInstitucion" novalidate>
-                    <div class="modal-body" style="background:#ffffff; padding: 30px;">
+                <form id="formCrearInstitucion" novalidate style="display: flex; flex-direction: column; flex: 1 1 auto; overflow: hidden; min-height: 0;">
+                    <div class="modal-body" style="background:#ffffff; padding: 30px; overflow-y: auto; max-height: calc(88vh - 140px); flex: 1 1 auto;">
                         <div id="alertCrearInstFeedback" class="alert alert-toast alert-toast-danger" role="alert" style="display:none;"></div>
                         
                         <!-- Sección 1: Datos Básicos -->
-                        <h5 class="mb-3" style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);">Datos Identificativos</h5>
+                        <h5 class="mb-3" style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);">1. Datos Identificativos</h5>
                         <div class="row g-3 mb-4">
                             <div class="col-md-4">
                                 <label for="create_tipo_documento" class="form-premium-label">Tipo RIF</label>
@@ -95,8 +94,8 @@ if (!isset($userPermissions)) {
                                 <input type="text" class="form-control form-premium-control" id="create_documento" name="documento" placeholder="Ej. 123456789 (solo números)" required>
                             </div>
                             <div class="col-md-5">
-                                 <label for="create_nombre" class="form-premium-label">Razón Social</label>
-                                 <input type="text" class="form-control form-premium-control" id="create_nombre" name="nombre" placeholder="Ej. Colegio San Vicente" required>
+                                 <label for="create_nombre_completo" class="form-premium-label">Razón Social / Nombre Oficial</label>
+                                 <input type="text" class="form-control form-premium-control" id="create_nombre_completo" name="nombre_completo" placeholder="Ej. Colegio San Vicente" required>
                              </div>
                              <div class="col-md-4">
                                  <label for="create_tipo_organizacion_select" class="form-premium-label">Tipo de Organización</label>
@@ -123,41 +122,23 @@ if (!isset($userPermissions)) {
                              </div>
                         </div>
 
-                        <!-- Sección 2: Ubicación Geográfica -->
-                        <h5 class="mb-3" style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);">Ubicación Geográfica</h5>
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <label for="create_estado_id" class="form-premium-label">Estado</label>
-                                <select class="form-select form-premium-control" id="create_estado_id">
-                                    <option value="">Seleccione Estado</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="create_municipio_id" class="form-premium-label">Municipio</label>
-                                <select class="form-select form-premium-control" id="create_municipio_id" disabled>
-                                    <option value="">Seleccione Municipio</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="create_ciudad_id" class="form-premium-label">Ciudad</label>
-                                <select class="form-select form-premium-control" id="create_ciudad_id" name="ciudad_id" disabled>
-                                    <option value="">Seleccione Ciudad</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="create_parroquia_id" class="form-premium-label">Parroquia</label>
-                                <select class="form-select form-premium-control" id="create_parroquia_id" name="parroquia_id" disabled>
-                                    <option value="">Seleccione Parroquia</option>
-                                </select>
-                            </div>
-                            <div class="col-12">
-                                <label for="create_detalles_direccion" class="form-premium-label">Dirección Específica (Punto de referencia, calle, local)</label>
-                                <textarea class="form-control form-premium-control" id="create_detalles_direccion" name="detalles_direccion" rows="2" placeholder="Ej. Calle 10 con Av. Libertador" style="border-radius:12px;"></textarea>
-                            </div>
+                        <!-- Sección 2: Sedes de la Institución (Multi-Sede) -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0" style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);">2. Sedes de la Institución</h5>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="btnCreateAddSede" style="border-radius: 8px; font-weight: 600;">
+                                + Agregar Otra Sede
+                            </button>
+                        </div>
+                        <p class="text-muted" style="font-size:0.85rem; margin-top:-5px; margin-bottom:15px;">
+                            Registre una o más sedes (localidades) donde opera la institución.
+                        </p>
+
+                        <div id="createSedesContainer" class="d-flex flex-column gap-3 mb-4">
+                            <!-- Filas de sedes dinámicas inyectadas por JS -->
                         </div>
 
                         <!-- Sección 3: Directorio de Contactos -->
-                        <h5 style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);" class="mb-3">Directorio de Contactos</h5>
+                        <h5 style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);" class="mb-3">3. Directorio de Contactos</h5>
                         
                         <div class="row g-3 mb-4">
                             <!-- Columna Teléfonos -->
@@ -185,7 +166,7 @@ if (!isset($userPermissions)) {
                     </div>
                     <div class="modal-footer" style="background: #fdfdfd; border-top: 1px solid #eeeeee; padding: 20px 24px;">
                         <button type="button" class="btn btn-secondary btn-premium-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-success btn-premium-primary" id="btnGuardarNuevaInst">Registrar</button>
+                        <button type="submit" class="btn btn-success btn-premium-primary" id="btnGuardarNuevaInst">Registrar Institución</button>
                     </div>
                 </form>
             </div>
@@ -194,21 +175,21 @@ if (!isset($userPermissions)) {
 
     <!-- MODAL: EDITAR INSTITUCIÓN -->
     <div class="modal fade modal-premium" id="modalEditarInstitucion" tabindex="-1" aria-labelledby="modalEditarInstitucionLabel" aria-hidden="true" data-bs-backdrop="static">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
                     <h5 class="modal-title" id="modalEditarInstitucionLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Editar Información de Institución</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
-                <form id="formEditarInstitucion" novalidate>
+                <form id="formEditarInstitucion" novalidate style="display: flex; flex-direction: column; flex: 1 1 auto; overflow: hidden; min-height: 0;">
                     <input type="hidden" id="edit_id" name="id">
                     <input type="hidden" id="edit_entidad_id" name="entidad_id">
                     
-                    <div class="modal-body" style="background:#ffffff; padding: 30px;">
+                    <div class="modal-body" style="background:#ffffff; padding: 30px; overflow-y: auto; max-height: calc(88vh - 140px); flex: 1 1 auto;">
                         <div id="alertEditarInstFeedback" class="alert alert-toast alert-toast-danger" role="alert" style="display:none;"></div>
                         
                         <!-- Sección 1: Datos Básicos -->
-                        <h5 class="mb-3" style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);">Datos Identificativos</h5>
+                        <h5 class="mb-3" style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);">1. Datos Identificativos</h5>
                         <div class="row g-3 mb-4">
                             <div class="col-md-4">
                                 <label for="edit_tipo_documento" class="form-premium-label">Tipo RIF</label>
@@ -225,8 +206,8 @@ if (!isset($userPermissions)) {
                                 <input type="text" class="form-control form-premium-control" id="edit_documento" name="documento" placeholder="Ej. 123456789" required>
                             </div>
                             <div class="col-md-5">
-                                 <label for="edit_nombre" class="form-premium-label">Razón Social</label>
-                                 <input type="text" class="form-control form-premium-control" id="edit_nombre" name="nombre" placeholder="Ej. Colegio San Vicente" required>
+                                 <label for="edit_nombre_completo" class="form-premium-label">Razón Social / Nombre Oficial</label>
+                                 <input type="text" class="form-control form-premium-control" id="edit_nombre_completo" name="nombre_completo" placeholder="Ej. Colegio San Vicente" required>
                              </div>
                              <div class="col-md-4">
                                  <label for="edit_tipo_organizacion_select" class="form-premium-label">Tipo de Organización</label>
@@ -253,41 +234,23 @@ if (!isset($userPermissions)) {
                              </div>
                         </div>
 
-                        <!-- Sección 2: Ubicación Geográfica -->
-                        <h5 class="mb-3" style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);">Ubicación Geográfica</h5>
-                        <div class="row g-3 mb-4">
-                            <div class="col-md-6">
-                                <label for="edit_estado_id" class="form-premium-label">Estado</label>
-                                <select class="form-select form-premium-control" id="edit_estado_id">
-                                    <option value="">Seleccione Estado</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="edit_municipio_id" class="form-premium-label">Municipio</label>
-                                <select class="form-select form-premium-control" id="edit_municipio_id">
-                                    <option value="">Seleccione Municipio</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="edit_ciudad_id" class="form-premium-label">Ciudad</label>
-                                <select class="form-select form-premium-control" id="edit_ciudad_id" name="ciudad_id">
-                                    <option value="">Seleccione Ciudad</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6">
-                                <label for="edit_parroquia_id" class="form-premium-label">Parroquia</label>
-                                <select class="form-select form-premium-control" id="edit_parroquia_id" name="parroquia_id">
-                                    <option value="">Seleccione Parroquia</option>
-                                </select>
-                            </div>
-                            <div class="col-12">
-                                <label for="edit_detalles_direccion" class="form-premium-label">Dirección Específica (Punto de referencia, calle, local)</label>
-                                <textarea class="form-control form-premium-control" id="edit_detalles_direccion" name="detalles_direccion" rows="2" placeholder="Ej. Calle 10 con Av. Libertador" style="border-radius:12px;"></textarea>
-                            </div>
+                        <!-- Sección 2: Sedes de la Institución (Multi-Sede) -->
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0" style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);">2. Sedes de la Institución</h5>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="btnEditAddSede" style="border-radius: 8px; font-weight: 600;">
+                                + Agregar Sede
+                            </button>
+                        </div>
+                        <p class="text-muted" style="font-size:0.85rem; margin-top:-5px; margin-bottom:15px;">
+                            Administre las sedes asociadas a esta institución.
+                        </p>
+
+                        <div id="editSedesContainer" class="d-flex flex-column gap-3 mb-4">
+                            <!-- Filas de sedes dinámicas inyectadas por JS -->
                         </div>
 
                         <!-- Sección 3: Directorio de Contactos -->
-                        <h5 style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);" class="mb-3">Directorio de Contactos</h5>
+                        <h5 style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);" class="mb-3">3. Directorio de Contactos</h5>
                         
                         <div class="row g-3 mb-4">
                             <!-- Columna Teléfonos -->
@@ -334,7 +297,7 @@ if (!isset($userPermissions)) {
                     </div>
                     <h4 class="modal-title mb-2" style="font-family:'Outfit'; font-weight:700; color: var(--park-dark);">¿Eliminar Institución?</h4>
                     <p class="text-muted" style="font-size: 0.9rem; line-height: 1.5; margin-bottom: 30px;">
-                        ¿Está seguro de que desea eliminar la institución <strong id="deleteInstNameSpan"></strong>? Esta acción no se puede deshacer y borrará permanentemente sus direcciones y contactos.
+                        ¿Está seguro de que desea eliminar la institución <strong id="deleteInstNameSpan"></strong>? Esta acción no se puede deshacer y borrará permanentemente sus sedes y contactos.
                     </p>
                     <div class="d-flex gap-3 justify-content-center">
                         <button type="button" class="btn btn-secondary btn-premium-secondary px-4 py-2" data-bs-dismiss="modal" style="border-radius:12px; font-weight:600;">Cancelar</button>

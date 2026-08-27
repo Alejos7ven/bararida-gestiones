@@ -6,8 +6,7 @@ CREATE TABLE IF NOT EXISTS entidades (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `tipo_documento` varchar(20) NOT NULL,
   `documento` varchar(50) NOT NULL UNIQUE,
-  `nombre` varchar(50) NOT NULL,
-  `apellido` varchar(50) DEFAULT NULL,
+  `nombre_completo` varchar(150) NOT NULL,
   `tipo_entidad` varchar(20) NOT NULL DEFAULT 'persona'
 );
 
@@ -63,6 +62,7 @@ CREATE TABLE IF NOT EXISTS instituciones (
 CREATE TABLE IF NOT EXISTS citas (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `institucion_id` int NOT NULL,
+  `sede_id` int DEFAULT NULL,
   `recorrido_id` int DEFAULT NULL,
   `fecha_solicitud` date NOT NULL,
   `fecha_visita` date NOT NULL,
@@ -72,6 +72,8 @@ CREATE TABLE IF NOT EXISTS citas (
   `pago_estado` varchar(20) NOT NULL DEFAULT 'pendiente',
   CONSTRAINT fk_instituciones_citas
     FOREIGN KEY (`institucion_id`) REFERENCES `instituciones` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_sedes_citas
+    FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT fk_recorrido_citas
     FOREIGN KEY (`recorrido_id`) REFERENCES `recorrido` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -136,7 +138,7 @@ CREATE TABLE IF NOT EXISTS parroquias (
     FOREIGN KEY (`id_municipio`) REFERENCES `municipios` (`id_municipio`) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS direccion (
+CREATE TABLE IF NOT EXISTS sedes (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `institucion_id` int NOT NULL,
   `ciudad_id` int NOT NULL,
@@ -198,8 +200,8 @@ INSERT INTO `zonas` (`nombre`, `coordenadas`) VALUES
 ('Entrada Los Abogados', '17.29,90.70'),
 ('Entrada Morán', '82.54,50.90');
 
-INSERT INTO `entidades` (`tipo_documento`, `documento`, `nombre`, `apellido`, `tipo_entidad`) VALUES
-('V', '0000', 'Admin', 'Maestro', 'persona');
+INSERT INTO `entidades` (`tipo_documento`, `documento`, `nombre_completo`, `tipo_entidad`) VALUES
+('V', '0000', 'Admin Maestro', 'persona');
 
 INSERT INTO `roles` (`nombre`) VALUES
 ('superadmin'),

@@ -54,14 +54,6 @@ class Recorrido {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        if (empty($this->nombre)) {
-            throw new InvalidArgumentException("El nombre del recorrido es obligatorio.");
-        }
-
-        if (empty($zonasOrdenadas) || !is_array($zonasOrdenadas)) {
-            throw new InvalidArgumentException("Debe seleccionar al menos una zona para crear un recorrido.");
-        }
-
         try {
             // Iniciamos la transacción atómica
             $this->db->beginTransaction();
@@ -215,15 +207,6 @@ class Recorrido {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        $cleanRecorridoId = filter_var($recorridoId, FILTER_VALIDATE_INT) ? (int)$recorridoId : null;
-        if (!$cleanRecorridoId) {
-            throw new InvalidArgumentException("ID de recorrido inválido.");
-        }
-
-        if (empty($zonasOrdenadas) || !is_array($zonasOrdenadas)) {
-            throw new InvalidArgumentException("Debe seleccionar al menos una zona para actualizar el recorrido.");
-        }
-
         try {
             // Iniciar la transacción atómica
             $this->db->beginTransaction();
@@ -231,22 +214,17 @@ class Recorrido {
             // 1. Eliminar las paradas asociadas en la tabla 'rutas' primero
             require_once __DIR__ . "/Ruta.php";
             $ruta = new Ruta($this->db);
-            $ruta->eliminarPorRecorrido($cleanRecorridoId);
+            $ruta->eliminarPorRecorrido($recorridoId);
 
             // 2. Insertar cada parada en la tabla 'rutas' con el nuevo orden
             foreach ($zonasOrdenadas as $orden => $zonaId) {
-                $cleanZonaId = filter_var($zonaId, FILTER_VALIDATE_INT) ? (int)$zonaId : null;
-                if (!$cleanZonaId) {
-                    throw new InvalidArgumentException("ID de zona inválido en la lista de paradas.");
-                }
-
                 $nuevaRuta = new Ruta($this->db);
-                $nuevaRuta->setRecorridoId($cleanRecorridoId);
-                $nuevaRuta->setZonaId($cleanZonaId);
+                $nuevaRuta->setRecorridoId($recorridoId);
+                $nuevaRuta->setZonaId($zonaId);
                 $nuevaRuta->setOrden($orden);
 
                 if (!$nuevaRuta->crear()) {
-                    throw new Exception("Error al insertar la parada de zona con ID $cleanZonaId en la ruta.");
+                    throw new Exception("Error al insertar la parada de zona con ID $zonaId en la ruta.");
                 }
             }
 
@@ -277,49 +255,30 @@ class Recorrido {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        $cleanRecorridoId = filter_var($recorridoId, FILTER_VALIDATE_INT) ? (int)$recorridoId : null;
-        if (!$cleanRecorridoId) {
-            throw new InvalidArgumentException("ID de recorrido inválido.");
-        }
-
-        $cleanNombre = strip_tags(trim($nombre));
-        if (empty($cleanNombre) || strlen($cleanNombre) > 100) {
-            throw new InvalidArgumentException("El nombre del recorrido es inválido o supera los 100 caracteres.");
-        }
-
-        if (empty($zonasOrdenadas) || !is_array($zonasOrdenadas)) {
-            throw new InvalidArgumentException("Debe seleccionar al menos una zona para el recorrido.");
-        }
-
         try {
             $this->db->beginTransaction();
 
             // 1. Actualizar el nombre en la tabla 'recorrido'
             $queryRec = "UPDATE " . $this->table_name . " SET nombre = :nombre WHERE id = :id";
             $stmtRec = $this->db->prepare($queryRec);
-            $stmtRec->bindParam(":nombre", $cleanNombre, PDO::PARAM_STR);
-            $stmtRec->bindParam(":id", $cleanRecorridoId, PDO::PARAM_INT);
+            $stmtRec->bindParam(":nombre", $nombre, PDO::PARAM_STR);
+            $stmtRec->bindParam(":id", $recorridoId, PDO::PARAM_INT);
             $stmtRec->execute();
 
             // 2. Eliminar las paradas antiguas
             require_once __DIR__ . "/Ruta.php";
             $ruta = new Ruta($this->db);
-            $ruta->eliminarPorRecorrido($cleanRecorridoId);
+            $ruta->eliminarPorRecorrido($recorridoId);
 
             // 3. Insertar las nuevas paradas en el nuevo orden
             foreach ($zonasOrdenadas as $orden => $zonaId) {
-                $cleanZonaId = filter_var($zonaId, FILTER_VALIDATE_INT) ? (int)$zonaId : null;
-                if (!$cleanZonaId) {
-                    throw new InvalidArgumentException("ID de zona inválido en la lista de paradas.");
-                }
-
                 $nuevaRuta = new Ruta($this->db);
-                $nuevaRuta->setRecorridoId($cleanRecorridoId);
-                $nuevaRuta->setZonaId($cleanZonaId);
+                $nuevaRuta->setRecorridoId($recorridoId);
+                $nuevaRuta->setZonaId($zonaId);
                 $nuevaRuta->setOrden($orden);
 
                 if (!$nuevaRuta->crear()) {
-                    throw new Exception("Error al insertar la parada de zona con ID $cleanZonaId en la ruta.");
+                    throw new Exception("Error al insertar la parada de zona con ID $zonaId en la ruta.");
                 }
             }
 

@@ -35,6 +35,7 @@ if (!isset($_SESSION['personal'])) {
 require_once __DIR__ . "/../config/Database.php";
 require_once __DIR__ . "/../config/ExcelHelper.php";
 require_once __DIR__ . "/../models/Institucion.php";
+require_once __DIR__ . "/../models/Sede.php";
 require_once __DIR__ . "/../models/Cita.php";
 require_once __DIR__ . "/../models/Visitante.php";
 
@@ -199,6 +200,7 @@ function listarCitasAction($db) {
  */
 function crearCitaAction($db) {
     $institucion_id = isset($_POST['institucion_id']) ? filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT) : null;
+    $sede_id = isset($_POST['sede_id']) ? filter_var($_POST['sede_id'], FILTER_VALIDATE_INT) : null;
     
     // Datos de la Cita
     $recorrido_id = isset($_POST['recorrido_id']) ? $_POST['recorrido_id'] : '';
@@ -262,23 +264,30 @@ function crearCitaAction($db) {
     }
 
     try {
-        // 1. Si no existe ID de institución, registrarla primero
+        // 1. Si no existe ID de institución, registrarla primero con sus sedes
         if (!$institucion_id) {
             $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'J';
             $documento = isset($_POST['documento']) ? trim($_POST['documento']) : '';
-            $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
+            $nombre_completo = isset($_POST['nombre_completo']) ? trim($_POST['nombre_completo']) : (isset($_POST['nombre']) ? trim($_POST['nombre']) : '');
             $tipo_organizacion = isset($_POST['tipo_organizacion']) ? trim($_POST['tipo_organizacion']) : '';
             $tipo_gestion = isset($_POST['tipo_gestion']) ? trim($_POST['tipo_gestion']) : 'publica';
-            $ciudad_id = isset($_POST['ciudad_id']) ? $_POST['ciudad_id'] : '';
-            $parroquia_id = isset($_POST['parroquia_id']) ? $_POST['parroquia_id'] : '';
-            $detalles_direccion = isset($_POST['detalles_direccion']) ? trim($_POST['detalles_direccion']) : '';
+            $sedesRaw = isset($_POST['sedes']) ? $_POST['sedes'] : [];
             $contactosRaw = isset($_POST['contactos']) ? $_POST['contactos'] : [];
 
-            if (empty($documento) || empty($nombre) || empty($tipo_organizacion) || empty($tipo_gestion) || empty($ciudad_id) || empty($parroquia_id)) {
+            // Fallback: si se enviaron ciudad_id y parroquia_id planos
+            if (empty($sedesRaw) && !empty($_POST['ciudad_id']) && !empty($_POST['parroquia_id'])) {
+                $sedesRaw[] = [
+                    'ciudad_id' => $_POST['ciudad_id'],
+                    'parroquia_id' => $_POST['parroquia_id'],
+                    'detalles' => $_POST['detalles_direccion'] ?? ''
+                ];
+            }
+
+            if (empty($documento) || empty($nombre_completo) || empty($tipo_organizacion) || empty($tipo_gestion)) {
                 http_response_code(400);
                 echo json_encode([
                     "status" => "error",
-                    "message" => "Para registrar la institución se requiere RIF, Razón Social, Tipo, Gestión, Ciudad y Parroquia."
+                    "message" => "Para registrar la institución se requiere RIF, Razón Social, Tipo de Organización y Tipo de Gestión."
                 ]);
                 return;
             }
@@ -292,65 +301,28 @@ function crearCitaAction($db) {
                 return;
             }
 
-            if (strlen($documento) > 50) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "El número de documento/RIF no es válido."
-                ]);
-                return;
+            // Validar sedes
+            $sedesValidadas = [];
+            if (is_array($sedesRaw)) {
+                foreach ($sedesRaw as $s) {
+                    $cId = filter_var($s['ciudad_id'] ?? 0, FILTER_VALIDATE_INT);
+                    $pId = filter_var($s['parroquia_id'] ?? 0, FILTER_VALIDATE_INT);
+                    $det = strip_tags(trim($s['detalles'] ?? ''));
+                    if ($cId && $pId) {
+                        $sedesValidadas[] = [
+                            'ciudad_id' => $cId,
+                            'parroquia_id' => $pId,
+                            'detalles' => substr($det, 0, 150)
+                        ];
+                    }
+                }
             }
 
-            if (strlen($nombre) > 150) {
+            if (empty($sedesValidadas)) {
                 http_response_code(400);
                 echo json_encode([
                     "status" => "error",
-                    "message" => "La razón social de la institución no es válida."
-                ]);
-                return;
-            }
-
-            if (strlen($tipo_organizacion) > 50) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "El tipo de organización no es válido."
-                ]);
-                return;
-            }
-
-            if (!in_array($tipo_gestion, ['publica', 'privada'], true)) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "El tipo de gestión proporcionado no es válido."
-                ]);
-                return;
-            }
-
-            if (!filter_var($ciudad_id, FILTER_VALIDATE_INT)) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Ciudad seleccionada inválida."
-                ]);
-                return;
-            }
-
-            if (!filter_var($parroquia_id, FILTER_VALIDATE_INT)) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Parroquia seleccionada inválida."
-                ]);
-                return;
-            }
-
-            if (strlen($detalles_direccion) > 150) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Los detalles de la dirección superan el límite permitido de 150 caracteres."
+                    "message" => "Debe agregar al menos una sede válida para registrar la institución."
                 ]);
                 return;
             }
@@ -359,9 +331,10 @@ function crearCitaAction($db) {
             $contactos = [];
             if (is_array($contactosRaw)) {
                 foreach ($contactosRaw as $c) {
-                    if (!empty(trim($c['contacto'] ?? ''))) {
+                    $contVal = strip_tags(trim($c['contacto'] ?? ''));
+                    if (!empty($contVal)) {
                         $contactos[] = [
-                            'contacto' => trim($c['contacto']),
+                            'contacto' => substr($contVal, 0, 50),
                             'tipo' => trim($c['tipo'] ?? 'principal')
                         ];
                     }
@@ -372,7 +345,7 @@ function crearCitaAction($db) {
                 http_response_code(400);
                 echo json_encode([
                     "status" => "error",
-                    "message" => "Debe ingresar al menos un número de contacto válido."
+                    "message" => "Debe ingresar al menos un número de contacto válido para la institución."
                 ]);
                 return;
             }
@@ -380,25 +353,46 @@ function crearCitaAction($db) {
             $instModel = new Institucion($db);
             $instModel->setTipoDocumento($tipo_documento);
             $instModel->setDocumento($documento);
-            $instModel->setNombre($nombre);
+            $instModel->setNombreCompleto($nombre_completo);
             $instModel->setTipoOrganizacion($tipo_organizacion);
             $instModel->setTipoGestion($tipo_gestion);
-            $instModel->setCiudadId($ciudad_id);
-            $instModel->setParroquiaId($parroquia_id);
-            $instModel->setDetallesDireccion($detalles_direccion);
+            $instModel->setSedes($sedesValidadas);
             $instModel->setContactos($contactos);
 
             // Guardar institución
             if ($instModel->crear()) {
                 $institucion_id = $instModel->getId();
+                // Obtener el ID de la primera sede creada
+                $sedesCreadas = Sede::listarPorInstitucion($db, $institucion_id);
+                if (!empty($sedesCreadas)) {
+                    $sede_id = (int)$sedesCreadas[0]['id'];
+                }
             } else {
                 throw new Exception("No se pudo registrar la institución.");
+            }
+        } else {
+            // Institución existente: si el usuario solicita registrar una nueva sede al vuelo
+            $crearNuevaSede = isset($_POST['crear_nueva_sede']) && $_POST['crear_nueva_sede'] == '1';
+            $nuevaCiudadId = isset($_POST['nueva_sede_ciudad_id']) ? filter_var($_POST['nueva_sede_ciudad_id'], FILTER_VALIDATE_INT) : null;
+            $nuevaParroquiaId = isset($_POST['nueva_sede_parroquia_id']) ? filter_var($_POST['nueva_sede_parroquia_id'], FILTER_VALIDATE_INT) : null;
+            $nuevaDetalles = isset($_POST['nueva_sede_detalles']) ? strip_tags(trim($_POST['nueva_sede_detalles'])) : '';
+
+            if ($crearNuevaSede && $nuevaCiudadId && $nuevaParroquiaId) {
+                $sedeModel = new Sede($db);
+                $sedeModel->setInstitucionId($institucion_id);
+                $sedeModel->setCiudadId($nuevaCiudadId);
+                $sedeModel->setParroquiaId($nuevaParroquiaId);
+                $sedeModel->setDetalles(substr($nuevaDetalles, 0, 150));
+                if ($sedeModel->crear()) {
+                    $sede_id = $sedeModel->getId();
+                }
             }
         }
 
         // 2. Registrar la cita
         $citaModel = new Cita($db);
         $citaModel->setInstitucionId($institucion_id);
+        $citaModel->setSedeId($sede_id);
         $citaModel->setRecorridoId($recorrido_id);
         $citaModel->setFechaVisita($fecha_visita);
         $citaModel->setHoraInicio($hora_inicio);
@@ -488,14 +482,12 @@ function descargarPlantillaAction($db) {
         die("La cita no existe en el sistema.");
     }
 
-    // Generar archivo Excel (.xlsx) con cabecera verde institucional y fila de ejemplo
     $writer = new ExcelWriter();
     $writer->setSheetName('Visitantes');
     $writer->setHeaders(
         ['Cédula', 'Nombres', 'Apellidos', 'Fecha Nacimiento (AAAA-MM-DD)'],
-        [18, 28, 28, 26]   // anchos de columna
+        [18, 28, 28, 26]
     );
-    // Fila de ejemplo (será ignorada automáticamente al importar)
     $writer->addRow(['12345678', 'Pedro', 'Pérez', '2010-05-15']);
 
     $filename = "plantilla_visitantes_cita_{$cita_id}.xlsx";
@@ -552,13 +544,11 @@ function importarVisitantesAction($db) {
             return;
         }
 
-        // Comprobar y saltar BOM de UTF-8 si está presente
         $bom = fread($handle, 3);
         if ($bom !== "\xEF\xBB\xBF") {
             rewind($handle);
         }
 
-        // Leer cabecera para autodetectar el delimitador (punto y coma o coma)
         $header = fgetcsv($handle, 1000, ";");
         $delimiter = ";";
 
@@ -573,10 +563,8 @@ function importarVisitantesAction($db) {
 
         $rowIndex = 1;
 
-        // Leer filas del CSV
         while (($data = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
             $rowIndex++;
-            // Omitir filas vacías o incompletas
             if (empty($data) || count($data) < 3) continue;
             
             $ced = trim($data[0] ?? '');
@@ -584,12 +572,10 @@ function importarVisitantesAction($db) {
             $ape = trim($data[2] ?? '');
             $fNac = trim($data[3] ?? '');
 
-            // Saltar la fila de ejemplo si el usuario no la borró
             if ($ced === '12345678' && $nom === 'Pedro' && $ape === 'Pérez') {
                 continue;
             }
 
-            // Si nombres y apellidos están vacíos, omitimos
             if (empty($nom) && empty($ape)) {
                 continue;
             }
@@ -767,6 +753,8 @@ function editarCitaAction($db) {
         return;
     }
 
+    $institucion_id = isset($_POST['institucion_id']) ? filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT) : null;
+    $sede_id = isset($_POST['sede_id']) ? filter_var($_POST['sede_id'], FILTER_VALIDATE_INT) : null;
     $recorrido_id = isset($_POST['recorrido_id']) ? $_POST['recorrido_id'] : '';
     $fecha_visita = isset($_POST['fecha_visita']) ? trim($_POST['fecha_visita']) : '';
     $hora_inicio = isset($_POST['hora_inicio']) ? trim($_POST['hora_inicio']) : '';
@@ -838,7 +826,6 @@ function editarCitaAction($db) {
     }
 
     try {
-        // Obtener la cita actual para verificar existencia
         $citaActual = Cita::obtenerPorId($db, $id);
         if (!$citaActual) {
             http_response_code(404);
@@ -849,9 +836,13 @@ function editarCitaAction($db) {
             return;
         }
 
+        $finalInstId = $institucion_id ? $institucion_id : $citaActual['institucion_id'];
+        $finalSedeId = $sede_id ? $sede_id : ($citaActual['sede_id'] ?? null);
+
         $citaModel = new Cita($db);
         $citaModel->setId($id);
-        $citaModel->setInstitucionId($citaActual['institucion_id']); // mantener institución asociada
+        $citaModel->setInstitucionId($finalInstId);
+        $citaModel->setSedeId($finalSedeId);
         $citaModel->setRecorridoId($recorrido_id);
         $citaModel->setFechaVisita($fecha_visita);
         $citaModel->setHoraInicio($hora_inicio);

@@ -2,8 +2,7 @@ $(document).ready(function() {
     // Formulario de Creación de Cita (Wizard Multi-paso)
     if ($('#formCrearCita').length) {
         $('#formCrearCita').validate({
-            // Por defecto, ignora inputs ocultos (ideal para el paso 2 que puede estar oculto)
-            ignore: ":hidden",
+            ignore: ":hidden, :disabled",
             rules: {
                 // Paso 2 (Creación de Institución si corresponde)
                 tipo_documento: {
@@ -16,6 +15,10 @@ $(document).ready(function() {
                     maxlength: 12
                 },
                 nombre: {
+                    required: true,
+                    minlength: 3
+                },
+                nombre_completo: {
                     required: true,
                     minlength: 3
                 },
@@ -39,7 +42,10 @@ $(document).ready(function() {
                 hora_inicio: {
                     required: true
                 },
-                factura_paga: {
+                metodo_pago: {
+                    required: true
+                },
+                pago_estado: {
                     required: true
                 }
             },
@@ -52,11 +58,17 @@ $(document).ready(function() {
                 nombre: {
                     minlength: "La Razón Social debe tener al menos 3 caracteres."
                 },
+                nombre_completo: {
+                    minlength: "La Razón Social debe tener al menos 3 caracteres."
+                },
                 fecha_visita: {
                     required: "Debe seleccionar una fecha para la visita guiada."
                 },
                 hora_inicio: {
                     required: "Debe definir la hora de inicio de la visita."
+                },
+                metodo_pago: {
+                    required: "Debe seleccionar el método de pago."
                 }
             }
         });
@@ -67,7 +79,7 @@ $(document).ready(function() {
         $('#formEditarCita').validate({
             rules: {
                 recorrido_id: {
-                    required: false // Puede ser nulo
+                    required: false
                 },
                 fecha_visita: {
                     required: true
@@ -75,7 +87,13 @@ $(document).ready(function() {
                 hora_inicio: {
                     required: true
                 },
-                factura_paga: {
+                metodo_pago: {
+                    required: true
+                },
+                pago_estado: {
+                    required: true
+                },
+                estatus: {
                     required: true
                 }
             },
@@ -85,6 +103,9 @@ $(document).ready(function() {
                 },
                 hora_inicio: {
                     required: "Debe definir la hora de inicio de la visita."
+                },
+                metodo_pago: {
+                    required: "Debe seleccionar el método de pago."
                 }
             }
         });

@@ -1,7 +1,7 @@
 <?php
 /**
  * Modelo de Citas (Cita)
- * Procesa y gestiona la lógica de persistencia de las citas en la base de datos.
+ * Procesa y gestiona la lógica de persistencia de las citas y sus sedes asociadas en la base de datos.
  */
 class Cita {
     private $db;
@@ -10,6 +10,7 @@ class Cita {
     // Propiedades de la entidad
     private $id;
     private $institucion_id;
+    private $sede_id;
     private $recorrido_id;
     private $fecha_solicitud;
     private $fecha_visita;
@@ -26,49 +27,38 @@ class Cita {
     }
 
     // =========================================================================
-    // GETTERS Y SETTERS CON VALIDACIÓN
+    // GETTERS Y SETTERS
     // =========================================================================
 
     public function getId() { return $this->id; }
-    public function setId($id) { $this->id = (int)$id; }
+    public function setId($id) { $this->id = $id !== null ? (int)$id : null; }
 
     public function getInstitucionId() { return $this->institucion_id; }
-    public function setInstitucionId($inst_id) {
-        $this->institucion_id = (int)$inst_id;
-    }
+    public function setInstitucionId($inst_id) { $this->institucion_id = (int)$inst_id; }
+
+    public function getSedeId() { return $this->sede_id; }
+    public function setSedeId($sede_id) { $this->sede_id = !empty($sede_id) ? (int)$sede_id : null; }
 
     public function getRecorridoId() { return $this->recorrido_id; }
-    public function setRecorridoId($rec_id) {
-        $this->recorrido_id = !empty($rec_id) ? (int)$rec_id : null;
-    }
+    public function setRecorridoId($rec_id) { $this->recorrido_id = !empty($rec_id) ? (int)$rec_id : null; }
 
     public function getFechaSolicitud() { return $this->fecha_solicitud; }
     public function setFechaSolicitud($fecha) { $this->fecha_solicitud = trim($fecha); }
 
     public function getFechaVisita() { return $this->fecha_visita; }
-    public function setFechaVisita($fecha) {
-        $this->fecha_visita = trim($fecha);
-    }
+    public function setFechaVisita($fecha) { $this->fecha_visita = trim($fecha); }
 
     public function getHoraInicio() { return $this->hora_inicio; }
-    public function setHoraInicio($hora) {
-        $this->hora_inicio = trim($hora);
-    }
+    public function setHoraInicio($hora) { $this->hora_inicio = trim($hora); }
 
     public function getEstatus() { return $this->estatus; }
-    public function setEstatus($estatus) {
-        $this->estatus = strtolower(trim($estatus));
-    }
+    public function setEstatus($estatus) { $this->estatus = strtolower(trim($estatus)); }
 
     public function getMetodoPago() { return $this->metodo_pago; }
-    public function setMetodoPago($metodo) {
-        $this->metodo_pago = strip_tags(trim($metodo));
-    }
+    public function setMetodoPago($metodo) { $this->metodo_pago = trim($metodo); }
 
     public function getPagoEstado() { return $this->pago_estado; }
-    public function setPagoEstado($estado) {
-        $this->pago_estado = strtolower(trim($estado));
-    }
+    public function setPagoEstado($estado) { $this->pago_estado = strtolower(trim($estado)); }
 
     // =========================================================================
     // OPERACIONES DE PERSISTENCIA Y CONSULTA
@@ -84,11 +74,12 @@ class Cita {
 
         try {
             $query = "INSERT INTO " . $this->table_name . " 
-                      (institucion_id, recorrido_id, fecha_solicitud, fecha_visita, hora_inicio, estatus, metodo_pago, pago_estado) 
-                      VALUES (:institucion_id, :recorrido_id, :fecha_solicitud, :fecha_visita, :hora_inicio, :estatus, :metodo_pago, :pago_estado)";
+                      (institucion_id, sede_id, recorrido_id, fecha_solicitud, fecha_visita, hora_inicio, estatus, metodo_pago, pago_estado) 
+                      VALUES (:institucion_id, :sede_id, :recorrido_id, :fecha_solicitud, :fecha_visita, :hora_inicio, :estatus, :metodo_pago, :pago_estado)";
             
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(":institucion_id", $this->institucion_id, PDO::PARAM_INT);
+            $stmt->bindParam(":sede_id", $this->sede_id, $this->sede_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
             $stmt->bindParam(":recorrido_id", $this->recorrido_id, $this->recorrido_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
             $stmt->bindParam(":fecha_solicitud", $this->fecha_solicitud, PDO::PARAM_STR);
             $stmt->bindParam(":fecha_visita", $this->fecha_visita, PDO::PARAM_STR);
@@ -112,16 +103,14 @@ class Cita {
      * Actualiza una cita existente
      */
     public function actualizar() {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
-        if (empty($this->id)) {
-            throw new InvalidArgumentException("ID de cita no especificado para actualizar.");
+        if (!$this->db || empty($this->id)) {
+            throw new Exception("Conexión de base de datos o ID de cita no configurados.");
         }
 
         try {
             $query = "UPDATE " . $this->table_name . " SET 
+                      institucion_id = :institucion_id,
+                      sede_id = :sede_id,
                       recorrido_id = :recorrido_id, 
                       fecha_visita = :fecha_visita, 
                       hora_inicio = :hora_inicio, 
@@ -131,6 +120,8 @@ class Cita {
                       WHERE id = :id";
             
             $stmt = $this->db->prepare($query);
+            $stmt->bindParam(":institucion_id", $this->institucion_id, PDO::PARAM_INT);
+            $stmt->bindParam(":sede_id", $this->sede_id, $this->sede_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
             $stmt->bindParam(":recorrido_id", $this->recorrido_id, $this->recorrido_id === null ? PDO::PARAM_NULL : PDO::PARAM_INT);
             $stmt->bindParam(":fecha_visita", $this->fecha_visita, PDO::PARAM_STR);
             $stmt->bindParam(":hora_inicio", $this->hora_inicio, PDO::PARAM_STR);
@@ -154,10 +145,7 @@ class Cita {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        $cleanId = filter_var($id, FILTER_VALIDATE_INT) ? (int)$id : null;
-        if (!$cleanId) {
-            throw new InvalidArgumentException("ID de cita no suministrado o inválido.");
-        }
+        $cleanId = (int)$id;
 
         try {
             $this->db->beginTransaction();
@@ -192,7 +180,7 @@ class Cita {
     }
 
     /**
-     * Lista todas las citas con joins de instituciones, entidades y recorridos
+     * Lista todas las citas con joins de instituciones, entidades, sedes y recorridos
      */
     public function listarTodas() {
         if (!$this->db) {
@@ -200,13 +188,20 @@ class Cita {
         }
 
         try {
-            $query = "SELECT c.id, c.institucion_id, c.recorrido_id, c.fecha_solicitud, c.fecha_visita, c.hora_inicio, c.estatus, c.metodo_pago, c.pago_estado,
-                             e.tipo_documento, e.documento AS RIF, e.nombre AS razon_social,
+            $query = "SELECT c.id, c.institucion_id, c.sede_id, c.recorrido_id, c.fecha_solicitud, c.fecha_visita, c.hora_inicio, c.estatus, c.metodo_pago, c.pago_estado,
+                             e.tipo_documento, e.documento AS RIF, e.nombre_completo AS razon_social, e.nombre_completo,
                              r.nombre AS recorrido_nombre,
+                             s.detalles AS sede_detalles, ciu.ciudad AS sede_ciudad, par.parroquia AS sede_parroquia,
+                             mun.municipio AS sede_municipio, est.estado AS sede_estado,
                              (SELECT COUNT(*) FROM asistencia_cita ac WHERE ac.cita_id = c.id) AS total_visitantes
                       FROM " . $this->table_name . " c
                       INNER JOIN instituciones i ON c.institucion_id = i.id
                       INNER JOIN entidades e ON i.entidad_id = e.id
+                      LEFT JOIN sedes s ON c.sede_id = s.id
+                      LEFT JOIN ciudades ciu ON s.ciudad_id = ciu.id_ciudad
+                      LEFT JOIN parroquias par ON s.parroquia_id = par.id_parroquia
+                      LEFT JOIN municipios mun ON par.id_municipio = mun.id_municipio
+                      LEFT JOIN estados est ON mun.id_estado = est.id_estado
                       LEFT JOIN recorrido r ON c.recorrido_id = r.id
                       ORDER BY c.id DESC";
             
@@ -225,16 +220,25 @@ class Cita {
     public static function obtenerPorId($db, $id) {
         if (!$db) return null;
 
-        $cleanId = filter_var($id, FILTER_VALIDATE_INT) ? (int)$id : null;
-        if (!$cleanId) return null;
+        $cleanId = (int)$id;
+        if ($cleanId <= 0) return null;
 
         try {
-            $query = "SELECT c.id, c.institucion_id, c.recorrido_id, c.fecha_solicitud, c.fecha_visita, c.hora_inicio, c.estatus, c.metodo_pago, c.pago_estado,
-                             e.tipo_documento, e.documento AS RIF, e.nombre AS razon_social,
-                             r.nombre AS recorrido_nombre
+            $query = "SELECT c.id, c.institucion_id, c.sede_id, c.recorrido_id, c.fecha_solicitud, c.fecha_visita, c.hora_inicio, c.estatus, c.metodo_pago, c.pago_estado,
+                             e.tipo_documento, e.documento AS RIF, e.nombre_completo AS razon_social, e.nombre_completo,
+                             r.nombre AS recorrido_nombre,
+                             s.detalles AS sede_detalles, s.ciudad_id AS sede_ciudad_id, s.parroquia_id AS sede_parroquia_id,
+                             ciu.ciudad AS sede_ciudad, par.parroquia AS sede_parroquia,
+                             mun.id_municipio AS sede_id_municipio, mun.municipio AS sede_municipio,
+                             est.id_estado AS sede_id_estado, est.estado AS sede_estado
                       FROM citas c
                       INNER JOIN instituciones i ON c.institucion_id = i.id
                       INNER JOIN entidades e ON i.entidad_id = e.id
+                      LEFT JOIN sedes s ON c.sede_id = s.id
+                      LEFT JOIN ciudades ciu ON s.ciudad_id = ciu.id_ciudad
+                      LEFT JOIN parroquias par ON s.parroquia_id = par.id_parroquia
+                      LEFT JOIN municipios mun ON par.id_municipio = mun.id_municipio
+                      LEFT JOIN estados est ON mun.id_estado = est.id_estado
                       LEFT JOIN recorrido r ON c.recorrido_id = r.id
                       WHERE c.id = :id LIMIT 1";
             
@@ -251,15 +255,12 @@ class Cita {
 
     /**
      * Obtiene el listado de fechas de visita con la cantidad de instituciones registradas
-     * y sus nombres concatenados para poblar el calendario.
-     * @param PDO $db Instancia de conexión PDO
-     * @return array Listado de fechas y cantidades
      */
     public static function obtenerCronogramaCalendario($db) {
         if (!$db) return [];
         try {
             $query = "SELECT c.fecha_visita, COUNT(DISTINCT c.institucion_id) AS total_instituciones,
-                             GROUP_CONCAT(DISTINCT e.nombre SEPARATOR '||') AS instituciones_nombres
+                             GROUP_CONCAT(DISTINCT e.nombre_completo SEPARATOR '||') AS instituciones_nombres
                       FROM citas c
                       INNER JOIN instituciones i ON c.institucion_id = i.id
                       INNER JOIN entidades e ON i.entidad_id = e.id
@@ -276,9 +277,6 @@ class Cita {
 
     /**
      * Obtiene la cantidad total de visitantes (del listado de asistencia) agrupado por día de visita
-     * para pintar la gráfica de estadísticas.
-     * @param PDO $db Instancia de conexión PDO
-     * @return array Listado de fechas y conteo de visitantes
      */
     public static function obtenerEstadisticasAfluencia($db) {
         if (!$db) return [];
@@ -299,25 +297,23 @@ class Cita {
 
     /**
      * Obtiene las citas programadas para el día de hoy.
-     * Si el rol es 'guia', solo devuelve las citas a las que ese personal está asignado.
-     * @param PDO $db
-     * @param string $rol  Rol del usuario logueado ('superadmin', 'admin', 'guia')
-     * @param int|null $personalId  ID del personal (requerido si rol == 'guia')
-     * @return array
      */
     public static function obtenerCitasHoy(PDO $db, string $rol, ?int $personalId = null): array {
         try {
             $base = "SELECT c.id, c.hora_inicio, c.estatus, c.pago_estado,
-                            e.nombre AS razon_social, e.tipo_documento, e.documento AS rif,
+                            e.nombre_completo AS razon_social, e.tipo_documento, e.documento AS rif,
                             r.nombre AS recorrido_nombre,
+                            s.detalles AS sede_detalles, ciu.ciudad AS sede_ciudad,
                             (SELECT COUNT(*) FROM asistencia_cita ac WHERE ac.cita_id = c.id) AS total_visitantes,
                             GROUP_CONCAT(
-                                CONCAT(e2.nombre, ' ', e2.apellido)
+                                e2.nombre_completo
                                 ORDER BY ga.rol_guia ASC SEPARATOR ', '
                             ) AS guias_asignados
                      FROM citas c
                      INNER JOIN instituciones i ON c.institucion_id = i.id
                      INNER JOIN entidades e ON i.entidad_id = e.id
+                     LEFT JOIN sedes s ON c.sede_id = s.id
+                     LEFT JOIN ciudades ciu ON s.ciudad_id = ciu.id_ciudad
                      LEFT JOIN recorrido r ON c.recorrido_id = r.id
                      LEFT JOIN guia_asignado ga ON ga.cita_id = c.id
                      LEFT JOIN personal p ON p.id = ga.personal_id
@@ -325,7 +321,6 @@ class Cita {
                      WHERE DATE(c.fecha_visita) = CURDATE()";
 
             if ($rol === 'guia' && $personalId !== null) {
-                // Guia: solo citas donde está asignado (usando EXISTS para garantizar que el WHERE sea por esa cita)
                 $base .= " AND EXISTS (
                             SELECT 1 FROM guia_asignado ga2
                             WHERE ga2.cita_id = c.id AND ga2.personal_id = :personal_id
@@ -348,7 +343,6 @@ class Cita {
 
     public static function asignarGuia($db, $citaId, $personalId, $rolGuia = 'principal') {
         try {
-            // Eliminar asignación previa de este guía en esta cita para evitar duplicados
             $delQuery = "DELETE FROM guia_asignado WHERE cita_id = :cita_id AND personal_id = :personal_id";
             $stmtDel = $db->prepare($delQuery);
             $stmtDel->bindParam(':cita_id', $citaId, PDO::PARAM_INT);
@@ -380,4 +374,3 @@ class Cita {
         }
     }
 }
-

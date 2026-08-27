@@ -176,17 +176,19 @@ function obtenerAction($db) {
 function crearAction($db) {
     $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
     $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
-    $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
-    $apellido = isset($_POST['apellido']) ? trim($_POST['apellido']) : '';
+    $nombre_completo = isset($_POST['nombre_completo']) ? trim($_POST['nombre_completo']) : '';
+    if (empty($nombre_completo) && isset($_POST['nombre'])) {
+        $nombre_completo = trim($_POST['nombre'] . ' ' . ($_POST['apellido'] ?? ''));
+    }
     $rol = isset($_POST['rol']) ? trim($_POST['rol']) : '';
     $password = isset($_POST['password']) ? trim($_POST['password']) : '';
 
     // Validar campos requeridos
-    if (empty($tipo_documento) || empty($cedula) || empty($nombre) || empty($apellido) || empty($rol) || empty($password)) {
+    if (empty($tipo_documento) || empty($cedula) || empty($nombre_completo) || empty($rol) || empty($password)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Todos los campos son obligatorios para el registro."
+            "message" => "Todos los campos son obligatorios para el registro (Tipo, Documento, Nombre Completo, Rol y Contraseña)."
         ]);
         return;
     }
@@ -213,24 +215,13 @@ function crearAction($db) {
         return;
     }
 
-    // Validar longitud de nombre
-    $cleanNombre = strip_tags(trim($nombre));
-    if (empty($cleanNombre) || strlen($cleanNombre) > 50) {
+    // Validar longitud de nombre_completo
+    $cleanNombre = strip_tags(trim($nombre_completo));
+    if (empty($cleanNombre) || strlen($cleanNombre) < 3 || strlen($cleanNombre) > 150) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre no es válido o supera los 50 caracteres."
-        ]);
-        return;
-    }
-
-    // Validar longitud de apellido
-    $cleanApellido = strip_tags(trim($apellido));
-    if (empty($cleanApellido) || strlen($cleanApellido) > 50) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El apellido no es válido o supera los 50 caracteres."
+            "message" => "El nombre completo debe tener entre 3 y 150 caracteres."
         ]);
         return;
     }
@@ -258,7 +249,6 @@ function crearAction($db) {
         $validRoles = ['admin', 'guia'];
     }
 
-    // Estricta validación del rol: sólo se pueden crear roles existentes en la BD
     if ($rol === 'superadmin' || !in_array($rol, $validRoles, true)) {
         http_response_code(400);
         echo json_encode([
@@ -273,14 +263,12 @@ function crearAction($db) {
     }
 
     try {
-        // Inicializar entidad y aplicar lógica de validación del modelo
         $personal = new Personal($db);
         $personal->setTipoDocumento($tipo_documento);
-        $personal->setCedula($cedula);
-        $personal->setNombre($nombre);
-        $personal->setApellido($apellido);
+        $personal->setCedula($cleanCedula);
+        $personal->setNombreCompleto($cleanNombre);
         $personal->setRol($rol);
-        $personal->setPlainPassword($password); // Valida que tenga al menos 6 caracteres
+        $personal->setPlainPassword($password);
 
         if ($personal->crear()) {
             http_response_code(201);
@@ -305,7 +293,7 @@ function crearAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error inesperado al registrar el personal."
+            "message" => "Ocurrió un error inesperado al registrar el personal: " . $e->getMessage()
         ]);
     }
 }
@@ -317,21 +305,22 @@ function actualizarAction($db) {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
     $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
     $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
-    $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
-    $apellido = isset($_POST['apellido']) ? trim($_POST['apellido']) : '';
+    $nombre_completo = isset($_POST['nombre_completo']) ? trim($_POST['nombre_completo']) : '';
+    if (empty($nombre_completo) && isset($_POST['nombre'])) {
+        $nombre_completo = trim($_POST['nombre'] . ' ' . ($_POST['apellido'] ?? ''));
+    }
     $rol = isset($_POST['rol']) ? trim($_POST['rol']) : '';
-    $password = isset($_POST['password']) ? trim($_POST['password']) : ''; // Opcional
+    $password = isset($_POST['password']) ? trim($_POST['password']) : '';
 
-    if (!$id || empty($tipo_documento) || empty($cedula) || empty($nombre) || empty($apellido) || empty($rol)) {
+    if (!$id || empty($tipo_documento) || empty($cedula) || empty($nombre_completo) || empty($rol)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Los campos ID, tipo de documento, documento, nombre, apellido y rol son requeridos."
+            "message" => "Los campos ID, tipo de documento, documento, nombre completo y rol son requeridos."
         ]);
         return;
     }
 
-    // Validar formato de tipo de documento
     $validTypes = ['V', 'E', 'J', 'G', 'P'];
     if (!in_array($tipo_documento, $validTypes, true)) {
         http_response_code(400);
@@ -342,7 +331,6 @@ function actualizarAction($db) {
         return;
     }
 
-    // Validar formato de cédula
     $cleanCedula = preg_replace('/[^0-9]/', '', $cedula);
     if (strlen($cleanCedula) < 6 || strlen($cleanCedula) > 15) {
         http_response_code(400);
@@ -353,29 +341,16 @@ function actualizarAction($db) {
         return;
     }
 
-    // Validar longitud de nombre
-    $cleanNombre = strip_tags(trim($nombre));
-    if (empty($cleanNombre) || strlen($cleanNombre) > 50) {
+    $cleanNombre = strip_tags(trim($nombre_completo));
+    if (empty($cleanNombre) || strlen($cleanNombre) < 3 || strlen($cleanNombre) > 150) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre no es válido o supera los 50 caracteres."
+            "message" => "El nombre completo debe tener entre 3 y 150 caracteres."
         ]);
         return;
     }
 
-    // Validar longitud de apellido
-    $cleanApellido = strip_tags(trim($apellido));
-    if (empty($cleanApellido) || strlen($cleanApellido) > 50) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El apellido no es válido o supera los 50 caracteres."
-        ]);
-        return;
-    }
-
-    // Validar longitud de contraseña si se provee
     if (!empty($password) && strlen($password) < 6) {
         http_response_code(400);
         echo json_encode([
@@ -386,7 +361,6 @@ function actualizarAction($db) {
     }
 
     try {
-        // Cargar información actual en la BD para verificar políticas de roles
         $personalActual = Personal::obtenerPorId($db, $id);
         if (!$personalActual) {
             http_response_code(404);
@@ -397,7 +371,6 @@ function actualizarAction($db) {
             return;
         }
 
-        // Restricción: Impedir promover a superadmin a cuentas existentes
         if ($personalActual['rol'] !== 'superadmin' && $rol === 'superadmin') {
             http_response_code(400);
             echo json_encode([
@@ -407,7 +380,6 @@ function actualizarAction($db) {
             return;
         }
 
-        // Restricción: Impedir degradar a un superadmin a admin o guia
         if ($personalActual['rol'] === 'superadmin' && $rol !== 'superadmin') {
             http_response_code(400);
             echo json_encode([
@@ -417,7 +389,6 @@ function actualizarAction($db) {
             return;
         }
 
-        // Obtener roles válidos desde la base de datos (excluyendo superadmin)
         $validRoles = [];
         try {
             $stmtRoles = $db->prepare("SELECT nombre FROM roles WHERE nombre != 'superadmin'");
@@ -430,7 +401,6 @@ function actualizarAction($db) {
             $validRoles = ['admin', 'guia'];
         }
 
-        // Si no es superadmin, el nuevo rol debe ser válido en la BD
         if ($rol !== 'superadmin' && !in_array($rol, $validRoles, true)) {
             http_response_code(400);
             echo json_encode([
@@ -440,27 +410,23 @@ function actualizarAction($db) {
             return;
         }
 
-        // Instanciar modelo para guardar cambios
         $personal = new Personal($db);
         $personal->setId($id);
         $personal->setTipoDocumento($tipo_documento);
-        $personal->setCedula($cedula);
-        $personal->setNombre($nombre);
-        $personal->setApellido($apellido);
+        $personal->setCedula($cleanCedula);
+        $personal->setNombreCompleto($cleanNombre);
         $personal->setRol($rol);
 
-        // Si se suministró una nueva contraseña, se valida y hashea
         if (!empty($password)) {
             $personal->setPlainPassword($password);
         }
 
         if ($personal->actualizar()) {
-            // Si el propio superadmin se editó a sí mismo, actualizamos los datos en su sesión activa
             if ($_SESSION['personal']['id'] == $id) {
                 $_SESSION['personal']['tipo_documento'] = $personal->getTipoDocumento();
                 $_SESSION['personal']['cedula'] = $personal->getCedula();
-                $_SESSION['personal']['nombre'] = $personal->getNombre();
-                $_SESSION['personal']['apellido'] = $personal->getApellido();
+                $_SESSION['personal']['nombre_completo'] = $personal->getNombreCompleto();
+                $_SESSION['personal']['nombre'] = $personal->getNombreCompleto();
             }
 
             http_response_code(200);
@@ -485,7 +451,7 @@ function actualizarAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error inesperado al actualizar el personal."
+            "message" => "Ocurrió un error inesperado al actualizar el personal: " . $e->getMessage()
         ]);
     }
 }
@@ -506,8 +472,26 @@ function eliminarAction($db) {
     }
 
     try {
+        $personalActual = Personal::obtenerPorId($db, $id);
+        if (!$personalActual) {
+            http_response_code(404);
+            echo json_encode([
+                "status" => "error",
+                "message" => "El personal a eliminar no existe."
+            ]);
+            return;
+        }
+
+        if ($personalActual['rol'] === 'superadmin') {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Un Super Administrador no puede ser eliminado del sistema."
+            ]);
+            return;
+        }
+
         $personal = new Personal($db);
-        
         if ($personal->eliminar($id)) {
             http_response_code(200);
             echo json_encode([
@@ -555,4 +539,3 @@ function listarRolesAction($db) {
         ]);
     }
 }
-

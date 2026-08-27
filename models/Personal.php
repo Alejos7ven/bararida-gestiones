@@ -12,8 +12,7 @@ class Personal {
     private $id;
     private $tipo_documento;
     private $cedula;
-    private $nombre;
-    private $apellido;
+    private $nombre_completo;
     private $rol;
     private $rol_id;
     private $password;
@@ -29,95 +28,36 @@ class Personal {
     }
 
     // =========================================================================
-    // GETTERS Y SETTERS CON VALIDACIÓN ESTRICTA
+    // GETTERS Y SETTERS
     // =========================================================================
 
-    public function getLoginError() {
-        return $this->loginError;
-    }
+    public function getLoginError() { return $this->loginError; }
 
-    public function getId() {
-        return $this->id;
-    }
+    public function getId() { return $this->id; }
+    public function setId($id) { $this->id = $id !== null ? (int)$id : null; }
 
-    public function setId($id) {
-        $this->id = filter_var($id, FILTER_VALIDATE_INT) ? (int)$id : null;
-    }
+    public function getTipoDocumento() { return $this->tipo_documento; }
+    public function setTipoDocumento($tipo_documento) { $this->tipo_documento = $tipo_documento !== null ? strtoupper(trim($tipo_documento)) : 'V'; }
 
-    public function getTipoDocumento() {
-        return $this->tipo_documento;
-    }
+    public function getCedula() { return $this->cedula; }
+    public function setCedula($cedula) { $this->cedula = $cedula !== null ? trim($cedula) : ''; }
 
-    public function setTipoDocumento($tipo_documento) {
-        $this->tipo_documento = strtoupper(trim($tipo_documento));
-    }
+    public function getNombreCompleto() { return $this->nombre_completo; }
+    public function setNombreCompleto($nombre_completo) { $this->nombre_completo = $nombre_completo !== null ? trim($nombre_completo) : ''; }
 
-    public function getCedula() {
-        return $this->cedula;
-    }
+    // Compatibilidad
+    public function getNombre() { return $this->nombre_completo; }
+    public function setNombre($nombre) { $this->nombre_completo = $nombre !== null ? trim($nombre) : ''; }
 
-    /**
-     * Asigna la cédula de identidad
-     */
-    public function setCedula($cedula) {
-        $this->cedula = preg_replace('/[^0-9]/', '', trim($cedula));
-    }
+    public function getRol() { return $this->rol; }
+    public function setRol($rol) { $this->rol = $rol !== null ? strtolower(trim($rol)) : ''; }
 
-    public function getNombre() {
-        return $this->nombre;
-    }
+    public function getRolId() { return $this->rol_id; }
+    public function setRolId($rol_id) { $this->rol_id = $rol_id !== null ? (int)$rol_id : null; }
 
-    /**
-     * Asigna el nombre
-     */
-    public function setNombre($nombre) {
-        $this->nombre = strip_tags(trim($nombre));
-    }
+    public function getPassword() { return $this->password; }
+    public function setPassword($passwordHash) { $this->password = $passwordHash; }
 
-    public function getApellido() {
-        return $this->apellido;
-    }
-
-    /**
-     * Asigna el apellido
-     */
-    public function setApellido($apellido) {
-        $this->apellido = strip_tags(trim($apellido));
-    }
-
-    public function getRol() {
-        return $this->rol;
-    }
-
-    /**
-     * Asigna el rol
-     */
-    public function setRol($rol) {
-        $this->rol = strtolower(trim($rol));
-    }
-
-    public function getRolId() {
-        return $this->rol_id;
-    }
-
-    public function setRolId($rol_id) {
-        $this->rol_id = filter_var($rol_id, FILTER_VALIDATE_INT) ? (int)$rol_id : null;
-    }
-
-    public function getPassword() {
-        return $this->password;
-    }
-
-    /**
-     * Asigna el hash de la contraseña directamente
-     */
-    public function setPassword($passwordHash) {
-        $this->password = $passwordHash;
-    }
-
-    /**
-     * Hashea y asigna una contraseña en texto plano
-     */
     public function setPlainPassword($plainPassword) {
         $this->password = password_hash(trim($plainPassword), PASSWORD_BCRYPT);
     }
@@ -129,11 +69,6 @@ class Personal {
     /**
      * Método seguro de verificación de credenciales (Login)
      * Utiliza consultas preparadas PDO para evitar inyecciones SQL
-     * 
-     * @param string $tipo_documento Tipo de documento (V, E, J, G, P)
-     * @param string $cedula Cédula ingresada
-     * @param string $password Contraseña en texto plano ingresada
-     * @return bool True si las credenciales son válidas y carga el usuario, False en caso contrario
      */
     public function login($tipo_documento, $cedula, $password) {
         if (!$this->db) {
@@ -143,7 +78,6 @@ class Personal {
         }
 
         try {
-            // Sanitización previa de la cédula para la consulta
             $cleanCedula = preg_replace('/[^0-9]/', '', trim($cedula));
             $cleanTipoDoc = strtoupper(trim($tipo_documento));
             
@@ -152,8 +86,7 @@ class Personal {
                 return false;
             }
 
-            // Consulta preparada con INNER JOIN para entidades y roles (insensible a mayúsculas/minúsculas en el tipo)
-            $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre, e.apellido, r.id AS rol_id, r.nombre AS rol, p.password 
+            $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre_completo, r.id AS rol_id, r.nombre AS rol, p.password 
                       FROM " . $this->table_name . " p
                       INNER JOIN entidades e ON p.entidad_id = e.id
                       INNER JOIN roles r ON p.rol_id = r.id
@@ -163,25 +96,22 @@ class Personal {
             $stmt->bindParam(":cedula", $cleanCedula, PDO::PARAM_STR);
             $stmt->execute();
 
-            $row = $stmt->fetch();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if (!$row) {
                 $this->loginError = "El tipo de documento o número de documento ingresado es incorrecto.";
                 return false;
             }
 
-            // Verificación segura de contraseña mediante password_verify
             if (password_verify($password, $row['password'])) {
-                // Mapeamos los datos obtenidos en las propiedades privadas del objeto
                 $this->setId($row['id']);
                 $this->setTipoDocumento($row['tipo_documento']);
                 $this->setCedula($row['cedula']);
-                $this->setNombre($row['nombre']);
-                $this->setApellido($row['apellido']);
+                $this->setNombreCompleto($row['nombre_completo']);
                 $this->setRolId($row['rol_id']);
                 $this->setRol($row['rol']);
                 $this->setPassword($row['password']);
-                $this->loginError = null; // Limpiar cualquier error previo
+                $this->loginError = null;
                 
                 return true;
             } else {
@@ -198,13 +128,12 @@ class Personal {
 
     /**
      * Obtiene todo el personal ordenado por ID de forma descendente.
-     * @return array Listado de personal
      */
     public function listarTodos() {
         if (!$this->db) {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
-        $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre, e.apellido, r.nombre AS rol, p.created_at, p.updated_at 
+        $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre_completo, r.nombre AS rol, p.created_at, p.updated_at 
                   FROM " . $this->table_name . " p
                   INNER JOIN entidades e ON p.entidad_id = e.id
                   INNER JOIN roles r ON p.rol_id = r.id
@@ -216,21 +145,19 @@ class Personal {
 
     /**
      * Obtiene la información de un personal específico por su ID.
-     * @param PDO $db Instancia de conexión PDO
-     * @param int $id ID del personal
-     * @return array|null Datos del personal o null si no se encuentra
      */
     public static function obtenerPorId($db, $id) {
         if (!$db) {
             return null;
         }
-        $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre, e.apellido, r.nombre AS rol, p.created_at, p.updated_at 
+        $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre_completo, r.nombre AS rol, p.created_at, p.updated_at 
                   FROM personal p
                   INNER JOIN entidades e ON p.entidad_id = e.id
                   INNER JOIN roles r ON p.rol_id = r.id
                   WHERE p.id = :id LIMIT 1";
         $stmt = $db->prepare($query);
-        $stmt->bindParam(":id", $id, PDO::PARAM_INT);
+        $cleanId = (int)$id;
+        $stmt->bindParam(":id", $cleanId, PDO::PARAM_INT);
         $stmt->execute();
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ? $row : null;
@@ -238,13 +165,6 @@ class Personal {
 
     /**
      * Verifica de forma segura si un documento ya existe en la base de datos.
-     * Permite excluir un ID específico (útil en actualizaciones).
-     * 
-     * @param PDO $db Instancia de conexión PDO
-     * @param string $tipo_documento Tipo de documento
-     * @param string $cedula Cédula a verificar
-     * @param int|null $excluirId ID opcional a excluir de la verificación
-     * @return bool True si el documento ya existe, False de lo contrario
      */
     public static function existeDocumento($db, $tipo_documento, $cedula, $excluirId = null) {
         if (!$db) {
@@ -264,7 +184,8 @@ class Personal {
         $stmt->bindParam(":tipo_documento", $cleanTipoDoc, PDO::PARAM_STR);
         $stmt->bindParam(":cedula", $cleanCedula, PDO::PARAM_STR);
         if ($excluirId !== null) {
-            $stmt->bindParam(":excluirId", $excluirId, PDO::PARAM_INT);
+            $cleanExcluir = (int)$excluirId;
+            $stmt->bindParam(":excluirId", $cleanExcluir, PDO::PARAM_INT);
         }
         
         $stmt->execute();
@@ -272,22 +193,11 @@ class Personal {
     }
 
     /**
-     * Registra un nuevo personal en la base de datos aplicando reglas de seguridad estrictas.
-     * @return bool True en caso de éxito, False de lo contrario
+     * Registra un nuevo personal en la base de datos de forma transaccional.
      */
     public function crear() {
         if (!$this->db) {
             throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
-        // Validación de documento único
-        if (self::existeDocumento($this->db, $this->tipo_documento, $this->cedula)) {
-            throw new InvalidArgumentException("El documento de identidad ya se encuentra registrado en el sistema.");
-        }
-
-        // Restricción estricta: sólo se pueden crear admins y guias, no supers
-        if ($this->rol === 'superadmin') {
-            throw new InvalidArgumentException("No está permitido registrar nuevo personal con rol de Super Administrador.");
         }
 
         try {
@@ -299,9 +209,6 @@ class Personal {
             $stmtRol->bindParam(":rol", $this->rol, PDO::PARAM_STR);
             $stmtRol->execute();
             $rolId = $stmtRol->fetchColumn();
-            if (!$rolId) {
-                throw new InvalidArgumentException("El rol proporcionado no es válido.");
-            }
 
             // Verificar si la entidad ya existe
             $queryEntidad = "SELECT id FROM entidades WHERE tipo_documento = :tipo_documento AND documento = :cedula LIMIT 1";
@@ -313,22 +220,20 @@ class Personal {
 
             if (!$entidadId) {
                 // Crear nueva entidad
-                $queryInsertEntidad = "INSERT INTO entidades (tipo_documento, documento, nombre, apellido, tipo_entidad) 
-                                       VALUES (:tipo_documento, :cedula, :nombre, :apellido, 'persona')";
+                $queryInsertEntidad = "INSERT INTO entidades (tipo_documento, documento, nombre_completo, tipo_entidad) 
+                                       VALUES (:tipo_documento, :cedula, :nombre_completo, 'persona')";
                 $stmtInsertEntidad = $this->db->prepare($queryInsertEntidad);
                 $stmtInsertEntidad->bindParam(":tipo_documento", $this->tipo_documento, PDO::PARAM_STR);
                 $stmtInsertEntidad->bindParam(":cedula", $this->cedula, PDO::PARAM_STR);
-                $stmtInsertEntidad->bindParam(":nombre", $this->nombre, PDO::PARAM_STR);
-                $stmtInsertEntidad->bindParam(":apellido", $this->apellido, PDO::PARAM_STR);
+                $stmtInsertEntidad->bindParam(":nombre_completo", $this->nombre_completo, PDO::PARAM_STR);
                 $stmtInsertEntidad->execute();
                 $entidadId = $this->db->lastInsertId();
             } else {
-                // Si ya existe la entidad, actualizamos sus datos (nombre, apellido)
-                $queryUpdateEntidad = "UPDATE entidades SET nombre = :nombre, apellido = :apellido, tipo_entidad = 'persona' 
+                // Si ya existe la entidad, actualizamos su nombre_completo
+                $queryUpdateEntidad = "UPDATE entidades SET nombre_completo = :nombre_completo, tipo_entidad = 'persona' 
                                        WHERE id = :entidadId";
                 $stmtUpdateEntidad = $this->db->prepare($queryUpdateEntidad);
-                $stmtUpdateEntidad->bindParam(":nombre", $this->nombre, PDO::PARAM_STR);
-                $stmtUpdateEntidad->bindParam(":apellido", $this->apellido, PDO::PARAM_STR);
+                $stmtUpdateEntidad->bindParam(":nombre_completo", $this->nombre_completo, PDO::PARAM_STR);
                 $stmtUpdateEntidad->bindParam(":entidadId", $entidadId, PDO::PARAM_INT);
                 $stmtUpdateEntidad->execute();
             }
@@ -346,45 +251,19 @@ class Personal {
             $this->db->commit();
             return true;
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw $e;
         }
     }
 
     /**
-     * Actualiza la información de un personal existente aplicando políticas RBAC estrictas.
-     * @return bool True en caso de éxito, False de lo contrario
+     * Actualiza la información de un personal existente.
      */
     public function actualizar() {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
-        if (empty($this->id)) {
-            throw new InvalidArgumentException("Se requiere el ID del personal para poder actualizar.");
-        }
-
-        // Validación de documento único (excluyendo el usuario actual)
-        if (self::existeDocumento($this->db, $this->tipo_documento, $this->cedula, $this->id)) {
-            throw new InvalidArgumentException("El documento de identidad ingresado ya está siendo utilizado por otro miembro del personal.");
-        }
-
-        // Obtener datos actuales del personal en base de datos para validar el cambio de rol
-        $currentInDb = self::obtenerPorId($this->db, $this->id);
-        if (!$currentInDb) {
-            throw new InvalidArgumentException("El personal a actualizar no existe.");
-        }
-
-        $oldRol = $currentInDb['rol'];
-
-        // Restricción: No degradar a un superadmin existente
-        if ($oldRol === 'superadmin' && $this->rol !== 'superadmin') {
-            throw new InvalidArgumentException("No está permitido degradar o cambiar el rol de un Super Administrador.");
-        }
-
-        // Restricción: No promover a superadmin a un usuario común
-        if ($oldRol !== 'superadmin' && $this->rol === 'superadmin') {
-            throw new InvalidArgumentException("No está permitido promover personal al rol de Super Administrador.");
+        if (!$this->db || empty($this->id)) {
+            throw new Exception("Conexión de base de datos o ID de personal no configurados.");
         }
 
         try {
@@ -402,12 +281,11 @@ class Personal {
             }
 
             // Actualizar la tabla entidades
-            $queryEntidad = "UPDATE entidades SET tipo_documento = :tipo_documento, documento = :cedula, nombre = :nombre, apellido = :apellido WHERE id = :entidadId";
+            $queryEntidad = "UPDATE entidades SET tipo_documento = :tipo_documento, documento = :cedula, nombre_completo = :nombre_completo WHERE id = :entidadId";
             $stmtEntidad = $this->db->prepare($queryEntidad);
             $stmtEntidad->bindParam(":tipo_documento", $this->tipo_documento, PDO::PARAM_STR);
             $stmtEntidad->bindParam(":cedula", $this->cedula, PDO::PARAM_STR);
-            $stmtEntidad->bindParam(":nombre", $this->nombre, PDO::PARAM_STR);
-            $stmtEntidad->bindParam(":apellido", $this->apellido, PDO::PARAM_STR);
+            $stmtEntidad->bindParam(":nombre_completo", $this->nombre_completo, PDO::PARAM_STR);
             $stmtEntidad->bindParam(":entidadId", $entidadId, PDO::PARAM_INT);
             $stmtEntidad->execute();
 
@@ -417,9 +295,6 @@ class Personal {
             $stmtRol->bindParam(":rol", $this->rol, PDO::PARAM_STR);
             $stmtRol->execute();
             $rolId = $stmtRol->fetchColumn();
-            if (!$rolId) {
-                throw new InvalidArgumentException("El rol proporcionado no es válido.");
-            }
 
             // Actualizar la tabla personal
             if (!empty($this->password)) {
@@ -439,36 +314,22 @@ class Personal {
             $this->db->commit();
             return true;
         } catch (Exception $e) {
-            $this->db->rollBack();
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             throw $e;
         }
     }
 
     /**
-     * Elimina un personal por ID. Impide eliminar cuentas con rol Super Administrador.
-     * @param int $id ID del personal a eliminar
-     * @return bool True si se eliminó con éxito, False de lo contrario
+     * Elimina un personal por ID.
      */
     public function eliminar($id) {
         if (!$this->db) {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        $cleanId = filter_var($id, FILTER_VALIDATE_INT) ? (int)$id : null;
-        if (!$cleanId) {
-            throw new InvalidArgumentException("ID de personal inválido.");
-        }
-
-        // Verificar el rol del personal antes de borrar
-        $userInDb = self::obtenerPorId($this->db, $cleanId);
-        if (!$userInDb) {
-            throw new InvalidArgumentException("El personal a eliminar no existe.");
-        }
-
-        if ($userInDb['rol'] === 'superadmin') {
-            throw new InvalidArgumentException("Un Super Administrador no puede ser eliminado del sistema.");
-        }
-
+        $cleanId = (int)$id;
         $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $cleanId, PDO::PARAM_INT);
@@ -476,9 +337,7 @@ class Personal {
     }
 
     /**
-     * Obtiene todos los nombres de los roles que no son 'superadmin' para poblar selectores
-     * @param PDO $db Instancia de conexión PDO
-     * @return array Listado de nombres de roles
+     * Obtiene todos los nombres de los roles para poblar selectores
      */
     public static function obtenerRolesList($db) {
         if (!$db) return ['admin', 'guia'];
@@ -494,4 +353,3 @@ class Personal {
         }
     }
 }
-

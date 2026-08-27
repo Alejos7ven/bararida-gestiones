@@ -41,7 +41,7 @@ if (!isset($userPermissions)) {
                 <thead>
                     <tr>
                         <th>Código</th>
-                        <th>Institución</th>
+                        <th>Institución y Sede</th>
                         <th>Fecha y Hora</th>
                         <th>Visitantes</th>
                         <th>Guía Asignado</th>
@@ -71,14 +71,19 @@ if (!isset($userPermissions)) {
 
     <!-- MODAL: REGISTRAR CITA (WIZARD MULTI-PASO) -->
     <div class="modal fade modal-premium" id="modalCrearCita" tabindex="-1" aria-labelledby="modalCrearCitaLabel" aria-hidden="true" data-bs-backdrop="static">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
-            <div class="modal-content" style="border-radius: 20px; border: none; overflow: visible !important; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
-                <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px; border-top-left-radius: 20px; border-top-right-radius: 20px;">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
+                <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
                     <h5 class="modal-title" id="modalCrearCitaLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Agendar Nueva Visita Guiada</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form id="formCrearCita" novalidate>
                     <input type="hidden" name="institucion_id" id="final_institucion_id">
+                    <input type="hidden" name="sede_id" id="final_sede_id">
+                    <input type="hidden" name="crear_nueva_sede" id="final_crear_nueva_sede" value="0">
+                    <input type="hidden" name="nueva_sede_ciudad_id" id="final_nueva_sede_ciudad_id">
+                    <input type="hidden" name="nueva_sede_parroquia_id" id="final_nueva_sede_parroquia_id">
+                    <input type="hidden" name="nueva_sede_detalles" id="final_nueva_sede_detalles">
                     <input type="hidden" name="tipo_documento" id="final_tipo_documento">
                     <input type="hidden" name="documento" id="final_documento">
 
@@ -88,11 +93,11 @@ if (!isset($userPermissions)) {
                             <div class="step-wizard-progress"></div>
                             <div class="step-wizard-item active">
                                 <div class="step-wizard-circle">1</div>
-                                <span class="step-wizard-label">Comprobar RIF</span>
+                                <span class="step-wizard-label">Buscar Institución</span>
                             </div>
                             <div class="step-wizard-item">
                                 <div class="step-wizard-circle">2</div>
-                                <span class="step-wizard-label">Datos Institución</span>
+                                <span class="step-wizard-label">Datos y Sedes</span>
                             </div>
                             <div class="step-wizard-item">
                                 <div class="step-wizard-circle">3</div>
@@ -100,10 +105,10 @@ if (!isset($userPermissions)) {
                             </div>
                         </div>
 
-                        <!-- PASO 1: VERIFICAR INSTITUCIÓN -->
+                        <!-- PASO 1: VERIFICAR INSTITUCIÓN Y SELECCIONAR SEDE -->
                         <div class="wizard-step-panel active" id="wizardStep1">
-                            <h5 class="mb-3" style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);">Búsqueda de la Institución</h5>
-                            <p class="text-muted mb-4" style="font-size:0.85rem;">Busque la institución externa por su Razón Social o RIF. Si no se encuentra registrada, elija registrar una nueva.</p>
+                            <h5 class="mb-3" style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);">Búsqueda de la Institución y Selección de Sede</h5>
+                            <p class="text-muted mb-4" style="font-size:0.85rem;">Busque la institución externa por su Razón Social o RIF. Si cuenta con múltiples sedes, podrá seleccionar cuál realizará la visita o añadir una nueva sede.</p>
                             
                             <div class="row g-3">
                                 <div class="col-12 position-relative">
@@ -114,13 +119,63 @@ if (!isset($userPermissions)) {
                                         </span>
                                         <input type="text" class="form-control form-premium-control border-start-0" id="buscar_institucion_autocomplete" name="buscar_institucion_autocomplete_field" placeholder="Ej. Colegio La Salle o J-123456789..." autocomplete="new-password" style="border-radius: 0 12px 12px 0;">
                                     </div>
-                                    <!-- Contenedor flotante para sugerencias -->
-                                    <div id="autocomplete_suggestions" class="dropdown-menu shadow-lg w-100" style="display: none; position: absolute; max-height: 250px; overflow-y: auto; z-index: 1100; border-radius: 12px; margin-top: 5px; border: 1px solid var(--park-gray);"></div>
+                                    <!-- Contenedor flotante para sugerencias (posicionado de forma fija) -->
+                                    <div id="autocomplete_suggestions" class="dropdown-menu" style="display: none;"></div>
                                 </div>
                             </div>
 
                             <div class="rif-status-box alert alert-success mt-4 shadow-sm" id="rifCheckStatus" style="display:none;">
                                 <!-- Info de verificación dinámica -->
+                            </div>
+
+                            <!-- Selector de Sede para Institución Existente con múltiples sedes -->
+                            <div id="wizardSedesSelectionBox" class="mt-4 p-3 border rounded-3 bg-light" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 class="fw-bold text-success mb-0" style="font-family:'Outfit';">Sedes Registradas de la Institución</h6>
+                                    <button type="button" class="btn btn-sm btn-outline-success" id="btnToggleNuevaSedeCita" style="font-size: 0.78rem; border-radius: 8px;">
+                                        + Agregar Nueva Sede
+                                    </button>
+                                </div>
+                                <p class="text-muted mb-2" style="font-size: 0.8rem;">Seleccione la sede correspondiente para esta visita:</p>
+                                
+                                <div id="wizardSedesRadioList" class="d-flex flex-column gap-2 mb-2">
+                                    <!-- Radios generados por JS -->
+                                </div>
+
+                                <!-- Formulario colapsable para agregar sede al vuelo -->
+                                <div id="wizardNuevaSedeForm" class="mt-3 pt-3 border-top" style="display: none;">
+                                    <span class="badge bg-success mb-2">Registrar Nueva Sede</span>
+                                    <div class="row g-2">
+                                        <div class="col-md-6">
+                                            <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Estado</label>
+                                            <select class="form-select form-select-sm" id="nueva_sede_cita_estado">
+                                                <option value="">Seleccione Estado</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Municipio</label>
+                                            <select class="form-select form-select-sm" id="nueva_sede_cita_municipio" disabled>
+                                                <option value="">Seleccione Municipio</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Ciudad</label>
+                                            <select class="form-select form-select-sm" id="nueva_sede_cita_ciudad" disabled>
+                                                <option value="">Seleccione Ciudad</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Parroquia</label>
+                                            <select class="form-select form-select-sm" id="nueva_sede_cita_parroquia" disabled>
+                                                <option value="">Seleccione Parroquia</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Detalles de la Dirección</label>
+                                            <input type="text" class="form-control form-control-sm" id="nueva_sede_cita_detalles" placeholder="Ej. Calle 5, Edif. Este">
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -322,6 +377,12 @@ if (!isset($userPermissions)) {
                     <div class="modal-body" style="background:#ffffff; padding: 30px;">
                         
                         <div class="row g-3">
+                            <div class="col-md-12">
+                                <label for="edit_sede_id" class="form-premium-label">Sede de la Institución</label>
+                                <select class="form-select form-premium-control" id="edit_sede_id" name="sede_id">
+                                    <option value="">Seleccione Sede</option>
+                                </select>
+                            </div>
                             <div class="col-md-12">
                                 <label for="edit_recorrido_id" class="form-premium-label">Recorrido del Parque Asignado (Opcional)</label>
                                 <select class="form-select form-premium-control" id="edit_recorrido_id" name="recorrido_id">

@@ -1,7 +1,7 @@
 <?php
 /**
  * Modelo de Institución (Institucion)
- * Gestiona de forma segura los datos y persistencia de instituciones en la base de datos.
+ * Gestiona de forma segura los datos y persistencia de instituciones y sus sedes en la base de datos.
  */
 class Institucion {
     private $db;
@@ -11,14 +11,12 @@ class Institucion {
     private $entidad_id;
     private $tipo_documento;
     private $documento;
-    private $nombre; // Razón Social
-    private $tipo_organizacion; // e.g. Colegio Privado, Escuela Pública, etc.
-    
-    // Dirección
-    private $ciudad_id;
-    private $parroquia_id;
-    private $detalles_direccion;
-    private $tipo_gestion;
+    private $nombre_completo; // Razón Social
+    private $tipo_organizacion; // e.g. Educativa, Empresarial, etc.
+    private $tipo_gestion; // 'publica' | 'privada'
+
+    // Colección de Sedes (Array de arrays con ciudad_id, parroquia_id, detalles, id opcional)
+    private $sedes = [];
 
     // Contactos (directorio)
     private $contactos = []; // Array de arrays [ 'contacto' => '...', 'tipo' => '...' ]
@@ -28,70 +26,42 @@ class Institucion {
     }
 
     // =========================================================================
-    // GETTERS Y SETTERS CON VALIDACIÓN
+    // GETTERS Y SETTERS
     // =========================================================================
 
     public function getId() { return $this->id; }
-    public function setId($id) { $this->id = (int)$id; }
+    public function setId($id) { $this->id = $id !== null ? (int)$id : null; }
 
     public function getEntidadId() { return $this->entidad_id; }
-    public function setEntidadId($entidad_id) { $this->entidad_id = (int)$entidad_id; }
+    public function setEntidadId($entidad_id) { $this->entidad_id = $entidad_id !== null ? (int)$entidad_id : null; }
 
     public function getTipoDocumento() { return $this->tipo_documento; }
-    public function setTipoDocumento($tipo) {
-        $this->tipo_documento = strtoupper(trim($tipo));
-    }
+    public function setTipoDocumento($tipo) { $this->tipo_documento = $tipo !== null ? strtoupper(trim($tipo)) : ''; }
 
     public function getDocumento() { return $this->documento; }
-    public function setDocumento($doc) {
-        $this->documento = preg_replace('/[^0-9A-Za-z-]/', '', trim($doc));
-    }
+    public function setDocumento($doc) { $this->documento = $doc !== null ? trim($doc) : ''; }
 
-    public function getNombre() { return $this->nombre; }
-    public function setNombre($nombre) {
-        $this->nombre = strip_tags(trim($nombre));
-    }
+    public function getNombreCompleto() { return $this->nombre_completo; }
+    public function setNombreCompleto($nombre) { $this->nombre_completo = $nombre !== null ? trim($nombre) : ''; }
+
+    // Alias para compatibilidad
+    public function getNombre() { return $this->nombre_completo; }
+    public function setNombre($nombre) { $this->nombre_completo = $nombre !== null ? trim($nombre) : ''; }
 
     public function getTipoOrganizacion() { return $this->tipo_organizacion; }
-    public function setTipoOrganizacion($tipo) {
-        $this->tipo_organizacion = strip_tags(trim($tipo));
-    }
-
-    public function getCiudadId() { return $this->ciudad_id; }
-    public function setCiudadId($ciudad_id) {
-        $this->ciudad_id = (int)$ciudad_id;
-    }
-
-    public function getParroquiaId() { return $this->parroquia_id; }
-    public function setParroquiaId($parroquia_id) {
-        $this->parroquia_id = (int)$parroquia_id;
-    }
-
-    public function getDetallesDireccion() { return $this->detalles_direccion; }
-    public function setDetallesDireccion($detalles) {
-        $this->detalles_direccion = strip_tags(trim($detalles));
-    }
+    public function setTipoOrganizacion($tipo) { $this->tipo_organizacion = $tipo !== null ? trim($tipo) : ''; }
 
     public function getTipoGestion() { return $this->tipo_gestion; }
-    public function setTipoGestion($tipo) {
-        $this->tipo_gestion = strtolower(trim($tipo));
+    public function setTipoGestion($tipo) { $this->tipo_gestion = $tipo !== null ? strtolower(trim($tipo)) : 'publica'; }
+
+    public function getSedes() { return $this->sedes; }
+    public function setSedes($sedes) {
+        $this->sedes = is_array($sedes) ? $sedes : [];
     }
 
     public function getContactos() { return $this->contactos; }
     public function setContactos($contactos) {
-        $this->contactos = [];
-        if (is_array($contactos)) {
-            foreach ($contactos as $c) {
-                $contactoVal = strip_tags(trim($c['contacto'] ?? ''));
-                $tipoVal = strip_tags(trim($c['tipo'] ?? 'principal'));
-                if (!empty($contactoVal)) {
-                    $this->contactos[] = [
-                        'contacto' => $contactoVal,
-                        'tipo' => $tipoVal
-                    ];
-                }
-            }
-        }
+        $this->contactos = is_array($contactos) ? $contactos : [];
     }
 
     // =========================================================================
@@ -105,20 +75,13 @@ class Institucion {
         if (!$db) return null;
 
         $cleanTipo = strtoupper(trim($tipo_documento));
-        $cleanDoc = preg_replace('/[^0-9A-Za-z-]/', '', trim($documento));
+        $cleanDoc = trim($documento);
 
         try {
-            $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre, i.tipo_organizacion, i.tipo_gestion,
-                             d.ciudad_id, d.parroquia_id, d.detalles AS detalles_direccion,
-                             est.id_estado, mun.id_municipio, p.id_parroquia,
-                             est.estado, mun.municipio, p.parroquia, c.ciudad
+            $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre_completo, 
+                             i.tipo_organizacion, i.tipo_gestion
                       FROM entidades e
                       INNER JOIN instituciones i ON i.entidad_id = e.id
-                      LEFT JOIN direccion d ON d.institucion_id = i.id
-                      LEFT JOIN parroquias p ON d.parroquia_id = p.id_parroquia
-                      LEFT JOIN municipios mun ON p.id_municipio = mun.id_municipio
-                      LEFT JOIN estados est ON mun.id_estado = est.id_estado
-                      LEFT JOIN ciudades c ON d.ciudad_id = c.id_ciudad
                       WHERE UPPER(e.tipo_documento) = :tipo_documento AND e.documento = :documento 
                       LIMIT 1";
             
@@ -129,6 +92,38 @@ class Institucion {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($row) {
+                // Nombre alias para retrocompatibilidad
+                $row['nombre'] = $row['nombre_completo'];
+
+                // Buscar todas las sedes de la institución
+                $querySedes = "SELECT s.id, s.institucion_id, s.ciudad_id, s.parroquia_id, s.detalles,
+                                      c.ciudad, p.parroquia, m.id_municipio, m.municipio, est.id_estado, est.estado
+                               FROM sedes s
+                               LEFT JOIN ciudades c ON s.ciudad_id = c.id_ciudad
+                               LEFT JOIN parroquias p ON s.parroquia_id = p.id_parroquia
+                               LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
+                               LEFT JOIN estados est ON m.id_estado = est.id_estado
+                               WHERE s.institucion_id = :institucion_id
+                               ORDER BY s.id ASC";
+                $stmtSedes = $db->prepare($querySedes);
+                $stmtSedes->bindParam(":institucion_id", $row['institucion_id'], PDO::PARAM_INT);
+                $stmtSedes->execute();
+                $row['sedes'] = $stmtSedes->fetchAll(PDO::FETCH_ASSOC);
+
+                // Asignar primera sede como fallback para compatibilidad
+                if (!empty($row['sedes'])) {
+                    $firstSede = $row['sedes'][0];
+                    $row['ciudad_id'] = $firstSede['ciudad_id'];
+                    $row['parroquia_id'] = $firstSede['parroquia_id'];
+                    $row['detalles_direccion'] = $firstSede['detalles'];
+                    $row['id_estado'] = $firstSede['id_estado'];
+                    $row['id_municipio'] = $firstSede['id_municipio'];
+                    $row['estado'] = $firstSede['estado'];
+                    $row['municipio'] = $firstSede['municipio'];
+                    $row['parroquia'] = $firstSede['parroquia'];
+                    $row['ciudad'] = $firstSede['ciudad'];
+                }
+
                 // Buscar contactos del directorio
                 $queryContacts = "SELECT contacto, tipo FROM directorio WHERE entidad_id = :entidad_id";
                 $stmtContacts = $db->prepare($queryContacts);
@@ -147,6 +142,7 @@ class Institucion {
 
     /**
      * Crea una nueva institución en el sistema de manera atómica (Transaccional)
+     * Soporta registro de una o más sedes
      */
     public function crear() {
         if (!$this->db) {
@@ -163,15 +159,15 @@ class Institucion {
             $this->db->beginTransaction();
 
             // 1. Insertar en entidades
-            $queryEntidad = "INSERT INTO entidades (tipo_documento, documento, nombre, apellido, tipo_entidad) 
-                             VALUES (:tipo_documento, :documento, :nombre, NULL, 'institucion')";
+            $queryEntidad = "INSERT INTO entidades (tipo_documento, documento, nombre_completo, tipo_entidad) 
+                             VALUES (:tipo_documento, :documento, :nombre_completo, 'institucion')";
             $stmtEntidad = $this->db->prepare($queryEntidad);
             $stmtEntidad->bindParam(":tipo_documento", $this->tipo_documento, PDO::PARAM_STR);
             $stmtEntidad->bindParam(":documento", $this->documento, PDO::PARAM_STR);
-            $stmtEntidad->bindParam(":nombre", $this->nombre, PDO::PARAM_STR);
+            $stmtEntidad->bindParam(":nombre_completo", $this->nombre_completo, PDO::PARAM_STR);
             $stmtEntidad->execute();
             
-            $entidadId = $this->db->lastInsertId();
+            $entidadId = (int)$this->db->lastInsertId();
             $this->setEntidadId($entidadId);
 
             // 2. Insertar en instituciones
@@ -183,18 +179,27 @@ class Institucion {
             $stmtInst->bindParam(":tipo_gestion", $this->tipo_gestion, PDO::PARAM_STR);
             $stmtInst->execute();
 
-            $institucionId = $this->db->lastInsertId();
+            $institucionId = (int)$this->db->lastInsertId();
             $this->setId($institucionId);
 
-            // 3. Insertar en direccion
-            $queryDir = "INSERT INTO direccion (institucion_id, ciudad_id, parroquia_id, detalles) 
-                         VALUES (:institucion_id, :ciudad_id, :parroquia_id, :detalles)";
-            $stmtDir = $this->db->prepare($queryDir);
-            $stmtDir->bindParam(":institucion_id", $institucionId, PDO::PARAM_INT);
-            $stmtDir->bindParam(":ciudad_id", $this->ciudad_id, PDO::PARAM_INT);
-            $stmtDir->bindParam(":parroquia_id", $this->parroquia_id, PDO::PARAM_INT);
-            $stmtDir->bindParam(":detalles", $this->detalles_direccion, PDO::PARAM_STR);
-            $stmtDir->execute();
+            // 3. Insertar las sedes (1 o más)
+            $querySede = "INSERT INTO sedes (institucion_id, ciudad_id, parroquia_id, detalles) 
+                          VALUES (:institucion_id, :ciudad_id, :parroquia_id, :detalles)";
+            $stmtSede = $this->db->prepare($querySede);
+
+            foreach ($this->sedes as $s) {
+                $ciudadId = (int)($s['ciudad_id'] ?? 0);
+                $parroquiaId = (int)($s['parroquia_id'] ?? 0);
+                $detalles = isset($s['detalles']) ? trim($s['detalles']) : null;
+
+                if ($ciudadId > 0 && $parroquiaId > 0) {
+                    $stmtSede->bindValue(":institucion_id", $institucionId, PDO::PARAM_INT);
+                    $stmtSede->bindValue(":ciudad_id", $ciudadId, PDO::PARAM_INT);
+                    $stmtSede->bindValue(":parroquia_id", $parroquiaId, PDO::PARAM_INT);
+                    $stmtSede->bindValue(":detalles", $detalles, PDO::PARAM_STR);
+                    $stmtSede->execute();
+                }
+            }
 
             // 4. Insertar en directorio (contactos)
             $queryContact = "INSERT INTO directorio (entidad_id, contacto, tipo) 
@@ -202,10 +207,14 @@ class Institucion {
             $stmtContact = $this->db->prepare($queryContact);
 
             foreach ($this->contactos as $c) {
-                $stmtContact->bindValue(":entidad_id", $entidadId, PDO::PARAM_INT);
-                $stmtContact->bindValue(":contacto", $c['contacto'], PDO::PARAM_STR);
-                $stmtContact->bindValue(":tipo", $c['tipo'], PDO::PARAM_STR);
-                $stmtContact->execute();
+                $contactoVal = trim($c['contacto'] ?? '');
+                $tipoVal = trim($c['tipo'] ?? 'principal');
+                if (!empty($contactoVal)) {
+                    $stmtContact->bindValue(":entidad_id", $entidadId, PDO::PARAM_INT);
+                    $stmtContact->bindValue(":contacto", $contactoVal, PDO::PARAM_STR);
+                    $stmtContact->bindValue(":tipo", $tipoVal, PDO::PARAM_STR);
+                    $stmtContact->execute();
+                }
             }
 
             $this->db->commit();
@@ -219,33 +228,48 @@ class Institucion {
     }
 
     /**
-     * Obtiene el listado de todas las instituciones registradas con su ubicación y contactos.
+     * Obtiene el listado de todas las instituciones registradas con sus sedes y contactos.
      */
     public static function listarTodas($db) {
         if (!$db) return [];
         try {
-            $query = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre, i.tipo_organizacion, i.tipo_gestion,
-                             d.ciudad_id, d.parroquia_id, d.detalles AS detalles_direccion,
-                             c.ciudad, p.parroquia, m.municipio, est.estado, est.id_estado, m.id_municipio
+            $query = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre_completo, 
+                             e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion
                       FROM instituciones i
                       INNER JOIN entidades e ON i.entidad_id = e.id
-                      LEFT JOIN direccion d ON d.institucion_id = i.id
-                      LEFT JOIN ciudades c ON d.ciudad_id = c.id_ciudad
-                      LEFT JOIN parroquias p ON d.parroquia_id = p.id_parroquia
-                      LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
-                      LEFT JOIN estados est ON m.id_estado = est.id_estado
                       ORDER BY i.id DESC";
             $stmt = $db->prepare($query);
             $stmt->execute();
             $instituciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Fetch all contacts to attach them in memory
+            if (empty($instituciones)) {
+                return [];
+            }
+
+            // Cargar todas las sedes agrupadas
+            $querySedes = "SELECT s.id, s.institucion_id, s.ciudad_id, s.parroquia_id, s.detalles,
+                                  c.ciudad, p.parroquia, m.id_municipio, m.municipio, est.id_estado, est.estado
+                           FROM sedes s
+                           LEFT JOIN ciudades c ON s.ciudad_id = c.id_ciudad
+                           LEFT JOIN parroquias p ON s.parroquia_id = p.id_parroquia
+                           LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
+                           LEFT JOIN estados est ON m.id_estado = est.id_estado
+                           ORDER BY s.id ASC";
+            $stmtSedes = $db->prepare($querySedes);
+            $stmtSedes->execute();
+            $allSedes = $stmtSedes->fetchAll(PDO::FETCH_ASSOC);
+
+            $sedesMap = [];
+            foreach ($allSedes as $s) {
+                $sedesMap[$s['institucion_id']][] = $s;
+            }
+
+            // Cargar todos los contactos agrupados
             $queryContacts = "SELECT entidad_id, contacto, tipo FROM directorio";
             $stmtContacts = $db->prepare($queryContacts);
             $stmtContacts->execute();
             $allContacts = $stmtContacts->fetchAll(PDO::FETCH_ASSOC);
 
-            // Group contacts by entidad_id
             $contactsMap = [];
             foreach ($allContacts as $c) {
                 $contactsMap[$c['entidad_id']][] = [
@@ -254,9 +278,30 @@ class Institucion {
                 ];
             }
 
-            // Attach contacts to each institution
+            // Adjuntar sedes y contactos a cada institución
             foreach ($instituciones as &$inst) {
+                $inst['sedes'] = $sedesMap[$inst['id']] ?? [];
                 $inst['contactos'] = $contactsMap[$inst['entidad_id']] ?? [];
+
+                // Datos de la primera sede para compatibilidad
+                if (!empty($inst['sedes'])) {
+                    $first = $inst['sedes'][0];
+                    $inst['ciudad_id'] = $first['ciudad_id'];
+                    $inst['parroquia_id'] = $first['parroquia_id'];
+                    $inst['detalles_direccion'] = $first['detalles'];
+                    $inst['ciudad'] = $first['ciudad'];
+                    $inst['parroquia'] = $first['parroquia'];
+                    $inst['municipio'] = $first['municipio'];
+                    $inst['estado'] = $first['estado'];
+                    $inst['id_estado'] = $first['id_estado'];
+                    $inst['id_municipio'] = $first['id_municipio'];
+                } else {
+                    $inst['detalles_direccion'] = '';
+                    $inst['ciudad'] = '';
+                    $inst['parroquia'] = '';
+                    $inst['municipio'] = '';
+                    $inst['estado'] = '';
+                }
             }
 
             return $instituciones;
@@ -272,20 +317,14 @@ class Institucion {
     public static function buscarPorTermino($db, $term) {
         if (!$db) return [];
         try {
-            $query = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre, i.tipo_organizacion, i.tipo_gestion,
-                             d.ciudad_id, d.parroquia_id, d.detalles AS detalles_direccion,
-                             c.ciudad, p.parroquia, m.municipio, est.estado, est.id_estado, m.id_municipio
+            $query = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre_completo,
+                             e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion
                       FROM instituciones i
                       INNER JOIN entidades e ON i.entidad_id = e.id
-                      LEFT JOIN direccion d ON d.institucion_id = i.id
-                      LEFT JOIN ciudades c ON d.ciudad_id = c.id_ciudad
-                      LEFT JOIN parroquias p ON d.parroquia_id = p.id_parroquia
-                      LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
-                      LEFT JOIN estados est ON m.id_estado = est.id_estado
-                      WHERE e.nombre LIKE :term1 
+                      WHERE e.nombre_completo LIKE :term1 
                          OR e.documento LIKE :term2 
                          OR CONCAT(e.tipo_documento, '-', e.documento) LIKE :term3
-                      ORDER BY e.nombre ASC
+                      ORDER BY e.nombre_completo ASC
                       LIMIT 10";
             $stmt = $db->prepare($query);
             $likeTerm = '%' . $term . '%';
@@ -295,25 +334,63 @@ class Institucion {
             $stmt->execute();
             $instituciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            if (empty($instituciones)) {
+                return [];
+            }
+
+            $instIds = array_column($instituciones, 'id');
+            $entidadIds = array_column($instituciones, 'entidad_id');
+
+            // Cargar sedes para las instituciones encontradas
+            $placeholdersInst = implode(',', array_fill(0, count($instIds), '?'));
+            $querySedes = "SELECT s.id, s.institucion_id, s.ciudad_id, s.parroquia_id, s.detalles,
+                                  c.ciudad, p.parroquia, m.id_municipio, m.municipio, est.id_estado, est.estado
+                           FROM sedes s
+                           LEFT JOIN ciudades c ON s.ciudad_id = c.id_ciudad
+                           LEFT JOIN parroquias p ON s.parroquia_id = p.id_parroquia
+                           LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
+                           LEFT JOIN estados est ON m.id_estado = est.id_estado
+                           WHERE s.institucion_id IN ($placeholdersInst)
+                           ORDER BY s.id ASC";
+            $stmtSedes = $db->prepare($querySedes);
+            $stmtSedes->execute($instIds);
+            $allSedes = $stmtSedes->fetchAll(PDO::FETCH_ASSOC);
+
+            $sedesMap = [];
+            foreach ($allSedes as $s) {
+                $sedesMap[$s['institucion_id']][] = $s;
+            }
+
             // Cargar contactos
-            if (!empty($instituciones)) {
-                $entidadIds = array_column($instituciones, 'entidad_id');
-                $placeholders = implode(',', array_fill(0, count($entidadIds), '?'));
-                $queryContacts = "SELECT entidad_id, contacto, tipo FROM directorio WHERE entidad_id IN ($placeholders)";
-                $stmtContacts = $db->prepare($queryContacts);
-                $stmtContacts->execute($entidadIds);
-                $allContacts = $stmtContacts->fetchAll(PDO::FETCH_ASSOC);
+            $placeholdersEnt = implode(',', array_fill(0, count($entidadIds), '?'));
+            $queryContacts = "SELECT entidad_id, contacto, tipo FROM directorio WHERE entidad_id IN ($placeholdersEnt)";
+            $stmtContacts = $db->prepare($queryContacts);
+            $stmtContacts->execute($entidadIds);
+            $allContacts = $stmtContacts->fetchAll(PDO::FETCH_ASSOC);
 
-                $contactsMap = [];
-                foreach ($allContacts as $c) {
-                    $contactsMap[$c['entidad_id']][] = [
-                        'contacto' => $c['contacto'],
-                        'tipo' => $c['tipo']
-                    ];
-                }
+            $contactsMap = [];
+            foreach ($allContacts as $c) {
+                $contactsMap[$c['entidad_id']][] = [
+                    'contacto' => $c['contacto'],
+                    'tipo' => $c['tipo']
+                ];
+            }
 
-                foreach ($instituciones as &$inst) {
-                    $inst['contactos'] = $contactsMap[$inst['entidad_id']] ?? [];
+            foreach ($instituciones as &$inst) {
+                $inst['sedes'] = $sedesMap[$inst['id']] ?? [];
+                $inst['contactos'] = $contactsMap[$inst['entidad_id']] ?? [];
+
+                if (!empty($inst['sedes'])) {
+                    $first = $inst['sedes'][0];
+                    $inst['ciudad_id'] = $first['ciudad_id'];
+                    $inst['parroquia_id'] = $first['parroquia_id'];
+                    $inst['detalles_direccion'] = $first['detalles'];
+                    $inst['ciudad'] = $first['ciudad'];
+                    $inst['parroquia'] = $first['parroquia'];
+                    $inst['municipio'] = $first['municipio'];
+                    $inst['estado'] = $first['estado'];
+                    $inst['id_estado'] = $first['id_estado'];
+                    $inst['id_municipio'] = $first['id_municipio'];
                 }
             }
 
@@ -325,22 +402,15 @@ class Institucion {
     }
 
     /**
-     * Obtiene la información detallada de una institución por su ID
+     * Obtiene la información detallada de una institución por su ID con todas sus sedes y contactos
      */
     public static function obtenerPorId($db, $id) {
         if (!$db) return null;
         try {
-            $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre, i.tipo_organizacion, i.tipo_gestion,
-                             d.ciudad_id, d.parroquia_id, d.detalles AS detalles_direccion,
-                             est.id_estado, mun.id_municipio, p.id_parroquia,
-                             c.ciudad, p.parroquia, mun.municipio, est.estado
+            $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre_completo,
+                             e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion
                       FROM entidades e
                       INNER JOIN instituciones i ON i.entidad_id = e.id
-                      LEFT JOIN direccion d ON d.institucion_id = i.id
-                      LEFT JOIN parroquias p ON d.parroquia_id = p.id_parroquia
-                      LEFT JOIN municipios mun ON p.id_municipio = mun.id_municipio
-                      LEFT JOIN estados est ON mun.id_estado = est.id_estado
-                      LEFT JOIN ciudades c ON d.ciudad_id = c.id_ciudad
                       WHERE i.id = :id 
                       LIMIT 1";
             
@@ -350,6 +420,34 @@ class Institucion {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($row) {
+                // Cargar sedes
+                $querySedes = "SELECT s.id, s.institucion_id, s.ciudad_id, s.parroquia_id, s.detalles,
+                                      c.ciudad, p.parroquia, m.id_municipio, m.municipio, est.id_estado, est.estado
+                               FROM sedes s
+                               LEFT JOIN ciudades c ON s.ciudad_id = c.id_ciudad
+                               LEFT JOIN parroquias p ON s.parroquia_id = p.id_parroquia
+                               LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
+                               LEFT JOIN estados est ON m.id_estado = est.id_estado
+                               WHERE s.institucion_id = :id
+                               ORDER BY s.id ASC";
+                $stmtSedes = $db->prepare($querySedes);
+                $stmtSedes->bindParam(":id", $id, PDO::PARAM_INT);
+                $stmtSedes->execute();
+                $row['sedes'] = $stmtSedes->fetchAll(PDO::FETCH_ASSOC);
+
+                if (!empty($row['sedes'])) {
+                    $first = $row['sedes'][0];
+                    $row['ciudad_id'] = $first['ciudad_id'];
+                    $row['parroquia_id'] = $first['parroquia_id'];
+                    $row['detalles_direccion'] = $first['detalles'];
+                    $row['id_estado'] = $first['id_estado'];
+                    $row['id_municipio'] = $first['id_municipio'];
+                    $row['estado'] = $first['estado'];
+                    $row['municipio'] = $first['municipio'];
+                    $row['parroquia'] = $first['parroquia'];
+                    $row['ciudad'] = $first['ciudad'];
+                }
+
                 // Buscar contactos del directorio
                 $queryContacts = "SELECT contacto, tipo FROM directorio WHERE entidad_id = :entidad_id";
                 $stmtContacts = $db->prepare($queryContacts);
@@ -367,6 +465,7 @@ class Institucion {
 
     /**
      * Actualiza la información de una institución existente en el sistema de manera transaccional
+     * Sincroniza las sedes (agrega, modifica o reemplaza) y contactos
      */
     public function actualizar() {
         if (!$this->db || !$this->id) {
@@ -389,12 +488,12 @@ class Institucion {
 
             // 2. Actualizar la tabla entidades
             $queryEntidad = "UPDATE entidades 
-                             SET tipo_documento = :tipo_documento, documento = :documento, nombre = :nombre 
+                             SET tipo_documento = :tipo_documento, documento = :documento, nombre_completo = :nombre_completo 
                              WHERE id = :entidad_id";
             $stmtEntidad = $this->db->prepare($queryEntidad);
             $stmtEntidad->bindValue(":tipo_documento", $this->tipo_documento, PDO::PARAM_STR);
             $stmtEntidad->bindValue(":documento", $this->documento, PDO::PARAM_STR);
-            $stmtEntidad->bindValue(":nombre", $this->nombre, PDO::PARAM_STR);
+            $stmtEntidad->bindValue(":nombre_completo", $this->nombre_completo, PDO::PARAM_STR);
             $stmtEntidad->bindValue(":entidad_id", $this->entidad_id, PDO::PARAM_INT);
             $stmtEntidad->execute();
 
@@ -408,26 +507,72 @@ class Institucion {
             $stmtInst->bindValue(":id", $this->id, PDO::PARAM_INT);
             $stmtInst->execute();
 
-            // 4. Actualizar la tabla direccion (verificar primero si existe, si no insertar)
-            $queryCheckDir = "SELECT COUNT(*) FROM direccion WHERE institucion_id = :id";
-            $stmtCheckDir = $this->db->prepare($queryCheckDir);
-            $stmtCheckDir->bindValue(":id", $this->id, PDO::PARAM_INT);
-            $stmtCheckDir->execute();
+            // 4. Actualizar sedes
+            // Obtenemos sedes actuales asociadas a citas para no violar FKs
+            $queryCitasSedes = "SELECT DISTINCT sede_id FROM citas WHERE institucion_id = :id AND sede_id IS NOT NULL";
+            $stmtCitasSedes = $this->db->prepare($queryCitasSedes);
+            $stmtCitasSedes->bindValue(":id", $this->id, PDO::PARAM_INT);
+            $stmtCitasSedes->execute();
+            $sedesEnCitas = $stmtCitasSedes->fetchAll(PDO::FETCH_COLUMN);
 
-            if ($stmtCheckDir->fetchColumn() > 0) {
-                $queryDir = "UPDATE direccion 
-                             SET ciudad_id = :ciudad_id, parroquia_id = :parroquia_id, detalles = :detalles 
-                             WHERE institucion_id = :id";
-            } else {
-                $queryDir = "INSERT INTO direccion (institucion_id, ciudad_id, parroquia_id, detalles) 
-                             VALUES (:id, :ciudad_id, :parroquia_id, :detalles)";
+            // Obtenemos los IDs de las sedes enviadas
+            $incomingSedeIds = [];
+            foreach ($this->sedes as $s) {
+                if (!empty($s['id']) && (int)$s['id'] > 0) {
+                    $incomingSedeIds[] = (int)$s['id'];
+                }
             }
-            $stmtDir = $this->db->prepare($queryDir);
-            $stmtDir->bindValue(":ciudad_id", $this->ciudad_id, PDO::PARAM_INT);
-            $stmtDir->bindValue(":parroquia_id", $this->parroquia_id, PDO::PARAM_INT);
-            $stmtDir->bindValue(":detalles", $this->detalles_direccion, PDO::PARAM_STR);
-            $stmtDir->bindValue(":id", $this->id, PDO::PARAM_INT);
-            $stmtDir->execute();
+
+            // Eliminar sedes que ya no existen (excepto si están asociadas a citas, o si no están en incoming)
+            if (!empty($incomingSedeIds)) {
+                $placeholders = implode(',', array_fill(0, count($incomingSedeIds), '?'));
+                $queryDeleteSedes = "DELETE FROM sedes WHERE institucion_id = ? AND id NOT IN ($placeholders)";
+                $params = array_merge([$this->id], $incomingSedeIds);
+                $stmtDelSedes = $this->db->prepare($queryDeleteSedes);
+                $stmtDelSedes->execute($params);
+            } else {
+                // Si no se pasaron IDs existentes, borrar las que no estén en citas
+                $queryDeleteSedes = "DELETE FROM sedes WHERE institucion_id = :id";
+                $stmtDelSedes = $this->db->prepare($queryDeleteSedes);
+                $stmtDelSedes->bindValue(":id", $this->id, PDO::PARAM_INT);
+                $stmtDelSedes->execute();
+            }
+
+            // Insertar o actualizar sedes
+            $queryInsertSede = "INSERT INTO sedes (institucion_id, ciudad_id, parroquia_id, detalles) 
+                                VALUES (:institucion_id, :ciudad_id, :parroquia_id, :detalles)";
+            $stmtInsertSede = $this->db->prepare($queryInsertSede);
+
+            $queryUpdateSede = "UPDATE sedes 
+                                SET ciudad_id = :ciudad_id, parroquia_id = :parroquia_id, detalles = :detalles 
+                                WHERE id = :id AND institucion_id = :institucion_id";
+            $stmtUpdateSede = $this->db->prepare($queryUpdateSede);
+
+            foreach ($this->sedes as $s) {
+                $sedeId = !empty($s['id']) ? (int)$s['id'] : null;
+                $ciudadId = (int)($s['ciudad_id'] ?? 0);
+                $parroquiaId = (int)($s['parroquia_id'] ?? 0);
+                $detalles = isset($s['detalles']) ? trim($s['detalles']) : null;
+
+                if ($ciudadId > 0 && $parroquiaId > 0) {
+                    if ($sedeId) {
+                        // Actualizar sede existente
+                        $stmtUpdateSede->bindValue(":ciudad_id", $ciudadId, PDO::PARAM_INT);
+                        $stmtUpdateSede->bindValue(":parroquia_id", $parroquiaId, PDO::PARAM_INT);
+                        $stmtUpdateSede->bindValue(":detalles", $detalles, PDO::PARAM_STR);
+                        $stmtUpdateSede->bindValue(":id", $sedeId, PDO::PARAM_INT);
+                        $stmtUpdateSede->bindValue(":institucion_id", $this->id, PDO::PARAM_INT);
+                        $stmtUpdateSede->execute();
+                    } else {
+                        // Insertar nueva sede
+                        $stmtInsertSede->bindValue(":institucion_id", $this->id, PDO::PARAM_INT);
+                        $stmtInsertSede->bindValue(":ciudad_id", $ciudadId, PDO::PARAM_INT);
+                        $stmtInsertSede->bindValue(":parroquia_id", $parroquiaId, PDO::PARAM_INT);
+                        $stmtInsertSede->bindValue(":detalles", $detalles, PDO::PARAM_STR);
+                        $stmtInsertSede->execute();
+                    }
+                }
+            }
 
             // 5. Actualizar contactos (eliminar anteriores y guardar nuevos)
             $queryDeleteContacts = "DELETE FROM directorio WHERE entidad_id = :entidad_id";
@@ -439,10 +584,14 @@ class Institucion {
             $stmtContact = $this->db->prepare($queryContact);
 
             foreach ($this->contactos as $c) {
-                $stmtContact->bindValue(":entidad_id", $this->entidad_id, PDO::PARAM_INT);
-                $stmtContact->bindValue(":contacto", $c['contacto'], PDO::PARAM_STR);
-                $stmtContact->bindValue(":tipo", $c['tipo'], PDO::PARAM_STR);
-                $stmtContact->execute();
+                $contactoVal = trim($c['contacto'] ?? '');
+                $tipoVal = trim($c['tipo'] ?? 'principal');
+                if (!empty($contactoVal)) {
+                    $stmtContact->bindValue(":entidad_id", $this->entidad_id, PDO::PARAM_INT);
+                    $stmtContact->bindValue(":contacto", $contactoVal, PDO::PARAM_STR);
+                    $stmtContact->bindValue(":tipo", $tipoVal, PDO::PARAM_STR);
+                    $stmtContact->execute();
+                }
             }
 
             $this->db->commit();
@@ -463,8 +612,8 @@ class Institucion {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        $cleanId = filter_var($id, FILTER_VALIDATE_INT) ? (int)$id : null;
-        if (!$cleanId) {
+        $cleanId = (int)$id;
+        if ($cleanId <= 0) {
             throw new InvalidArgumentException("ID de institución no válido.");
         }
 
@@ -491,11 +640,11 @@ class Institucion {
 
             $this->db->beginTransaction();
 
-            // 2. Eliminar dirección
-            $queryDeleteDir = "DELETE FROM direccion WHERE institucion_id = :id";
-            $stmtDeleteDir = $this->db->prepare($queryDeleteDir);
-            $stmtDeleteDir->bindValue(":id", $cleanId, PDO::PARAM_INT);
-            $stmtDeleteDir->execute();
+            // 2. Eliminar sedes
+            $queryDeleteSedes = "DELETE FROM sedes WHERE institucion_id = :id";
+            $stmtDeleteSedes = $this->db->prepare($queryDeleteSedes);
+            $stmtDeleteSedes->bindValue(":id", $cleanId, PDO::PARAM_INT);
+            $stmtDeleteSedes->execute();
 
             // 3. Eliminar directorio de contactos
             $queryDeleteDirContacts = "DELETE FROM directorio WHERE entidad_id = :entidad_id";

@@ -555,3 +555,44 @@
     color: #065F46;
 }
 
+/* ==========================================================================
+   Autocomplete Flotante Libre del Modal
+   ========================================================================== */
+#autocomplete_suggestions {
+    position: fixed !important;
+    z-index: 999999 !important;
+    background: #ffffff !important;
+    border: 1px solid #CBD5E1 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.22) !important;
+    max-height: 290px !important;
+    overflow-y: auto !important;
+    padding: 6px !important;
+}
+
+#autocomplete_suggestions .autocomplete-item {
+    border-radius: 8px !important;
+    transition: background-color 0.15s ease !important;
+    padding: 10px 14px !important;
+    border: none !important;
+    background: transparent;
+    cursor: pointer;
+}
+
+#autocomplete_suggestions .autocomplete-item:hover,
+#autocomplete_suggestions .autocomplete-item:focus {
+    background-color: #F0FDF4 !important;
+}
+
+#autocomplete_suggestions #btn_new_inst_autocomplete {
+    border-radius: 8px !important;
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    transition: background-color 0.15s ease;
+}
+
+#autocomplete_suggestions #btn_new_inst_autocomplete:hover {
+    background-color: #EFF6FF !important;
+}
+

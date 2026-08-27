@@ -96,12 +96,8 @@ if (!isset($userPermissions)) {
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="nombre" class="form-premium-label">Nombre</label>
-                            <input type="text" class="form-control form-premium-control" id="nombre" name="nombre" placeholder="Ej. Juan" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="apellido" class="form-premium-label">Apellido</label>
-                            <input type="text" class="form-control form-premium-control" id="apellido" name="apellido" placeholder="Ej. Pérez" required>
+                            <label for="nombre_completo" class="form-premium-label">Nombre Completo</label>
+                            <input type="text" class="form-control form-premium-control" id="nombre_completo" name="nombre_completo" placeholder="Ej. Juan Carlos Pérez" required>
                         </div>
                         <div class="mb-3">
                             <label for="rol" class="form-premium-label">Rol del Personal</label>
@@ -150,12 +146,8 @@ if (!isset($userPermissions)) {
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label for="edit_nombre" class="form-premium-label">Nombre</label>
-                            <input type="text" class="form-control form-premium-control" id="edit_nombre" name="nombre" required>
-                        </div>
-                        <div class="mb-3">
-                            <label for="edit_apellido" class="form-premium-label">Apellido</label>
-                            <input type="text" class="form-control form-premium-control" id="edit_apellido" name="apellido" required>
+                            <label for="edit_nombre_completo" class="form-premium-label">Nombre Completo</label>
+                            <input type="text" class="form-control form-premium-control" id="edit_nombre_completo" name="nombre_completo" placeholder="Ej. Juan Carlos Pérez" required>
                         </div>
                         <div class="mb-3">
                             <label for="edit_rol" class="form-premium-label">Rol del Personal</label>

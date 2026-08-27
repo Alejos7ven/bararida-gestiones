@@ -13,15 +13,12 @@ $(document).ready(function() {
                     minlength: 6,
                     maxlength: 12
                 },
-                nombre: {
+                nombre_completo: {
                     required: true,
-                    minlength: 2
+                    minlength: 3,
+                    maxlength: 150
                 },
-                apellido: {
-                    required: true,
-                    minlength: 2
-                },
-                rol_id: {
+                rol: {
                     required: true
                 },
                 password: {
@@ -35,8 +32,12 @@ $(document).ready(function() {
                     minlength: "La cédula debe tener al menos 6 dígitos.",
                     maxlength: "La cédula no puede exceder los 12 dígitos."
                 },
+                nombre_completo: {
+                    required: "El nombre completo es requerido.",
+                    minlength: "El nombre completo debe tener al menos 3 caracteres."
+                },
                 password: {
-                    minlength: "La contraseña debe tener al menos 4 caracteres."
+                    minlength: "La contraseña debe tener al menos 6 caracteres."
                 }
             }
         });
@@ -55,13 +56,10 @@ $(document).ready(function() {
                     minlength: 6,
                     maxlength: 12
                 },
-                nombre: {
+                nombre_completo: {
                     required: true,
-                    minlength: 2
-                },
-                apellido: {
-                    required: true,
-                    minlength: 2
+                    minlength: 3,
+                    maxlength: 150
                 },
                 rol: {
                     required: true
@@ -76,6 +74,10 @@ $(document).ready(function() {
                     digits: "Por favor, ingrese solo números para la cédula.",
                     minlength: "La cédula debe tener al menos 6 dígitos.",
                     maxlength: "La cédula no puede exceder los 12 dígitos."
+                },
+                nombre_completo: {
+                    required: "El nombre completo es requerido.",
+                    minlength: "El nombre completo debe tener al menos 3 caracteres."
                 },
                 password: {
                     minlength: "La contraseña debe tener al menos 6 caracteres."
