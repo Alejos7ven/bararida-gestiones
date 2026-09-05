@@ -311,9 +311,20 @@
     box-shadow: 0 2px 6px rgba(229, 62, 62, 0.2);
 }
 
-.btn-action:disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
+.btn-action:disabled,
+.btn-action[disabled] {
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+    background-color: var(--sub-bg-color) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-muted) !important;
+    box-shadow: none !important;
+    transform: none !important;
+    pointer-events: auto !important;
+}
+
+.btn-action:disabled:hover,
+.btn-action[disabled]:hover {
     background-color: var(--sub-bg-color) !important;
     border-color: var(--border-color) !important;
     color: var(--text-muted) !important;

@@ -134,9 +134,9 @@ function listarAction($db) {
  * Obtiene y retorna los detalles de un personal por su ID
  */
 function obtenerAction($db) {
-    $id = isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : null;
+    $id = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : null;
     
-    if (!$id) {
+    if ($id === null || $id < 0) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
@@ -302,7 +302,7 @@ function crearAction($db) {
  * Modifica un personal existente
  */
 function actualizarAction($db) {
-    $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
+    $id = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : null;
     $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
     $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
     $nombre_completo = isset($_POST['nombre_completo']) ? trim($_POST['nombre_completo']) : '';
@@ -312,7 +312,7 @@ function actualizarAction($db) {
     $rol = isset($_POST['rol']) ? trim($_POST['rol']) : '';
     $password = isset($_POST['password']) ? trim($_POST['password']) : '';
 
-    if (!$id || empty($tipo_documento) || empty($cedula) || empty($nombre_completo) || empty($rol)) {
+    if ($id === null || $id < 0 || empty($tipo_documento) || empty($cedula) || empty($nombre_completo) || empty($rol)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
@@ -460,9 +460,9 @@ function actualizarAction($db) {
  * Elimina un personal por ID (Previene eliminar superadmins)
  */
 function eliminarAction($db) {
-    $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
+    $id = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : null;
 
-    if (!$id) {
+    if ($id === null || $id < 0) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",

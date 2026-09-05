@@ -94,7 +94,7 @@ if (!isset($userPermissions)) {
                     </div>
                     <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">
                         <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
-                        <submit type="submit" class="btn btn-premium-primary" id="btnConfirmarCrearVisitante">Registrar Visitante</submit>
+                        <button type="submit" class="btn btn-premium-primary" id="btnConfirmarCrearVisitante">Registrar Visitante</button>
                     </div>
                 </form>
             </div>

@@ -256,10 +256,31 @@ function crearInstitucionAction($db) {
     if (is_array($contactosRaw)) {
         foreach ($contactosRaw as $c) {
             $contVal = strip_tags(trim($c['contacto'] ?? ''));
+            $tipo = trim($c['tipo'] ?? 'telefono');
             if (!empty($contVal)) {
+                if ($tipo === 'telefono') {
+                    $cleanDigits = preg_replace('/[^0-9]/', '', $contVal);
+                    if (preg_match('/[a-zA-Z]/', $contVal) || strlen($cleanDigits) < 7 || strlen($cleanDigits) > 20) {
+                        http_response_code(400);
+                        echo json_encode([
+                            "status" => "error",
+                            "message" => "El número de teléfono '{$contVal}' es inválido. No debe contener letras y debe tener al menos 7 dígitos."
+                        ]);
+                        return;
+                    }
+                } elseif ($tipo === 'correo') {
+                    if (!filter_var($contVal, FILTER_VALIDATE_EMAIL)) {
+                        http_response_code(400);
+                        echo json_encode([
+                            "status" => "error",
+                            "message" => "El correo electrónico '{$contVal}' no tiene un formato válido."
+                        ]);
+                        return;
+                    }
+                }
                 $contactos[] = [
                     'contacto' => substr($contVal, 0, 50),
-                    'tipo' => trim($c['tipo'] ?? 'principal')
+                    'tipo' => $tipo
                 ];
             }
         }
@@ -412,10 +433,31 @@ function actualizarInstitucionAction($db) {
     if (is_array($contactosRaw)) {
         foreach ($contactosRaw as $c) {
             $contVal = strip_tags(trim($c['contacto'] ?? ''));
+            $tipo = trim($c['tipo'] ?? 'telefono');
             if (!empty($contVal)) {
+                if ($tipo === 'telefono') {
+                    $cleanDigits = preg_replace('/[^0-9]/', '', $contVal);
+                    if (preg_match('/[a-zA-Z]/', $contVal) || strlen($cleanDigits) < 7 || strlen($cleanDigits) > 20) {
+                        http_response_code(400);
+                        echo json_encode([
+                            "status" => "error",
+                            "message" => "El número de teléfono '{$contVal}' es inválido. No debe contener letras y debe tener al menos 7 dígitos."
+                        ]);
+                        return;
+                    }
+                } elseif ($tipo === 'correo') {
+                    if (!filter_var($contVal, FILTER_VALIDATE_EMAIL)) {
+                        http_response_code(400);
+                        echo json_encode([
+                            "status" => "error",
+                            "message" => "El correo electrónico '{$contVal}' no tiene un formato válido."
+                        ]);
+                        return;
+                    }
+                }
                 $contactos[] = [
                     'contacto' => substr($contVal, 0, 50),
-                    'tipo' => trim($c['tipo'] ?? 'principal')
+                    'tipo' => $tipo
                 ];
             }
         }
@@ -527,6 +569,17 @@ function eliminarInstitucionAction($db) {
         echo json_encode([
             "status" => "error",
             "message" => "ID de institución inválido o no suministrado."
+        ]);
+        return;
+    }
+
+    // Regla de negocio en el Controller: no permitir eliminar instituciones con citas
+    $totalCitas = Institucion::contarCitas($db, $id);
+    if ($totalCitas > 0) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "No se puede eliminar la institución porque posee citas registradas (pasadas, activas o futuras)."
         ]);
         return;
     }

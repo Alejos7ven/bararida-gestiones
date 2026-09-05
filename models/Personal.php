@@ -218,7 +218,7 @@ class Personal {
             $stmtEntidad->execute();
             $entidadId = $stmtEntidad->fetchColumn();
 
-            if (!$entidadId) {
+            if ($entidadId === false || $entidadId === null) {
                 // Crear nueva entidad
                 $queryInsertEntidad = "INSERT INTO entidades (tipo_documento, documento, nombre_completo, tipo_entidad) 
                                        VALUES (:tipo_documento, :cedula, :nombre_completo, 'persona')";
@@ -262,7 +262,7 @@ class Personal {
      * Actualiza la información de un personal existente.
      */
     public function actualizar() {
-        if (!$this->db || empty($this->id)) {
+        if (!$this->db || $this->id === null || $this->id === '') {
             throw new Exception("Conexión de base de datos o ID de personal no configurados.");
         }
 
@@ -276,7 +276,7 @@ class Personal {
             $stmtEntidadId->execute();
             $entidadId = $stmtEntidadId->fetchColumn();
 
-            if (!$entidadId) {
+            if ($entidadId === false || $entidadId === null) {
                 throw new Exception("No se encontró la entidad asociada al personal.");
             }
 

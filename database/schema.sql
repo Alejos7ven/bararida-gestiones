@@ -1,4 +1,5 @@
-
+SET FOREIGN_KEY_CHECKS = 0;
+SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 
 -- CREATE DATABASE IF NOT EXISTS bararida_gestiones DEFAULT CHARACTER SET utf8mb4;
 -- USE bararida_gestiones;
@@ -200,19 +201,16 @@ INSERT INTO `zonas` (`nombre`, `coordenadas`) VALUES
 ('Entrada Los Abogados', '17.29,90.70'),
 ('Entrada Morán', '82.54,50.90');
 
-INSERT INTO `entidades` (`tipo_documento`, `documento`, `nombre_completo`, `tipo_entidad`) VALUES
-('V', '0000', 'Admin Maestro', 'persona');
+INSERT INTO `entidades` (`id`, `tipo_documento`, `documento`, `nombre_completo`, `tipo_entidad`) VALUES
+(0, 'V', '0000', 'Admin Maestro', 'persona');
 
 INSERT INTO `roles` (`nombre`) VALUES
 ('superadmin'),
 ('admin'),
 ('guia'); 
 
-INSERT INTO `personal` (`entidad_id`, `rol_id`, `password`, `created_at`, `updated_at`) VALUES
-(1, 1, '$2y$10$nR1oEfcIOHrMu8Ccxli.mumVXMxyXPJxi29S9HZABzVZ5fsWYCt5G', '2026-06-09 21:10:57', '2026-06-09 21:10:57');
-
-INSERT INTO `instituciones` (`entidad_id`, `tipo_organizacion`) VALUES
-(2, 'personal'); 
+INSERT INTO `personal` (`id`, `entidad_id`, `rol_id`, `password`, `created_at`, `updated_at`) VALUES
+(0, 0, 1, '$2y$10$99jn3h9Lv9eJH3TiDGFPd.fX2/Po1u2.Bwob0OnCpbEcqatPQWqRG', '2026-06-09 21:10:57', '2026-06-09 21:10:57'); 
 
 -- Catálogo de módulos del sistema
 INSERT INTO `modulos` (`nombre`, `label`) VALUES
@@ -251,5 +249,7 @@ INSERT INTO `permisos` (`rol_id`, `modulo_id`, `puede_acceder`) VALUES
 (3, 4, 0), -- guia > recorridos (denegado)
 (3, 5, 0), -- guia > visitantes (denegado)
 (3, 6, 0); -- guia > personal (denegado)
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 COMMIT; 

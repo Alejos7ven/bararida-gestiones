@@ -287,22 +287,20 @@ if (!isset($userPermissions)) {
 
     <!-- MODAL: ELIMINAR INSTITUCIÓN -->
     <div class="modal fade modal-premium" id="modalEliminarInstitucion" tabindex="-1" aria-labelledby="modalEliminarInstitucionLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered" style="max-width: 450px;">
-            <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
-                <div class="modal-body text-center style-delete-modal" style="padding: 40px 30px;">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                <div class="modal-header" style="background: #ef4444; color: #ffffff; padding: 20px 24px;">
+                    <h5 class="modal-title" id="modalEliminarInstitucionLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body" style="background:#ffffff; padding: 24px;">
                     <input type="hidden" id="delete_institucion_id">
-                    <div class="delete-icon-wrapper" style="width: 70px; height: 70px; background: #ffebeb; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; color: var(--park-danger);">
-                        <!-- SVG Warning Shield -->
-                        <svg viewBox="0 0 24 24" style="width: 36px; height: 36px; fill: currentColor;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
-                    </div>
-                    <h4 class="modal-title mb-2" style="font-family:'Outfit'; font-weight:700; color: var(--park-dark);">¿Eliminar Institución?</h4>
-                    <p class="text-muted" style="font-size: 0.9rem; line-height: 1.5; margin-bottom: 30px;">
-                        ¿Está seguro de que desea eliminar la institución <strong id="deleteInstNameSpan"></strong>? Esta acción no se puede deshacer y borrará permanentemente sus sedes y contactos.
-                    </p>
-                    <div class="d-flex gap-3 justify-content-center">
-                        <button type="button" class="btn btn-secondary btn-premium-secondary px-4 py-2" data-bs-dismiss="modal" style="border-radius:12px; font-weight:600;">Cancelar</button>
-                        <button type="button" class="btn btn-danger btn-premium-danger px-4 py-2" id="btnConfirmarEliminarInstitucion" style="border-radius:12px; font-weight:600; background: var(--park-danger); border-color: var(--park-danger);">Eliminar</button>
-                    </div>
+                    <p class="mb-0" style="font-size:0.95rem;">¿Está completamente seguro de que desea eliminar la institución <strong id="deleteInstNameSpan" class="text-danger"></strong> del sistema?</p>
+                    <p class="text-danger mt-2 mb-0" style="font-size:0.85rem; font-weight:600;">Esta acción es irreversible y borrará permanentemente sus sedes y contactos asociados.</p>
+                </div>
+                <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid #e2e8f0; padding: 16px 24px;">
+                    <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
+                    <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminarInstitucion" style="border-radius:10px; font-weight:600; font-size:0.9rem; background:#ef4444; border-color:#ef4444; color:#ffffff;">Eliminar Institución</button>
                 </div>
             </div>
         </div>

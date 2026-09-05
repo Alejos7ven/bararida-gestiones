@@ -28,10 +28,15 @@ $(document).ready(function() {
                     maxlength: "No puede exceder los 12 dígitos."
                 },
                 nombres: {
+                    required: "El nombre es obligatorio.",
                     minlength: "Los nombres deben tener al menos 2 caracteres."
                 },
                 apellidos: {
+                    required: "El apellido es obligatorio.",
                     minlength: "Los apellidos deben tener al menos 2 caracteres."
+                },
+                fecha_nacimiento: {
+                    required: "La fecha de nacimiento es obligatoria."
                 }
             }
         });
@@ -66,10 +71,15 @@ $(document).ready(function() {
                     maxlength: "No puede exceder los 12 dígitos."
                 },
                 nombres: {
+                    required: "El nombre es obligatorio.",
                     minlength: "Los nombres deben tener al menos 2 caracteres."
                 },
                 apellidos: {
+                    required: "El apellido es obligatorio.",
                     minlength: "Los apellidos deben tener al menos 2 caracteres."
+                },
+                fecha_nacimiento: {
+                    required: "La fecha de nacimiento es obligatoria."
                 }
             }
         });

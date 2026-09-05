@@ -41,9 +41,13 @@ $(document).ready(function () {
                 renderizarFilas(roles, modulos, permisos);
                 $table.show();
             },
-            error: function () {
+            error: function (xhr) {
                 $loader.hide();
-                mostrarAlerta('error', 'Error de comunicación con el servidor al cargar permisos.');
+                let msg = 'Error de comunicación con el servidor al cargar permisos.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                mostrarAlerta('error', msg);
             }
         });
     }
@@ -145,10 +149,14 @@ $(document).ready(function () {
                         mostrarAlerta('error', res.message || 'Error al actualizar el permiso.');
                     }
                 },
-                error: function () {
+                error: function (xhr) {
                     $toggle.prop('disabled', false);
                     $toggle.prop('checked', !$toggle.is(':checked'));
-                    mostrarAlerta('error', 'Error de comunicación con el servidor.');
+                    let msg = 'Error de comunicación con el servidor.';
+                    if (xhr.responseJSON && xhr.responseJSON.message) {
+                        msg = xhr.responseJSON.message;
+                    }
+                    mostrarAlerta('error', msg);
                 }
             });
         });

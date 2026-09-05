@@ -134,12 +134,13 @@ class Permiso {
         try {
             $query = "INSERT INTO permisos (rol_id, modulo_id, puede_acceder)
                       VALUES (:rol_id, :modulo_id, :puede_acceder)
-                      ON DUPLICATE KEY UPDATE puede_acceder = :puede_acceder";
+                      ON DUPLICATE KEY UPDATE puede_acceder = :puede_acceder_upd";
 
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(":rol_id",        $rol_id,        PDO::PARAM_INT);
-            $stmt->bindParam(":modulo_id",     $modulo_id,     PDO::PARAM_INT);
-            $stmt->bindParam(":puede_acceder", $puede_acceder, PDO::PARAM_INT);
+            $stmt->bindValue(":rol_id",            (int)$rol_id,        PDO::PARAM_INT);
+            $stmt->bindValue(":modulo_id",         (int)$modulo_id,     PDO::PARAM_INT);
+            $stmt->bindValue(":puede_acceder",     (int)$puede_acceder, PDO::PARAM_INT);
+            $stmt->bindValue(":puede_acceder_upd", (int)$puede_acceder, PDO::PARAM_INT);
             $stmt->execute();
 
             return true;

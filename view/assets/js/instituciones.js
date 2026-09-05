@@ -9,6 +9,7 @@ $(document).ready(function() {
     const $tablaInst = $('#tablaInstitucionesBody');
     const $loader = $('#loaderInstituciones');
     const $searchInst = $('#searchInstituciones');
+    const $alertFeedback = $('#alertFeedbackGlobal');
 
     // Variables de paginación y caché
     let cacheInstituciones = [];
@@ -151,6 +152,12 @@ $(document).ready(function() {
             }
 
             const nombreInst = inst.nombre_completo || inst.nombre || '';
+            const totalCitas = parseInt(inst.total_citas || 0, 10);
+            const hasCitas = totalCitas > 0;
+            const deleteDisabledAttr = hasCitas ? 'disabled' : '';
+            const deleteTitle = hasCitas 
+                ? `No se puede eliminar: posee ${totalCitas} cita(s) registrada(s) (pasadas, activas o futuras)` 
+                : 'Eliminar Institución';
 
             const rowHtml = `
                 <tr class="inst-row">
@@ -167,7 +174,7 @@ $(document).ready(function() {
                             <button class="btn-action btn-action-edit btn-editar-inst" data-id="${inst.id}" title="Editar Institución">
                                 <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/></svg>
                             </button>
-                            <button class="btn-action btn-action-delete btn-eliminar-inst" data-id="${inst.id}" data-name="${nombreInst}" title="Eliminar Institución">
+                            <button class="btn-action btn-action-delete btn-eliminar-inst" data-id="${inst.id}" data-name="${nombreInst}" ${deleteDisabledAttr} title="${deleteTitle}">
                                 <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                             </button>
                         </div>
@@ -521,16 +528,23 @@ $(document).ready(function() {
     // =========================================================================
     function agregarContacto(containerId, tipo, valor = '') {
         const placeholder = tipo === 'telefono' ? 'Ej. 0414-1234567' : 'Ej. contacto@colegio.com';
-        const inputType = tipo === 'correo' ? 'email' : 'text';
+        const inputType = tipo === 'correo' ? 'email' : 'tel';
+        const inputMode = tipo === 'telefono' ? 'inputmode="numeric"' : '';
+        const extraClass = tipo === 'telefono' ? 'input-telefono-val' : 'input-correo-val';
         const contactHtml = `
             <div class="input-group input-group-sm mb-1 contact-row" data-tipo="${tipo}">
                 <span class="input-group-text bg-white">${tipo === 'telefono' ? '📞' : '✉'}</span>
-                <input type="${inputType}" class="form-control input-contacto-val" placeholder="${placeholder}" value="${valor}" required>
+                <input type="${inputType}" ${inputMode} class="form-control input-contacto-val ${extraClass}" placeholder="${placeholder}" value="${valor}" required>
                 <button type="button" class="btn btn-outline-danger btn-remove-contact" title="Eliminar Contacto">&times;</button>
             </div>
         `;
         $(`#${containerId}`).append(contactHtml);
     }
+
+    // Restringir ingreso de letras en los campos de teléfono en tiempo real (solo números, +, -, (), espacios)
+    $(document).on('input', '.contact-row[data-tipo="telefono"] .input-contacto-val', function() {
+        this.value = this.value.replace(/[^0-9+\-\s()]/g, '');
+    });
 
     $(document).on('click', '#btnCreateAddPhone', function(e) { e.preventDefault(); agregarContacto('createPhonesContainer', 'telefono'); });
     $(document).on('click', '#btnCreateAddEmail', function(e) { e.preventDefault(); agregarContacto('createEmailsContainer', 'correo'); });
@@ -615,15 +629,45 @@ $(document).ready(function() {
             return;
         }
 
-        // Recolectar contactos
+        // Recolectar contactos y validar formatos
         const contactos = [];
+        let contactError = false;
+        let contactErrorMsg = '';
+
         $('#createPhonesContainer .contact-row, #createEmailsContainer .contact-row').each(function() {
             const tipo = $(this).data('tipo');
-            const val = $.trim($(this).find('.input-contacto-val').val());
+            const $input = $(this).find('.input-contacto-val');
+            const val = $.trim($input.val());
             if (val) {
+                if (tipo === 'telefono') {
+                    const cleanDigits = val.replace(/[^0-9]/g, '');
+                    if (/[a-zA-Z]/.test(val) || cleanDigits.length < 7 || cleanDigits.length > 15) {
+                        contactError = true;
+                        contactErrorMsg = `El número de teléfono "${val}" no es válido. No debe contener letras y debe tener entre 7 y 15 dígitos.`;
+                        $input.addClass('is-invalid');
+                        return false;
+                    } else {
+                        $input.removeClass('is-invalid');
+                    }
+                } else if (tipo === 'correo') {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(val)) {
+                        contactError = true;
+                        contactErrorMsg = `El correo electrónico "${val}" no tiene un formato válido.`;
+                        $input.addClass('is-invalid');
+                        return false;
+                    } else {
+                        $input.removeClass('is-invalid');
+                    }
+                }
                 contactos.push({ tipo: tipo, contacto: val });
             }
         });
+
+        if (contactError) {
+            showAlert($alert, contactErrorMsg, 'danger');
+            return;
+        }
 
         if (contactos.length === 0) {
             showAlert($alert, 'Debe registrar al menos un número de teléfono o correo de contacto.', 'danger');
@@ -651,6 +695,8 @@ $(document).ready(function() {
                     $('#modalCrearInstitucion').modal('hide');
                     $('#formCrearInstitucion')[0].reset();
                     showGlobalAlert(response.message, 'success');
+                    currentPageInstituciones = 1;
+                    $searchInst.val('');
                     listarInstituciones();
                 } else {
                     showAlert($alert, response.message, 'danger');
@@ -786,15 +832,45 @@ $(document).ready(function() {
             return;
         }
 
-        // Recolectar contactos
+        // Recolectar contactos y validar formatos
         const contactos = [];
+        let contactError = false;
+        let contactErrorMsg = '';
+
         $('#editPhonesContainer .contact-row, #editEmailsContainer .contact-row').each(function() {
             const tipo = $(this).data('tipo');
-            const val = $.trim($(this).find('.input-contacto-val').val());
+            const $input = $(this).find('.input-contacto-val');
+            const val = $.trim($input.val());
             if (val) {
+                if (tipo === 'telefono') {
+                    const cleanDigits = val.replace(/[^0-9]/g, '');
+                    if (/[a-zA-Z]/.test(val) || cleanDigits.length < 7 || cleanDigits.length > 15) {
+                        contactError = true;
+                        contactErrorMsg = `El número de teléfono "${val}" no es válido. No debe contener letras y debe tener entre 7 y 15 dígitos.`;
+                        $input.addClass('is-invalid');
+                        return false;
+                    } else {
+                        $input.removeClass('is-invalid');
+                    }
+                } else if (tipo === 'correo') {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(val)) {
+                        contactError = true;
+                        contactErrorMsg = `El correo electrónico "${val}" no tiene un formato válido.`;
+                        $input.addClass('is-invalid');
+                        return false;
+                    } else {
+                        $input.removeClass('is-invalid');
+                    }
+                }
                 contactos.push({ tipo: tipo, contacto: val });
             }
         });
+
+        if (contactError) {
+            showAlert($alert, contactErrorMsg, 'danger');
+            return;
+        }
 
         if (contactos.length === 0) {
             showAlert($alert, 'Debe registrar al menos un número de teléfono o correo de contacto.', 'danger');
@@ -842,7 +918,12 @@ $(document).ready(function() {
     // =========================================================================
     // 6. ELIMINAR INSTITUCIÓN
     // =========================================================================
-    $(document).on('click', '.btn-eliminar-inst', function() {
+    $(document).on('click', '.btn-eliminar-inst', function(e) {
+        if ($(this).is(':disabled') || $(this).prop('disabled') || $(this).attr('disabled')) {
+            e.preventDefault();
+            e.stopPropagation();
+            return false;
+        }
         const id = $(this).data('id');
         const name = $(this).data('name');
         $('#delete_institucion_id').val(id);
@@ -861,7 +942,7 @@ $(document).ready(function() {
             data: { id: id },
             dataType: 'json',
             success: function(response) {
-                $btn.prop('disabled', false).text('Eliminar');
+                $btn.prop('disabled', false).text('Eliminar Institución');
                 $('#modalEliminarInstitucion').modal('hide');
                 if (response.status === 'success') {
                     showGlobalAlert(response.message, 'success');
@@ -871,7 +952,7 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr) {
-                $btn.prop('disabled', false).text('Eliminar');
+                $btn.prop('disabled', false).text('Eliminar Institución');
                 $('#modalEliminarInstitucion').modal('hide');
                 let msg = 'Error en el servidor al eliminar la institución.';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
@@ -887,5 +968,19 @@ $(document).ready(function() {
                   .addClass(`alert-toast-${type}`)
                   .text(message)
                   .fadeIn(200);
+    }
+
+    function showGlobalAlert(message, type = 'success') {
+        const $alert = $('#alertFeedbackGlobal');
+        if ($alert.length) {
+            $alert.removeClass('alert-toast-success alert-toast-danger')
+                  .addClass(type === 'success' ? 'alert-toast-success' : 'alert-toast-danger')
+                  .html(`<strong>${type === 'success' ? 'Éxito: ' : 'Error: '}</strong> ${message}`)
+                  .slideDown(250);
+            
+            setTimeout(function() {
+                $alert.slideUp(250);
+            }, 5000);
+        }
     }
 });

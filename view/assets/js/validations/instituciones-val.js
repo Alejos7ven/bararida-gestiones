@@ -1,4 +1,22 @@
 $(document).ready(function() {
+    // Método personalizado para validar números de teléfono (solo números, sin letras, entre 7 y 15 dígitos)
+    $.validator.addMethod("formatoTelefono", function(value, element) {
+        if (this.optional(element)) return true;
+        const clean = value.replace(/[^0-9]/g, '');
+        return !/[a-zA-Z]/.test(value) && clean.length >= 7 && clean.length <= 15;
+    }, "El teléfono debe contener solo números (entre 7 y 15 dígitos).");
+
+    // Aplicar automáticamente a campos dinámicos con estas clases
+    $.validator.addClassRules("input-telefono-val", {
+        required: true,
+        formatoTelefono: true
+    });
+
+    $.validator.addClassRules("input-correo-val", {
+        required: true,
+        email: true
+    });
+
     // Formulario de Creación
     if ($('#formCrearInstitucion').length) {
         $('#formCrearInstitucion').validate({

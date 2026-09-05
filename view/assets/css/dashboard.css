@@ -21,6 +21,14 @@
     --warning-color: #DD6B20;
     --warning-light: #FFFAF0;
     --topbar-height: 88px;
+
+    /* Variables temáticas Bararida */
+    --park-primary: #0D9039;
+    --park-secondary: #83D476;
+    --park-dark: #1A202C;
+    --park-gray: #E2E8F0;
+    --park-gray-text: #718096;
+    --park-danger: #EF4444;
 }
 
 /* Botones Premium */
@@ -109,6 +117,33 @@
     background-color: var(--primary-color);
     border-color: var(--primary-color);
     box-shadow: 0 2px 6px rgba(13, 144, 57, 0.2);
+}
+
+.btn-action-delete:hover {
+    background-color: var(--danger-color);
+    border-color: var(--danger-color);
+    box-shadow: 0 2px 6px rgba(229, 62, 62, 0.2);
+}
+
+.btn-action:disabled,
+.btn-action[disabled] {
+    opacity: 0.35 !important;
+    cursor: not-allowed !important;
+    background-color: var(--sub-bg-color) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-muted) !important;
+    box-shadow: none !important;
+    transform: none !important;
+    pointer-events: auto !important;
+}
+
+.btn-action:disabled:hover,
+.btn-action[disabled]:hover {
+    background-color: var(--sub-bg-color) !important;
+    border-color: var(--border-color) !important;
+    color: var(--text-muted) !important;
+    box-shadow: none !important;
+    transform: none !important;
 }
 
 .btn-action svg {

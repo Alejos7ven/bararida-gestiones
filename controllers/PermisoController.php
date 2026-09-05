@@ -12,9 +12,14 @@ if (session_status() === PHP_SESSION_NONE) {
 header("Content-Type: application/json; charset=UTF-8");
 
 // Guard de seguridad: solo superadmin puede usar este controlador
-if (!isset($_SESSION['personal']) || $_SESSION['personal']['rol'] !== 'superadmin') {
+$isSuperAdmin = isset($_SESSION['personal']) && (
+    (isset($_SESSION['personal']['rol']) && strtolower(trim($_SESSION['personal']['rol'])) === 'superadmin') ||
+    (isset($_SESSION['personal']['rol_id']) && (int)$_SESSION['personal']['rol_id'] === 1)
+);
+
+if (!$isSuperAdmin) {
     http_response_code(403);
-    echo json_encode(["status" => "error", "message" => "Acceso no autorizado."]);
+    echo json_encode(["status" => "error", "message" => "Acceso no autorizado. Se requiere rol de superadmin."]);
     exit;
 }
 
@@ -119,6 +124,6 @@ function actualizarPermiso($permisoModel) {
         ]);
     } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(["status" => "error", "message" => "Error al actualizar el permiso en la base de datos."]);
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }
 }

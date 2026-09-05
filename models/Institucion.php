@@ -234,7 +234,8 @@ class Institucion {
         if (!$db) return [];
         try {
             $query = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre_completo, 
-                             e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion
+                             e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion,
+                             (SELECT COUNT(*) FROM citas c WHERE c.institucion_id = i.id) AS total_citas
                       FROM instituciones i
                       INNER JOIN entidades e ON i.entidad_id = e.id
                       ORDER BY i.id DESC";
@@ -280,6 +281,7 @@ class Institucion {
 
             // Adjuntar sedes y contactos a cada institución
             foreach ($instituciones as &$inst) {
+                $inst['total_citas'] = (int)($inst['total_citas'] ?? 0);
                 $inst['sedes'] = $sedesMap[$inst['id']] ?? [];
                 $inst['contactos'] = $contactsMap[$inst['entidad_id']] ?? [];
 
@@ -318,7 +320,8 @@ class Institucion {
         if (!$db) return [];
         try {
             $query = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre_completo,
-                             e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion
+                             e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion,
+                             (SELECT COUNT(*) FROM citas c WHERE c.institucion_id = i.id) AS total_citas
                       FROM instituciones i
                       INNER JOIN entidades e ON i.entidad_id = e.id
                       WHERE e.nombre_completo LIKE :term1 
@@ -377,6 +380,7 @@ class Institucion {
             }
 
             foreach ($instituciones as &$inst) {
+                $inst['total_citas'] = (int)($inst['total_citas'] ?? 0);
                 $inst['sedes'] = $sedesMap[$inst['id']] ?? [];
                 $inst['contactos'] = $contactsMap[$inst['entidad_id']] ?? [];
 
@@ -408,7 +412,8 @@ class Institucion {
         if (!$db) return null;
         try {
             $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre_completo,
-                             e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion
+                             e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion,
+                             (SELECT COUNT(*) FROM citas c WHERE c.institucion_id = i.id) AS total_citas
                       FROM entidades e
                       INNER JOIN instituciones i ON i.entidad_id = e.id
                       WHERE i.id = :id 
@@ -420,6 +425,7 @@ class Institucion {
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
             if ($row) {
+                $row['total_citas'] = (int)($row['total_citas'] ?? 0);
                 // Cargar sedes
                 $querySedes = "SELECT s.id, s.institucion_id, s.ciudad_id, s.parroquia_id, s.detalles,
                                       c.ciudad, p.parroquia, m.id_municipio, m.municipio, est.id_estado, est.estado
@@ -605,6 +611,25 @@ class Institucion {
     }
 
     /**
+     * Cuenta el número de citas asociadas a una institución (pasadas, activas o futuras).
+     */
+    public static function contarCitas($db, $id) {
+        if (!$db) return 0;
+        $cleanId = (int)$id;
+        if ($cleanId <= 0) return 0;
+        try {
+            $query = "SELECT COUNT(*) FROM citas WHERE institucion_id = :id";
+            $stmt = $db->prepare($query);
+            $stmt->bindValue(":id", $cleanId, PDO::PARAM_INT);
+            $stmt->execute();
+            return (int)$stmt->fetchColumn();
+        } catch (PDOException $e) {
+            error_log("Error en Institucion::contarCitas: " . $e->getMessage());
+            return 0;
+        }
+    }
+
+    /**
      * Elimina una institución del sistema si no posee citas asociadas
      */
     public function eliminar($id) {
@@ -623,7 +648,7 @@ class Institucion {
         $stmtCheckCitas->bindValue(":id", $cleanId, PDO::PARAM_INT);
         $stmtCheckCitas->execute();
         if ($stmtCheckCitas->fetchColumn() > 0) {
-            throw new Exception("No se puede eliminar la institución porque posee citas agendadas en el cronograma.");
+            throw new Exception("No se puede eliminar la institución porque posee citas registradas (pasadas, activas o futuras).");
         }
 
         try {

@@ -223,6 +223,16 @@ $(document).ready(function() {
         });
     });
 
+    $('#modalCrearVisitante').on('hidden.bs.modal', function() {
+        $('#formCrearVisitante')[0].reset();
+        const validator = $('#formCrearVisitante').validate();
+        if (validator) {
+            validator.resetForm();
+        }
+        $('#formCrearVisitante').find('.is-invalid').removeClass('is-invalid');
+        $('#alertCrearVisitanteFeedback').hide().text('');
+    });
+
     // =========================================================================
     // 3. EDITAR VISITANTE (AJAX GET & POST)
     // =========================================================================
