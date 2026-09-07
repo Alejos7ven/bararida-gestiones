@@ -1,4 +1,4 @@
-SET FOREIGN_KEY_CHECKS = 0;
+-- SET FOREIGN_KEY_CHECKS = 0;
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 
 -- CREATE DATABASE IF NOT EXISTS bararida_gestiones DEFAULT CHARACTER SET utf8mb4;
@@ -260,6 +260,6 @@ INSERT INTO `permisos` (`rol_id`, `modulo_id`, `puede_acceder`) VALUES
 (3, 5, 0), -- guia > visitantes (denegado)
 (3, 6, 0); -- guia > personal (denegado)
 
-SET FOREIGN_KEY_CHECKS = 1;
+-- SET FOREIGN_KEY_CHECKS = 1;
 
 COMMIT; 
