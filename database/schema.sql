@@ -16,6 +16,38 @@ CREATE TABLE IF NOT EXISTS roles (
   `nombre` varchar(30) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS recorrido (
+  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `nombre` varchar(100) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS zonas (
+  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `nombre` varchar(100) NOT NULL,
+  `coordenadas` varchar(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS visitantes (
+  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `cedula` varchar(30) DEFAULT NULL,
+  `nombres` varchar(100) NOT NULL,
+  `apellidos` varchar(100) NOT NULL,
+  `fecha_nacimiento` date NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS estados (
+  `id_estado` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `estado` varchar(250) NOT NULL,
+  `iso_3166-2` varchar(4) NOT NULL
+); 
+
+CREATE TABLE IF NOT EXISTS modulos (
+  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `nombre` varchar(50) NOT NULL UNIQUE,
+  `label` varchar(100) NOT NULL
+);
+
+
 CREATE TABLE IF NOT EXISTS personal (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `entidad_id` int NOT NULL,
@@ -28,17 +60,6 @@ CREATE TABLE IF NOT EXISTS personal (
   CONSTRAINT fk_rol_personal 
     FOREIGN KEY (`rol_id`) REFERENCES `roles` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ); 
-
-CREATE TABLE IF NOT EXISTS recorrido (
-  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `nombre` varchar(100) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS zonas (
-  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `nombre` varchar(100) NOT NULL,
-  `coordenadas` varchar(255) NOT NULL
-);
 
 CREATE TABLE IF NOT EXISTS rutas (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -60,60 +81,6 @@ CREATE TABLE IF NOT EXISTS instituciones (
     FOREIGN KEY (`entidad_id`) REFERENCES `entidades` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ); 
 
-CREATE TABLE IF NOT EXISTS citas (
-  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `institucion_id` int NOT NULL,
-  `sede_id` int DEFAULT NULL,
-  `recorrido_id` int DEFAULT NULL,
-  `fecha_solicitud` date NOT NULL,
-  `fecha_visita` date NOT NULL,
-  `hora_inicio` time NOT NULL,
-  `estatus` varchar(20) NOT NULL DEFAULT 'pendiente',
-  `metodo_pago` varchar(50) NOT NULL,
-  `pago_estado` varchar(20) NOT NULL DEFAULT 'pendiente',
-  CONSTRAINT fk_instituciones_citas
-    FOREIGN KEY (`institucion_id`) REFERENCES `instituciones` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT fk_sedes_citas
-    FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
-  CONSTRAINT fk_recorrido_citas
-    FOREIGN KEY (`recorrido_id`) REFERENCES `recorrido` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS visitantes (
-  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `cedula` varchar(30) DEFAULT NULL,
-  `nombres` varchar(100) NOT NULL,
-  `apellidos` varchar(100) NOT NULL,
-  `fecha_nacimiento` date NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS asistencia_cita (
-  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `cita_id` int NOT NULL,
-  `visitante_id` int NOT NULL, 
-  CONSTRAINT fk_asistencia_citas
-    FOREIGN KEY (`cita_id`) REFERENCES `citas` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT fk_visitante_asistencia
-    FOREIGN KEY (`visitante_id`) REFERENCES `visitantes` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS guia_asignado (
-  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `cita_id` int NOT NULL,
-  `personal_id` int NOT NULL,
-  `rol_guia` varchar(30) NOT NULL DEFAULT 'principal',
-  CONSTRAINT FK_cita_guia 
-    FOREIGN KEY (cita_id) REFERENCES citas(id),
-  CONSTRAINT FK_personal 
-    FOREIGN KEY (personal_id) REFERENCES personal(id)
-);
-
-CREATE TABLE IF NOT EXISTS estados (
-  `id_estado` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `estado` varchar(250) NOT NULL,
-  `iso_3166-2` varchar(4) NOT NULL
-); 
-
 CREATE TABLE IF NOT EXISTS ciudades (
   `id_ciudad` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `id_estado` int NOT NULL,
@@ -129,6 +96,27 @@ CREATE TABLE IF NOT EXISTS municipios (
   `municipio` varchar(100) NOT NULL,
   CONSTRAINT fk_municipios_estados
     FOREIGN KEY (`id_estado`) REFERENCES `estados` (`id_estado`) ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS `directorio` (
+  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `entidad_id` int NOT NULL,
+  `contacto` varchar(30) NOT NULL,
+  `tipo` varchar(20) NOT NULL DEFAULT 'principal',
+  CONSTRAINT fk_dir_entidad 
+    FOREIGN KEY (`entidad_id`) REFERENCES `entidades` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS permisos (
+  `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `rol_id` int NOT NULL,
+  `modulo_id` int NOT NULL,
+  `puede_acceder` tinyint(1) NOT NULL DEFAULT '0',
+  CONSTRAINT fk_permisos_rol
+    FOREIGN KEY (`rol_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT fk_permisos_modulo
+    FOREIGN KEY (`modulo_id`) REFERENCES `modulos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT uq_permiso UNIQUE (`rol_id`, `modulo_id`)
 );
 
 CREATE TABLE IF NOT EXISTS parroquias (
@@ -153,32 +141,50 @@ CREATE TABLE IF NOT EXISTS sedes (
     FOREIGN KEY (`parroquia_id`) REFERENCES `parroquias` (`id_parroquia`) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS `directorio` (
+
+
+CREATE TABLE IF NOT EXISTS citas (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `entidad_id` int NOT NULL,
-  `contacto` varchar(30) NOT NULL,
-  `tipo` varchar(20) NOT NULL DEFAULT 'principal',
-  CONSTRAINT fk_dir_entidad 
-    FOREIGN KEY (`entidad_id`) REFERENCES `entidades` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+  `institucion_id` int NOT NULL,
+  `sede_id` int DEFAULT NULL,
+  `recorrido_id` int DEFAULT NULL,
+  `fecha_solicitud` date NOT NULL,
+  `fecha_visita` date NOT NULL,
+  `hora_inicio` time NOT NULL,
+  `estatus` varchar(20) NOT NULL DEFAULT 'pendiente',
+  `metodo_pago` varchar(50) NOT NULL,
+  `pago_estado` varchar(20) NOT NULL DEFAULT 'pendiente',
+  CONSTRAINT fk_instituciones_citas
+    FOREIGN KEY (`institucion_id`) REFERENCES `instituciones` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_sedes_citas
+    FOREIGN KEY (`sede_id`) REFERENCES `sedes` (`id`) ON DELETE SET NULL ON UPDATE CASCADE,
+  CONSTRAINT fk_recorrido_citas
+    FOREIGN KEY (`recorrido_id`) REFERENCES `recorrido` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS modulos (
+
+
+CREATE TABLE IF NOT EXISTS asistencia_cita (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `nombre` varchar(50) NOT NULL UNIQUE,
-  `label` varchar(100) NOT NULL
+  `cita_id` int NOT NULL,
+  `visitante_id` int NOT NULL, 
+  CONSTRAINT fk_asistencia_citas
+    FOREIGN KEY (`cita_id`) REFERENCES `citas` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT fk_visitante_asistencia
+    FOREIGN KEY (`visitante_id`) REFERENCES `visitantes` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
-CREATE TABLE IF NOT EXISTS permisos (
+CREATE TABLE IF NOT EXISTS guia_asignado (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `rol_id` int NOT NULL,
-  `modulo_id` int NOT NULL,
-  `puede_acceder` tinyint(1) NOT NULL DEFAULT '0',
-  CONSTRAINT fk_permisos_rol
-    FOREIGN KEY (`rol_id`) REFERENCES `roles` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT fk_permisos_modulo
-    FOREIGN KEY (`modulo_id`) REFERENCES `modulos` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT uq_permiso UNIQUE (`rol_id`, `modulo_id`)
+  `cita_id` int NOT NULL,
+  `personal_id` int NOT NULL,
+  `rol_guia` varchar(30) NOT NULL DEFAULT 'principal',
+  CONSTRAINT FK_cita_guia 
+    FOREIGN KEY (cita_id) REFERENCES citas(id),
+  CONSTRAINT FK_personal 
+    FOREIGN KEY (personal_id) REFERENCES personal(id)
 );
+
 
 
 -- Carga de datos
@@ -202,7 +208,8 @@ INSERT INTO `zonas` (`nombre`, `coordenadas`) VALUES
 ('Entrada Morán', '82.54,50.90');
 
 INSERT INTO `entidades` (`id`, `tipo_documento`, `documento`, `nombre_completo`, `tipo_entidad`) VALUES
-(0, 'V', '0000', 'Admin Maestro', 'persona');
+(1, 'V', '0000', 'Admin Maestro', 'persona'),
+(2, 'J', '123456780', 'Institución Central', 'organizacion');
 
 INSERT INTO `roles` (`nombre`) VALUES
 ('superadmin'),
@@ -210,7 +217,10 @@ INSERT INTO `roles` (`nombre`) VALUES
 ('guia'); 
 
 INSERT INTO `personal` (`id`, `entidad_id`, `rol_id`, `password`, `created_at`, `updated_at`) VALUES
-(0, 0, 1, '$2y$10$99jn3h9Lv9eJH3TiDGFPd.fX2/Po1u2.Bwob0OnCpbEcqatPQWqRG', '2026-06-09 21:10:57', '2026-06-09 21:10:57'); 
+(0, 1, 1, '$2y$10$99jn3h9Lv9eJH3TiDGFPd.fX2/Po1u2.Bwob0OnCpbEcqatPQWqRG', '2026-06-09 21:10:57', '2026-06-09 21:10:57'); 
+
+INSERT INTO `instituciones` (`entidad_id`, `tipo_organizacion`) VALUES
+(2, 'educativa');
 
 -- Catálogo de módulos del sistema
 INSERT INTO `modulos` (`nombre`, `label`) VALUES
