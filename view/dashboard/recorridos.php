@@ -109,7 +109,7 @@ if (!isset($userPermissions)) {
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; border-bottom: none; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalCrearZonaLabel" style="font-family:'Outfit'; font-weight:600; margin: 0;">Nueva Zona en el Mapa</h5>
+                    <h5 class="modal-title text-white" id="modalCrearZonaLabel" style="font-family:'Outfit'; font-weight:600; margin: 0; color:#ffffff !important;">Nueva Zona en el Mapa</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form id="formCrearZona">

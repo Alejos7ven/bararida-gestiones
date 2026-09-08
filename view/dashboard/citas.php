@@ -74,7 +74,7 @@ if (!isset($userPermissions)) {
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalCrearCitaLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Agendar Nueva Visita Guiada</h5>
+                    <h5 class="modal-title text-white" id="modalCrearCitaLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Agendar Nueva Visita Guiada</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form id="formCrearCita" novalidate>
@@ -369,7 +369,7 @@ if (!isset($userPermissions)) {
         <div class="modal-dialog modal-md modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalEditarCitaLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Editar Cita</h5>
+                    <h5 class="modal-title text-white" id="modalEditarCitaLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Editar Cita</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form id="formEditarCita" novalidate>
@@ -451,7 +451,7 @@ if (!isset($userPermissions)) {
         <div class="modal-dialog modal-lg modal-dialog-centered" id="importModalDialog">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalImportarVisitantesLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Importar Listado de Visitantes</h5>
+                    <h5 class="modal-title text-white" id="modalImportarVisitantesLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Importar Listado de Visitantes</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form id="formImportarVisitantes" enctype="multipart/form-data" novalidate>
@@ -522,7 +522,7 @@ if (!isset($userPermissions)) {
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalVerVisitantesLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Visitantes de la Cita</h5>
+                    <h5 class="modal-title text-white" id="modalVerVisitantesLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Visitantes de la Cita</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body" style="padding: 24px;">

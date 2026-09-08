@@ -358,6 +358,13 @@
     color: var(--text-color);
 }
 
+.modal-header[style*="var(--park-primary)"] .modal-title,
+.modal-header[style*="#0D9039"] .modal-title,
+.modal-premium .modal-header[style*="var(--park-primary)"] .modal-title,
+.modal-premium .modal-header[style*="#0D9039"] .modal-title {
+    color: #ffffff !important;
+}
+
 .modal-premium .modal-body {
     padding: 25px;
 }

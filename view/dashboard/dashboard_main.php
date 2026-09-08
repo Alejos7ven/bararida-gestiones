@@ -162,7 +162,7 @@ if (!isset($userRol)) {
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
             <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 16px 20px;">
-                <h5 class="modal-title" id="modalDetalleBloqueHorarioLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Citas en Bloque Horario</h5>
+                <h5 class="modal-title text-white" id="modalDetalleBloqueHorarioLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Citas en Bloque Horario</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body" style="padding: 20px; max-height: 400px; overflow-y: auto;">
@@ -182,7 +182,7 @@ if (!isset($userRol)) {
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
             <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 16px 20px;">
-                <h5 class="modal-title" id="modalAsignarGuiaDashboardLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Asignar Guías de Campo</h5>
+                <h5 class="modal-title text-white" id="modalAsignarGuiaDashboardLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Asignar Guías de Campo</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <form id="formAsignarGuiaDashboard">

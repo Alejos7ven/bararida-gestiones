@@ -69,7 +69,7 @@ if (!isset($userPermissions)) {
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalCrearInstitucionLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Registrar Nueva Institución</h5>
+                    <h5 class="modal-title text-white" id="modalCrearInstitucionLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Registrar Nueva Institución</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form id="formCrearInstitucion" novalidate style="display: flex; flex-direction: column; flex: 1 1 auto; overflow: hidden; min-height: 0;">
@@ -178,7 +178,7 @@ if (!isset($userPermissions)) {
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalEditarInstitucionLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Editar Información de Institución</h5>
+                    <h5 class="modal-title text-white" id="modalEditarInstitucionLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Editar Información de Institución</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form id="formEditarInstitucion" novalidate style="display: flex; flex-direction: column; flex: 1 1 auto; overflow: hidden; min-height: 0;">

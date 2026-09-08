@@ -69,7 +69,7 @@ if (!isset($userPermissions)) {
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalCrearVisitanteLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Registrar Visitante</h5>
+                    <h5 class="modal-title text-white" id="modalCrearVisitanteLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Registrar Visitante</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form id="formCrearVisitante" novalidate>
@@ -106,7 +106,7 @@ if (!isset($userPermissions)) {
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalEditarVisitanteLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Editar Visitante</h5>
+                    <h5 class="modal-title text-white" id="modalEditarVisitanteLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Editar Visitante</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <form id="formEditarVisitante" novalidate>

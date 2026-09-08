@@ -1133,3 +1133,18 @@ body {
     min-height: 0;
 }
 
+/* ==========================================================================
+   Modales con Header Verde: Título siempre en Blanco
+   ========================================================================== */
+.modal-header[style*="var(--park-primary)"] .modal-title,
+.modal-header[style*="#0D9039"] .modal-title,
+.modal-header[style*="#0d9039"] .modal-title,
+.modal-header.bg-success .modal-title,
+.modal-header.bg-primary .modal-title,
+.modal-premium .modal-header[style*="var(--park-primary)"] .modal-title,
+.modal-premium .modal-header[style*="#0D9039"] .modal-title,
+.modal-premium .modal-header[style*="#0d9039"] .modal-title {
+    color: #ffffff !important;
+}
+
+
