@@ -22,19 +22,19 @@ class Sede {
     // =========================================================================
 
     public function getId() { return $this->id; }
-    public function setId($id) { $this->id = $id !== null ? (int)$id : null; }
+    public function setId($id) { $this->id = $id; }
 
     public function getInstitucionId() { return $this->institucion_id; }
-    public function setInstitucionId($institucion_id) { $this->institucion_id = (int)$institucion_id; }
+    public function setInstitucionId($institucion_id) { $this->institucion_id = $institucion_id; }
 
     public function getCiudadId() { return $this->ciudad_id; }
-    public function setCiudadId($ciudad_id) { $this->ciudad_id = (int)$ciudad_id; }
+    public function setCiudadId($ciudad_id) { $this->ciudad_id = $ciudad_id; }
 
     public function getParroquiaId() { return $this->parroquia_id; }
-    public function setParroquiaId($parroquia_id) { $this->parroquia_id = (int)$parroquia_id; }
+    public function setParroquiaId($parroquia_id) { $this->parroquia_id = $parroquia_id; }
 
     public function getDetalles() { return $this->detalles; }
-    public function setDetalles($detalles) { $this->detalles = $detalles !== null ? trim($detalles) : null; }
+    public function setDetalles($detalles) { $this->detalles = $detalles; }
 
     // =========================================================================
     // PERSISTENCIA Y CONSULTA

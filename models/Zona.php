@@ -21,7 +21,7 @@ class Zona {
     }
 
     // =========================================================================
-    // GETTERS Y SETTERS CON VALIDACIÓN
+    // GETTERS Y SETTERS
     // =========================================================================
 
     public function getId() {
@@ -29,7 +29,7 @@ class Zona {
     }
 
     public function setId($id) {
-        $this->id = filter_var($id, FILTER_VALIDATE_INT) ? (int)$id : null;
+        $this->id = $id;
     }
 
     public function getNombre() {
@@ -37,7 +37,7 @@ class Zona {
     }
 
     public function setNombre($nombre) {
-        $this->nombre = strip_tags(trim($nombre));
+        $this->nombre = $nombre;
     }
 
     public function getCoordenadas() {
@@ -45,7 +45,7 @@ class Zona {
     }
 
     public function setCoordenadas($coordenadas) {
-        $this->coordenadas = strip_tags(trim($coordenadas));
+        $this->coordenadas = $coordenadas;
     }
 
     // =========================================================================

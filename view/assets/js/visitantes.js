@@ -209,27 +209,37 @@ $(document).ready(function() {
                     showSuccessToast(response.message);
                     listarVisitantes();
                 } else {
-                    $alert.text(response.message).fadeIn(200);
+                    window.mapearErrorServidorAFormulario('#formCrearVisitante', response.message, null, $alert);
                 }
             },
             error: function(xhr) {
                 $btn.prop('disabled', false).text('Registrar Visitante');
                 let errorMsg = 'Error al registrar al visitante.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMsg = xhr.responseJSON.message;
+                let field = null;
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) errorMsg = xhr.responseJSON.message;
+                    if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                 }
-                $alert.text(errorMsg).fadeIn(200);
+                window.mapearErrorServidorAFormulario('#formCrearVisitante', errorMsg, field, $alert);
             }
         });
+    });
+
+    $('#modalCrearVisitante').on('shown.bs.modal', function() {
+        setTimeout(function() {
+            $('#formCrearVisitante input:visible').first().trigger('focus');
+        }, 100);
     });
 
     $('#modalCrearVisitante').on('hidden.bs.modal', function() {
         $('#formCrearVisitante')[0].reset();
         const validator = $('#formCrearVisitante').validate();
-        if (validator) {
-            validator.resetForm();
+        if (typeof window.limpiarErroresFormulario === 'function') {
+            window.limpiarErroresFormulario('#formCrearVisitante');
+        } else {
+            $('#formCrearVisitante').find('.is-invalid').removeClass('is-valid');
+            $('#formCrearVisitante').find('.invalid-feedback').hide().text('');
         }
-        $('#formCrearVisitante').find('.is-invalid').removeClass('is-invalid');
         $('#alertCrearVisitanteFeedback').hide().text('');
     });
 
@@ -240,6 +250,12 @@ $(document).ready(function() {
         const id = $(this).data('id');
         const $alert = $('#alertEditarVisitanteFeedback');
         $alert.hide().text('');
+        if (typeof window.limpiarErroresFormulario === 'function') {
+            window.limpiarErroresFormulario('#formEditarVisitante');
+        } else {
+            $('#formEditarVisitante').find('.is-invalid').removeClass('is-valid');
+            $('#formEditarVisitante').find('.invalid-feedback').hide().text('');
+        }
 
         $.ajax({
             url: `controllers/VisitanteController.php?action=obtener&id=${id}`,
@@ -250,19 +266,40 @@ $(document).ready(function() {
                     const v = response.data;
                     $('#edit_visitante_id').val(v.id);
                     $('#edit_visitante_cedula').val(v.cedula || '');
-                    $('#edit_visitante_nombres').val(v.nombres);
-                    $('#edit_visitante_apellidos').val(v.apellidos);
-                    $('#edit_visitante_fecha_nacimiento').val(v.fecha_nacimiento);
+                    $('#edit_visitante_nombres').val(v.nombres || '');
+                    $('#edit_visitante_apellidos').val(v.apellidos || '');
+                    $('#edit_visitante_fecha_nacimiento').val(v.fecha_nacimiento || '');
 
                     $('#modalEditarVisitante').modal('show');
                 } else {
-                    alert(response.message);
+                    showGlobalAlert(response.message, 'danger');
                 }
             },
             error: function() {
-                alert('No se pudieron obtener los detalles del visitante.');
+                showGlobalAlert('No se pudo consultar la información del visitante.', 'danger');
             }
         });
+    });
+
+    $('#modalEditarVisitante').on('shown.bs.modal', function() {
+        setTimeout(function() {
+            $('#edit_visitante_nombres').trigger('focus');
+        }, 100);
+    });
+
+    $('#modalEditarVisitante').on('hidden.bs.modal', function() {
+        $('#formEditarVisitante')[0].reset();
+        const validator = $('#formEditarVisitante').validate();
+        if (validator) {
+            validator.resetForm();
+        }
+        if (typeof window.limpiarErroresFormulario === 'function') {
+            window.limpiarErroresFormulario('#formEditarVisitante');
+        } else {
+            $('#formEditarVisitante').find('.is-invalid').removeClass('is-valid');
+            $('#formEditarVisitante').find('.invalid-feedback').hide().text('');
+        }
+        $('#alertEditarVisitanteFeedback').hide().text('');
     });
 
     $('#formEditarVisitante').on('submit', function(e) {
@@ -291,16 +328,18 @@ $(document).ready(function() {
                     showSuccessToast(response.message);
                     listarVisitantes();
                 } else {
-                    $alert.text(response.message).fadeIn(200);
+                    window.mapearErrorServidorAFormulario('#formEditarVisitante', response.message, null, $alert);
                 }
             },
             error: function(xhr) {
                 $btn.prop('disabled', false).text('Guardar Cambios');
                 let errorMsg = 'Error al actualizar visitante.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMsg = xhr.responseJSON.message;
+                let field = null;
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) errorMsg = xhr.responseJSON.message;
+                    if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                 }
-                $alert.text(errorMsg).fadeIn(200);
+                window.mapearErrorServidorAFormulario('#formEditarVisitante', errorMsg, field, $alert);
             }
         });
     });

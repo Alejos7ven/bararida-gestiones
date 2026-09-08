@@ -251,7 +251,7 @@ if (!in_array($currentView, $validViews)) {
     <!-- Carga de jQuery Validate Local -->
     <script src="view/assets/js/jquery.validate.min.js"></script>
     <script src="view/assets/js/messages_es.min.js"></script>
-    <script src="view/assets/js/validations/global-val-setup.js"></script>
+    <script src="view/assets/js/validations/global-val-setup.js?v=<?php echo time(); ?>"></script>
     <!-- Bootstrap JS Bundle Local -->
     <script src="view/assets/js/bootstrap.bundle.min.js"></script>
     <!-- Carga de FullCalendar Local -->

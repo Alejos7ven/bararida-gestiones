@@ -22,7 +22,7 @@ class Ruta {
     }
 
     // =========================================================================
-    // GETTERS Y SETTERS CON VALIDACIÓN
+    // GETTERS Y SETTERS
     // =========================================================================
 
     public function getId() {
@@ -30,7 +30,7 @@ class Ruta {
     }
 
     public function setId($id) {
-        $this->id = filter_var($id, FILTER_VALIDATE_INT) ? (int)$id : null;
+        $this->id = $id;
     }
 
     public function getRecorridoId() {
@@ -38,7 +38,7 @@ class Ruta {
     }
 
     public function setRecorridoId($recorrido_id) {
-        $this->recorrido_id = (int)$recorrido_id;
+        $this->recorrido_id = $recorrido_id;
     }
 
     public function getZonaId() {
@@ -46,7 +46,7 @@ class Ruta {
     }
 
     public function setZonaId($zona_id) {
-        $this->zona_id = (int)$zona_id;
+        $this->zona_id = $zona_id;
     }
 
     public function getOrden() {
@@ -54,7 +54,7 @@ class Ruta {
     }
 
     public function setOrden($orden) {
-        $this->orden = (int)$orden;
+        $this->orden = $orden;
     }
 
     // =========================================================================
@@ -68,10 +68,6 @@ class Ruta {
     public function crear() {
         if (!$this->db) {
             throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
-        if (empty($this->recorrido_id) || empty($this->zona_id) || $this->orden === null) {
-            throw new InvalidArgumentException("Los campos recorrido_id, zona_id y orden son requeridos.");
         }
 
         $query = "INSERT INTO " . $this->table_name . " (recorrido_id, zona_id, orden) VALUES (:recorrido_id, :zona_id, :orden)";

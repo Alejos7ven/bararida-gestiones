@@ -141,7 +141,8 @@ function crearZonaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre de la zona y sus coordenadas son requeridos."
+            "message" => "El nombre de la zona y sus coordenadas son requeridos.",
+            "field" => empty($nombre) ? "nombre" : "coordenadas"
         ]);
         return;
     }
@@ -150,7 +151,8 @@ function crearZonaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre de la zona supera los 100 caracteres."
+            "message" => "El nombre de la zona supera los 100 caracteres.",
+            "field" => "nombre"
         ]);
         return;
     }
@@ -159,7 +161,8 @@ function crearZonaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El formato de las coordenadas no es válido. Debe ser 'X,Y' (ej: 45.2,60.8)."
+            "message" => "El formato de las coordenadas no es válido. Debe ser 'X,Y' (ej: 45.2,60.8).",
+            "field" => "coordenadas"
         ]);
         return;
     }
@@ -252,7 +255,8 @@ function crearRecorridoAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre del recorrido es obligatorio."
+            "message" => "El nombre del recorrido es obligatorio.",
+            "field" => "nombre"
         ]);
         return;
     }
@@ -261,16 +265,18 @@ function crearRecorridoAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre del recorrido no es válido o supera los 100 caracteres."
+            "message" => "El nombre del recorrido no es válido o supera los 100 caracteres.",
+            "field" => "nombre"
         ]);
         return;
     }
 
-    if (empty($zonas) || !is_array($zonas)) {
+    if (empty($zonas) || !is_array($zonas) || count($zonas) < 2) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Debe seleccionar al menos una zona en el mapa para constituir la ruta del recorrido."
+            "message" => "Debe seleccionar al menos dos zonas en el mapa para constituir la ruta del recorrido.",
+            "field" => "zonas"
         ]);
         return;
     }
@@ -284,11 +290,12 @@ function crearRecorridoAction($db) {
         }
     }
 
-    if (empty($cleanZonas)) {
+    if (count($cleanZonas) < 2) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Los IDs de las zonas suministrados en el recorrido son inválidos."
+            "message" => "Debe seleccionar al menos dos zonas válidas en el mapa para constituir la ruta del recorrido.",
+            "field" => "zonas"
         ]);
         return;
     }
@@ -466,11 +473,28 @@ function actualizarRecorridoOrdenAction($db) {
         return;
     }
 
-    if (empty($zonas) || !is_array($zonas)) {
+    if (empty($zonas) || !is_array($zonas) || count($zonas) < 2) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El listado ordenado de paradas (zonas) es requerido."
+            "message" => "El recorrido debe incluir al menos dos zonas en su ruta."
+        ]);
+        return;
+    }
+
+    $cleanZonas = [];
+    foreach ($zonas as $zId) {
+        $cleanId = filter_var($zId, FILTER_VALIDATE_INT);
+        if ($cleanId !== false) {
+            $cleanZonas[] = (int)$cleanId;
+        }
+    }
+
+    if (count($cleanZonas) < 2) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El recorrido debe incluir al menos dos zonas válidas en su ruta."
         ]);
         return;
     }
@@ -479,9 +503,9 @@ function actualizarRecorridoOrdenAction($db) {
         $recorrido = new Recorrido($db);
         $result = false;
         if (!empty($nombre)) {
-            $result = $recorrido->actualizarNombreYListadoZonas($id, $nombre, $zonas);
+            $result = $recorrido->actualizarNombreYListadoZonas($id, $nombre, $cleanZonas);
         } else {
-            $result = $recorrido->actualizarRuta($id, $zonas);
+            $result = $recorrido->actualizarRuta($id, $cleanZonas);
         }
 
         if ($result) {

@@ -30,39 +30,35 @@ class Institucion {
     // =========================================================================
 
     public function getId() { return $this->id; }
-    public function setId($id) { $this->id = $id !== null ? (int)$id : null; }
+    public function setId($id) { $this->id = $id; }
 
     public function getEntidadId() { return $this->entidad_id; }
-    public function setEntidadId($entidad_id) { $this->entidad_id = $entidad_id !== null ? (int)$entidad_id : null; }
+    public function setEntidadId($entidad_id) { $this->entidad_id = $entidad_id; }
 
     public function getTipoDocumento() { return $this->tipo_documento; }
-    public function setTipoDocumento($tipo) { $this->tipo_documento = $tipo !== null ? strtoupper(trim($tipo)) : ''; }
+    public function setTipoDocumento($tipo) { $this->tipo_documento = $tipo; }
 
     public function getDocumento() { return $this->documento; }
-    public function setDocumento($doc) { $this->documento = $doc !== null ? trim($doc) : ''; }
+    public function setDocumento($doc) { $this->documento = $doc; }
 
     public function getNombreCompleto() { return $this->nombre_completo; }
-    public function setNombreCompleto($nombre) { $this->nombre_completo = $nombre !== null ? trim($nombre) : ''; }
+    public function setNombreCompleto($nombre) { $this->nombre_completo = $nombre; }
 
     // Alias para compatibilidad
     public function getNombre() { return $this->nombre_completo; }
-    public function setNombre($nombre) { $this->nombre_completo = $nombre !== null ? trim($nombre) : ''; }
+    public function setNombre($nombre) { $this->nombre_completo = $nombre; }
 
     public function getTipoOrganizacion() { return $this->tipo_organizacion; }
-    public function setTipoOrganizacion($tipo) { $this->tipo_organizacion = $tipo !== null ? trim($tipo) : ''; }
+    public function setTipoOrganizacion($tipo) { $this->tipo_organizacion = $tipo; }
 
     public function getTipoGestion() { return $this->tipo_gestion; }
-    public function setTipoGestion($tipo) { $this->tipo_gestion = $tipo !== null ? strtolower(trim($tipo)) : 'publica'; }
+    public function setTipoGestion($tipo) { $this->tipo_gestion = $tipo; }
 
     public function getSedes() { return $this->sedes; }
-    public function setSedes($sedes) {
-        $this->sedes = is_array($sedes) ? $sedes : [];
-    }
+    public function setSedes($sedes) { $this->sedes = $sedes; }
 
     public function getContactos() { return $this->contactos; }
-    public function setContactos($contactos) {
-        $this->contactos = is_array($contactos) ? $contactos : [];
-    }
+    public function setContactos($contactos) { $this->contactos = $contactos; }
 
     // =========================================================================
     // MÉTODOS DE BASE DE DATOS Y LÓGICA DE NEGOCIO
@@ -74,20 +70,17 @@ class Institucion {
     public static function buscarPorDocumento($db, $tipo_documento, $documento) {
         if (!$db) return null;
 
-        $cleanTipo = strtoupper(trim($tipo_documento));
-        $cleanDoc = trim($documento);
-
         try {
             $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre_completo, 
                              i.tipo_organizacion, i.tipo_gestion
                       FROM entidades e
                       INNER JOIN instituciones i ON i.entidad_id = e.id
-                      WHERE UPPER(e.tipo_documento) = :tipo_documento AND e.documento = :documento 
+                      WHERE UPPER(e.tipo_documento) = UPPER(:tipo_documento) AND e.documento = :documento 
                       LIMIT 1";
             
             $stmt = $db->prepare($query);
-            $stmt->bindParam(":tipo_documento", $cleanTipo, PDO::PARAM_STR);
-            $stmt->bindParam(":documento", $cleanDoc, PDO::PARAM_STR);
+            $stmt->bindParam(":tipo_documento", $tipo_documento, PDO::PARAM_STR);
+            $stmt->bindParam(":documento", $documento, PDO::PARAM_STR);
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -149,12 +142,6 @@ class Institucion {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        // Comprobar existencia previa
-        $exists = self::buscarPorDocumento($this->db, $this->tipo_documento, $this->documento);
-        if ($exists) {
-            throw new InvalidArgumentException("La institución con el documento indicado ya se encuentra registrada.");
-        }
-
         try {
             $this->db->beginTransaction();
 
@@ -190,7 +177,7 @@ class Institucion {
             foreach ($this->sedes as $s) {
                 $ciudadId = (int)($s['ciudad_id'] ?? 0);
                 $parroquiaId = (int)($s['parroquia_id'] ?? 0);
-                $detalles = isset($s['detalles']) ? trim($s['detalles']) : null;
+                $detalles = $s['detalles'] ?? null;
 
                 if ($ciudadId > 0 && $parroquiaId > 0) {
                     $stmtSede->bindValue(":institucion_id", $institucionId, PDO::PARAM_INT);
@@ -207,8 +194,8 @@ class Institucion {
             $stmtContact = $this->db->prepare($queryContact);
 
             foreach ($this->contactos as $c) {
-                $contactoVal = trim($c['contacto'] ?? '');
-                $tipoVal = trim($c['tipo'] ?? 'principal');
+                $contactoVal = $c['contacto'] ?? '';
+                $tipoVal = $c['tipo'] ?? 'telefono';
                 if (!empty($contactoVal)) {
                     $stmtContact->bindValue(":entidad_id", $entidadId, PDO::PARAM_INT);
                     $stmtContact->bindValue(":contacto", $contactoVal, PDO::PARAM_STR);
@@ -478,17 +465,6 @@ class Institucion {
             throw new Exception("Parámetros insuficientes para actualizar la institución.");
         }
 
-        // 1. Verificar si el documento está en uso por otra entidad
-        $queryCheck = "SELECT COUNT(*) FROM entidades WHERE tipo_documento = :tipo_documento AND documento = :documento AND id != :entidad_id";
-        $stmtCheck = $this->db->prepare($queryCheck);
-        $stmtCheck->bindValue(":tipo_documento", $this->tipo_documento, PDO::PARAM_STR);
-        $stmtCheck->bindValue(":documento", $this->documento, PDO::PARAM_STR);
-        $stmtCheck->bindValue(":entidad_id", $this->entidad_id, PDO::PARAM_INT);
-        $stmtCheck->execute();
-        if ($stmtCheck->fetchColumn() > 0) {
-            throw new InvalidArgumentException("El RIF/documento ingresado ya pertenece a otra entidad o institución.");
-        }
-
         try {
             $this->db->beginTransaction();
 
@@ -558,7 +534,7 @@ class Institucion {
                 $sedeId = !empty($s['id']) ? (int)$s['id'] : null;
                 $ciudadId = (int)($s['ciudad_id'] ?? 0);
                 $parroquiaId = (int)($s['parroquia_id'] ?? 0);
-                $detalles = isset($s['detalles']) ? trim($s['detalles']) : null;
+                $detalles = $s['detalles'] ?? null;
 
                 if ($ciudadId > 0 && $parroquiaId > 0) {
                     if ($sedeId) {
@@ -590,8 +566,8 @@ class Institucion {
             $stmtContact = $this->db->prepare($queryContact);
 
             foreach ($this->contactos as $c) {
-                $contactoVal = trim($c['contacto'] ?? '');
-                $tipoVal = trim($c['tipo'] ?? 'principal');
+                $contactoVal = $c['contacto'] ?? '';
+                $tipoVal = $c['tipo'] ?? 'telefono';
                 if (!empty($contactoVal)) {
                     $stmtContact->bindValue(":entidad_id", $this->entidad_id, PDO::PARAM_INT);
                     $stmtContact->bindValue(":contacto", $contactoVal, PDO::PARAM_STR);
@@ -637,38 +613,24 @@ class Institucion {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        $cleanId = (int)$id;
-        if ($cleanId <= 0) {
-            throw new InvalidArgumentException("ID de institución no válido.");
-        }
-
-        // 1. Verificar si posee citas agendadas
-        $queryCheckCitas = "SELECT COUNT(*) FROM citas WHERE institucion_id = :id";
-        $stmtCheckCitas = $this->db->prepare($queryCheckCitas);
-        $stmtCheckCitas->bindValue(":id", $cleanId, PDO::PARAM_INT);
-        $stmtCheckCitas->execute();
-        if ($stmtCheckCitas->fetchColumn() > 0) {
-            throw new Exception("No se puede eliminar la institución porque posee citas registradas (pasadas, activas o futuras).");
-        }
-
         try {
             // Obtener el entidad_id de la institución a eliminar
             $queryEntidad = "SELECT entidad_id FROM instituciones WHERE id = :id LIMIT 1";
             $stmtEntidad = $this->db->prepare($queryEntidad);
-            $stmtEntidad->bindValue(":id", $cleanId, PDO::PARAM_INT);
+            $stmtEntidad->bindValue(":id", $id, PDO::PARAM_INT);
             $stmtEntidad->execute();
             $entidadId = $stmtEntidad->fetchColumn();
 
             if (!$entidadId) {
-                throw new InvalidArgumentException("La institución indicada no existe.");
+                return false;
             }
 
             $this->db->beginTransaction();
 
-            // 2. Eliminar sedes
+            // 1. Eliminar sedes
             $queryDeleteSedes = "DELETE FROM sedes WHERE institucion_id = :id";
             $stmtDeleteSedes = $this->db->prepare($queryDeleteSedes);
-            $stmtDeleteSedes->bindValue(":id", $cleanId, PDO::PARAM_INT);
+            $stmtDeleteSedes->bindValue(":id", $id, PDO::PARAM_INT);
             $stmtDeleteSedes->execute();
 
             // 3. Eliminar directorio de contactos
@@ -677,10 +639,10 @@ class Institucion {
             $stmtDeleteDirContacts->bindValue(":entidad_id", $entidadId, PDO::PARAM_INT);
             $stmtDeleteDirContacts->execute();
 
-            // 4. Eliminar institución
+            // 3. Eliminar institución
             $queryDeleteInst = "DELETE FROM instituciones WHERE id = :id";
             $stmtDeleteInst = $this->db->prepare($queryDeleteInst);
-            $stmtDeleteInst->bindValue(":id", $cleanId, PDO::PARAM_INT);
+            $stmtDeleteInst->bindValue(":id", $id, PDO::PARAM_INT);
             $stmtDeleteInst->execute();
 
             // 5. Eliminar entidad

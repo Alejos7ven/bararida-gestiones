@@ -70,7 +70,7 @@ if (!isset($userPermissions)) {
     </div>
 
     <!-- MODAL: REGISTRAR CITA (WIZARD MULTI-PASO) -->
-    <div class="modal fade modal-premium" id="modalCrearCita" tabindex="-1" aria-labelledby="modalCrearCitaLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal fade modal-premium" id="modalCrearCita" tabindex="-1" aria-labelledby="modalCrearCitaLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
@@ -188,7 +188,7 @@ if (!isset($userPermissions)) {
                              <div class="row g-3 mb-3" id="nueva_institucion_rif_row" style="display: none;">
                                  <div class="col-md-4">
                                      <label for="tipo_documento_inst" class="form-premium-label">Tipo RIF</label>
-                                     <select class="form-select form-premium-control" id="tipo_documento_inst">
+                                     <select class="form-select form-premium-control" id="tipo_documento_inst" name="tipo_documento_inst">
                                          <option value="J" selected>J</option>
                                          <option value="G">G</option>
                                          <option value="V">V</option>
@@ -198,7 +198,7 @@ if (!isset($userPermissions)) {
                                  </div>
                                  <div class="col-md-8">
                                      <label for="documento_inst" class="form-premium-label">Número RIF / Cédula</label>
-                                     <input type="text" class="form-control form-premium-control" id="documento_inst" placeholder="Ej. 123456789 (solo números)">
+                                     <input type="text" class="form-control form-premium-control" id="documento_inst" name="documento_inst" placeholder="Ej. 123456789 (solo números)">
                                  </div>
                              </div>
 
@@ -365,7 +365,7 @@ if (!isset($userPermissions)) {
     </div>
 
     <!-- MODAL: EDITAR CITA -->
-    <div class="modal fade modal-premium" id="modalEditarCita" tabindex="-1" aria-labelledby="modalEditarCitaLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal fade modal-premium" id="modalEditarCita" tabindex="-1" aria-labelledby="modalEditarCitaLabel" aria-hidden="true">
         <div class="modal-dialog modal-md modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
@@ -447,7 +447,7 @@ if (!isset($userPermissions)) {
     </div>
 
     <!-- MODAL: IMPORTAR VISITANTES (CSV) -->
-    <div class="modal fade modal-premium" id="modalImportarVisitantes" tabindex="-1" aria-labelledby="modalImportarVisitantesLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal fade modal-premium" id="modalImportarVisitantes" tabindex="-1" aria-labelledby="modalImportarVisitantesLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered" id="importModalDialog">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">

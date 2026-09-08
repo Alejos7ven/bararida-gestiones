@@ -237,9 +237,22 @@ $(document).ready(function() {
         renderPersonalTable();
     });
 
-    // =========================================================================
-    // CREAR PERSONAL (AJAX)
-    // =========================================================================
+    $('#modalCrearPersonal').on('show.bs.modal', function() {
+        $('#alertCrearFeedback').hide();
+        if (typeof window.limpiarErroresFormulario === 'function') {
+            window.limpiarErroresFormulario('#formCrearPersonal');
+        } else {
+            $('#formCrearPersonal').find('.is-invalid').removeClass('is-valid');
+            $('#formCrearPersonal').find('.invalid-feedback').hide().text('');
+        }
+    });
+
+    $('#modalCrearPersonal').on('shown.bs.modal', function() {
+        setTimeout(function() {
+            $('#create_cedula').trigger('focus');
+        }, 100);
+    });
+
     $('#formCrearPersonal').on('submit', function(e) {
         e.preventDefault();
 
@@ -267,16 +280,18 @@ $(document).ready(function() {
                     showGlobalAlert(response.message, 'success');
                     listarPersonal();
                 } else {
-                    showAlert($alert, response.message, 'danger');
+                    window.mapearErrorServidorAFormulario('#formCrearPersonal', response.message, null, $alert);
                 }
             },
             error: function(xhr) {
                 $btn.prop('disabled', false).text('Registrar Personal');
                 let errorMsg = 'Error en el servidor al intentar registrar el personal.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMsg = xhr.responseJSON.message;
+                let field = null;
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) errorMsg = xhr.responseJSON.message;
+                    if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                 }
-                showAlert($alert, errorMsg, 'danger');
+                window.mapearErrorServidorAFormulario('#formCrearPersonal', errorMsg, field, $alert);
             }
         });
     });
@@ -345,6 +360,12 @@ $(document).ready(function() {
     // =========================================================================
     // GUARDAR CAMBIOS DE EDICIÓN (AJAX)
     // =========================================================================
+    $('#modalEditarPersonal').on('shown.bs.modal', function() {
+        setTimeout(function() {
+            $('#edit_cedula').trigger('focus');
+        }, 100);
+    });
+
     $('#formEditarPersonal').on('submit', function(e) {
         e.preventDefault();
 
@@ -387,16 +408,18 @@ $(document).ready(function() {
 
                     listarPersonal();
                 } else {
-                    showAlert($alert, response.message, 'danger');
+                    window.mapearErrorServidorAFormulario('#formEditarPersonal', response.message, null, $alert);
                 }
             },
             error: function(xhr) {
                 $btn.prop('disabled', false).text('Guardar Cambios');
                 let errorMsg = 'Error en el servidor al intentar actualizar el personal.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMsg = xhr.responseJSON.message;
+                let field = null;
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) errorMsg = xhr.responseJSON.message;
+                    if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                 }
-                showAlert($alert, errorMsg, 'danger');
+                window.mapearErrorServidorAFormulario('#formEditarPersonal', errorMsg, field, $alert);
             }
         });
     });

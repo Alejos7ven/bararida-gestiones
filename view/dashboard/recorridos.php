@@ -36,7 +36,7 @@ if (!isset($userPermissions)) {
         <div id="panelCrearRecorridoForm" class="card mb-4 animate__animated animate__slideInDown" style="display: none; border-radius: 16px; border: 1.5px dashed var(--park-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.02); overflow: hidden;">
             <div class="card-body" style="background: #ffffff; padding: 20px;">
                 <h5 class="card-title font-weight-bold" style="font-family:'Outfit'; font-weight: 700; color: var(--park-primary);">Nuevo Recorrido</h5>
-                <p class="text-muted" style="font-size:0.8rem; line-height: 1.35;">Escribe el nombre del recorrido y haz clic en orden sobre las zonas del mapa para crear la secuencia.</p>
+                <p class="text-muted" style="font-size:0.8rem; line-height: 1.35;">Escribe el nombre del recorrido y haz clic en orden sobre al menos dos zonas del mapa para crear la secuencia.</p>
                 
                 <form id="formCrearRecorrido">
                     <div class="row">

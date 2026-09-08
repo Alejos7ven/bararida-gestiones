@@ -14,6 +14,12 @@ $(document).ready(function() {
                     minlength: 6,
                     maxlength: 12
                 },
+                documento_inst: {
+                    required: true,
+                    digits: true,
+                    minlength: 6,
+                    maxlength: 12
+                },
                 nombre: {
                     required: true,
                     minlength: 3
@@ -51,15 +57,36 @@ $(document).ready(function() {
             },
             messages: {
                 documento: {
+                    required: "El RIF/Cédula es obligatorio.",
+                    digits: "El RIF/Cédula debe contener solo números.",
+                    minlength: "Debe tener al menos 6 dígitos.",
+                    maxlength: "No puede exceder los 12 dígitos."
+                },
+                documento_inst: {
+                    required: "El RIF/Cédula es obligatorio.",
                     digits: "El RIF/Cédula debe contener solo números.",
                     minlength: "Debe tener al menos 6 dígitos.",
                     maxlength: "No puede exceder los 12 dígitos."
                 },
                 nombre: {
+                    required: "La Razón Social o Nombre Oficial es requerido.",
                     minlength: "La Razón Social debe tener al menos 3 caracteres."
                 },
                 nombre_completo: {
+                    required: "La Razón Social o Nombre Oficial es requerido.",
                     minlength: "La Razón Social debe tener al menos 3 caracteres."
+                },
+                tipo_organizacion: {
+                    required: "Debe seleccionar un tipo de organización."
+                },
+                tipo_gestion: {
+                    required: "Debe seleccionar el tipo de gestión."
+                },
+                parroquia_id: {
+                    required: "Debe seleccionar la parroquia."
+                },
+                ciudad_id: {
+                    required: "Debe seleccionar la ciudad."
                 },
                 fecha_visita: {
                     required: "Debe seleccionar una fecha para la visita guiada."
@@ -69,6 +96,9 @@ $(document).ready(function() {
                 },
                 metodo_pago: {
                     required: "Debe seleccionar el método de pago."
+                },
+                pago_estado: {
+                    required: "Debe seleccionar el estado del pago."
                 }
             }
         });

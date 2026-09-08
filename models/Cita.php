@@ -31,34 +31,34 @@ class Cita {
     // =========================================================================
 
     public function getId() { return $this->id; }
-    public function setId($id) { $this->id = $id !== null ? (int)$id : null; }
+    public function setId($id) { $this->id = $id; }
 
     public function getInstitucionId() { return $this->institucion_id; }
-    public function setInstitucionId($inst_id) { $this->institucion_id = (int)$inst_id; }
+    public function setInstitucionId($inst_id) { $this->institucion_id = $inst_id; }
 
     public function getSedeId() { return $this->sede_id; }
-    public function setSedeId($sede_id) { $this->sede_id = !empty($sede_id) ? (int)$sede_id : null; }
+    public function setSedeId($sede_id) { $this->sede_id = $sede_id; }
 
     public function getRecorridoId() { return $this->recorrido_id; }
-    public function setRecorridoId($rec_id) { $this->recorrido_id = !empty($rec_id) ? (int)$rec_id : null; }
+    public function setRecorridoId($rec_id) { $this->recorrido_id = $rec_id; }
 
     public function getFechaSolicitud() { return $this->fecha_solicitud; }
-    public function setFechaSolicitud($fecha) { $this->fecha_solicitud = trim($fecha); }
+    public function setFechaSolicitud($fecha) { $this->fecha_solicitud = $fecha; }
 
     public function getFechaVisita() { return $this->fecha_visita; }
-    public function setFechaVisita($fecha) { $this->fecha_visita = trim($fecha); }
+    public function setFechaVisita($fecha) { $this->fecha_visita = $fecha; }
 
     public function getHoraInicio() { return $this->hora_inicio; }
-    public function setHoraInicio($hora) { $this->hora_inicio = trim($hora); }
+    public function setHoraInicio($hora) { $this->hora_inicio = $hora; }
 
     public function getEstatus() { return $this->estatus; }
-    public function setEstatus($estatus) { $this->estatus = strtolower(trim($estatus)); }
+    public function setEstatus($estatus) { $this->estatus = $estatus; }
 
     public function getMetodoPago() { return $this->metodo_pago; }
-    public function setMetodoPago($metodo) { $this->metodo_pago = trim($metodo); }
+    public function setMetodoPago($metodo) { $this->metodo_pago = $metodo; }
 
     public function getPagoEstado() { return $this->pago_estado; }
-    public function setPagoEstado($estado) { $this->pago_estado = strtolower(trim($estado)); }
+    public function setPagoEstado($estado) { $this->pago_estado = $estado; }
 
     // =========================================================================
     // OPERACIONES DE PERSISTENCIA Y CONSULTA

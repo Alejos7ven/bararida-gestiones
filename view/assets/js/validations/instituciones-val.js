@@ -6,14 +6,14 @@ $(document).ready(function() {
         return !/[a-zA-Z]/.test(value) && clean.length >= 7 && clean.length <= 15;
     }, "El teléfono debe contener solo números (entre 7 y 15 dígitos).");
 
-    // Aplicar automáticamente a campos dinámicos con estas clases
+    // Aplicar automáticamente a campos dinámicos con estas clases (formato validado si tiene contenido)
     $.validator.addClassRules("input-telefono-val", {
-        required: true,
+        required: false,
         formatoTelefono: true
     });
 
     $.validator.addClassRules("input-correo-val", {
-        required: true,
+        required: false,
         email: true
     });
 

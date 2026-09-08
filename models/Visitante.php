@@ -19,40 +19,26 @@ class Visitante {
 
     // Getters y Setters
     public function getId() { return $this->id; }
-    public function setId($id) { $this->id = (int)$id; }
+    public function setId($id) { $this->id = $id; }
 
     public function getCedula() { return $this->cedula; }
-    public function setCedula($cedula) {
-        $clean = preg_replace('/[^0-9]/', '', trim($cedula));
-        $this->cedula = !empty($clean) ? $clean : null;
-    }
+    public function setCedula($cedula) { $this->cedula = $cedula; }
 
     public function getNombres() { return $this->nombres; }
-    public function setNombres($nombres) {
-        $this->nombres = strip_tags(trim($nombres));
-    }
+    public function setNombres($nombres) { $this->nombres = $nombres; }
 
     public function getApellidos() { return $this->apellidos; }
-    public function setApellidos($apellidos) {
-        $this->apellidos = strip_tags(trim($apellidos));
-    }
+    public function setApellidos($apellidos) { $this->apellidos = $apellidos; }
 
     public function getFechaNacimiento() { return $this->fecha_nacimiento; }
-    public function setFechaNacimiento($fecha) {
-        $this->fecha_nacimiento = trim($fecha);
-    }
+    public function setFechaNacimiento($fecha) { $this->fecha_nacimiento = $fecha; }
 
     /**
-     * Importa de forma masiva y atómica una lista de visitantes vinculándolos a una cita.
+     * Importa una lista de visitantes vinculándolos a una cita.
      * Reutiliza visitantes existentes por cédula para evitar redundancias de datos.
      */
     public static function importarVisitantesCita($db, $citaId, $visitantesArray) {
         if (!$db) return false;
-
-        $cleanCitaId = filter_var($citaId, FILTER_VALIDATE_INT) ? (int)$citaId : null;
-        if (!$cleanCitaId) {
-            throw new InvalidArgumentException("ID de cita inválido para importar visitantes.");
-        }
 
         try {
             $db->beginTransaction();
@@ -65,20 +51,11 @@ class Visitante {
             $stmtVerificarLink = $db->prepare("SELECT id FROM asistencia_cita WHERE cita_id = :cita_id AND visitante_id = :visitante_id LIMIT 1");
             $stmtInsertarLink = $db->prepare("INSERT INTO asistencia_cita (cita_id, visitante_id) VALUES (:cita_id, :visitante_id)");
 
-            foreach ($visitantesArray as $index => $v) {
-                $rawCedula = preg_replace('/[^0-9]/', '', trim($v['cedula'] ?? ''));
-                $cedula = !empty($rawCedula) ? $rawCedula : null;
-                $nombres = strip_tags(trim($v['nombres'] ?? ''));
-                $apellidos = strip_tags(trim($v['apellidos'] ?? ''));
-                $fechaNac = trim($v['fecha_nacimiento'] ?? '');
-
-                if (empty($nombres) || empty($apellidos) || empty($fechaNac)) {
-                    throw new InvalidArgumentException("Fila #" . ($index + 1) . ": Los campos Nombres, Apellidos y Fecha Nacimiento son obligatorios.");
-                }
-
-                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaNac)) {
-                    throw new InvalidArgumentException("Fila #" . ($index + 1) . ": La fecha de nacimiento del visitante '{$nombres}' debe tener formato AAAA-MM-DD.");
-                }
+            foreach ($visitantesArray as $v) {
+                $cedula = $v['cedula'] ?? null;
+                $nombres = $v['nombres'] ?? '';
+                $apellidos = $v['apellidos'] ?? '';
+                $fechaNac = $v['fecha_nacimiento'] ?? '';
 
                 $visitanteId = null;
 
@@ -106,14 +83,14 @@ class Visitante {
                 }
 
                 // 3. Verificar si el visitante ya está agendado en la cita actual
-                $stmtVerificarLink->bindParam(":cita_id", $cleanCitaId, PDO::PARAM_INT);
+                $stmtVerificarLink->bindParam(":cita_id", $citaId, PDO::PARAM_INT);
                 $stmtVerificarLink->bindParam(":visitante_id", $visitanteId, PDO::PARAM_INT);
                 $stmtVerificarLink->execute();
                 $linkExists = $stmtVerificarLink->fetchColumn();
 
                 // 4. Si no está vinculado, insertamos la fila en la tabla pivote
                 if (!$linkExists) {
-                    $stmtInsertarLink->bindParam(":cita_id", $cleanCitaId, PDO::PARAM_INT);
+                    $stmtInsertarLink->bindParam(":cita_id", $citaId, PDO::PARAM_INT);
                     $stmtInsertarLink->bindParam(":visitante_id", $visitanteId, PDO::PARAM_INT);
                     $stmtInsertarLink->execute();
                 }
@@ -125,7 +102,7 @@ class Visitante {
             if ($db->inTransaction()) {
                 $db->rollBack();
             }
-            error_log("Error al importar visitantes en Cita ID {$cleanCitaId}: " . $e->getMessage());
+            error_log("Error al importar visitantes en Cita ID {$citaId}: " . $e->getMessage());
             throw $e;
         }
     }
@@ -170,18 +147,36 @@ class Visitante {
     }
 
     /**
+     * Busca un visitante por su cédula, opcionalmente excluyendo un ID específico (para updates)
+     */
+    public static function buscarPorCedula($db, $cedula, $excludeId = null) {
+        if (!$db) return null;
+
+        $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM visitantes WHERE cedula = :cedula";
+        if ($excludeId) {
+            $query .= " AND id != :exclude_id";
+        }
+        $query .= " LIMIT 1";
+
+        $stmt = $db->prepare($query);
+        $stmt->bindValue(":cedula", $cedula, PDO::PARAM_STR);
+        if ($excludeId) {
+            $stmt->bindValue(":exclude_id", $excludeId, PDO::PARAM_INT);
+        }
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
+    }
+
+    /**
      * Registra un nuevo visitante de forma manual
      */
     public function registrar($db) {
         if (!$db) return false;
         
-        $rawCedula = preg_replace('/[^0-9]/', '', trim($this->cedula ?? ''));
-        $cedula = !empty($rawCedula) ? $rawCedula : null;
-        
         $query = "INSERT INTO visitantes (cedula, nombres, apellidos, fecha_nacimiento) 
                   VALUES (:cedula, :nombres, :apellidos, :fecha_nacimiento)";
         $stmt = $db->prepare($query);
-        $stmt->bindParam(":cedula", $cedula, $cedula === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->bindParam(":cedula", $this->cedula, $this->cedula === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
         $stmt->bindParam(":nombres", $this->nombres, PDO::PARAM_STR);
         $stmt->bindParam(":apellidos", $this->apellidos, PDO::PARAM_STR);
         $stmt->bindParam(":fecha_nacimiento", $this->fecha_nacimiento, PDO::PARAM_STR);
@@ -199,14 +194,11 @@ class Visitante {
     public function actualizar($db) {
         if (!$db) return false;
         
-        $rawCedula = preg_replace('/[^0-9]/', '', trim($this->cedula ?? ''));
-        $cedula = !empty($rawCedula) ? $rawCedula : null;
-        
         $query = "UPDATE visitantes 
                   SET cedula = :cedula, nombres = :nombres, apellidos = :apellidos, fecha_nacimiento = :fecha_nacimiento 
                   WHERE id = :id";
         $stmt = $db->prepare($query);
-        $stmt->bindParam(":cedula", $cedula, $cedula === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
+        $stmt->bindParam(":cedula", $this->cedula, $this->cedula === null ? PDO::PARAM_NULL : PDO::PARAM_STR);
         $stmt->bindParam(":nombres", $this->nombres, PDO::PARAM_STR);
         $stmt->bindParam(":apellidos", $this->apellidos, PDO::PARAM_STR);
         $stmt->bindParam(":fecha_nacimiento", $this->fecha_nacimiento, PDO::PARAM_STR);

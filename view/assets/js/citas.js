@@ -384,6 +384,18 @@ $(document).ready(function() {
     // Al abrir el modal, resetear variables e ir al paso 1
     $('#modalCrearCita').on('show.bs.modal', function () {
         resetWizard();
+        if (typeof window.limpiarErroresFormulario === 'function') {
+            window.limpiarErroresFormulario('#formCrearCita');
+        } else {
+            $('#formCrearCita').find('.is-invalid').removeClass('is-valid');
+            $('#formCrearCita').find('.invalid-feedback').hide().text('');
+        }
+    });
+
+    $('#modalCrearCita').on('shown.bs.modal', function () {
+        setTimeout(function() {
+            $('#buscar_institucion_autocomplete').trigger('focus');
+        }, 100);
     });
 
     function resetWizard() {
@@ -822,6 +834,22 @@ $(document).ready(function() {
     // BOTÓN: SIGUIENTE / GUARDAR
     $('#btnWizardNext').on('click', function() {
         if (currentStep === 1) {
+            const query = $.trim($('#buscar_institucion_autocomplete').val());
+            const instId = $('#final_institucion_id').val();
+            
+            if (!instId && !query) {
+                window.marcarErrorInput('#buscar_institucion_autocomplete', 'Por favor busque una institución existente o ingrese el nombre para registrarla.', true);
+                return;
+            }
+
+            // Si escribió un nombre o RIF pero no hizo clic en registrar, procesarlo como nueva
+            if (!instId && query) {
+                if ($('#btn_new_inst_autocomplete').length) {
+                    $('#btn_new_inst_autocomplete').trigger('click');
+                    return;
+                }
+            }
+
             // Ir al paso 2
             currentStep = 2;
             showStep(currentStep);
@@ -829,6 +857,55 @@ $(document).ready(function() {
             // Validaciones Paso 2 usando jquery-validate
             if (!$('#formCrearCita').valid()) {
                 return;
+            }
+
+            // Validar contactos si es nueva institución
+            if ($('#nueva_institucion_rif_row').is(':visible')) {
+                let contactError = false;
+                let $contactInputErr = null;
+                let contactErrorMsg = '';
+
+                const $contactRows = $('#contactsContainer .contact-row');
+                if ($contactRows.length === 0) {
+                    window.marcarErrorInput('#btnAddNewContact', 'Debe agregar al menos un número o correo de contacto.', true);
+                    return;
+                }
+
+                $contactRows.each(function() {
+                    const $input = $(this).find('.contact-input');
+                    const val = $.trim($input.val());
+                    const tipo = $(this).find('select').val();
+
+                    if (!val) {
+                        contactError = true;
+                        $contactInputErr = $input;
+                        contactErrorMsg = 'Debe ingresar el número de teléfono o correo de contacto.';
+                        return false;
+                    }
+
+                    if (tipo === 'correo') {
+                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                        if (!emailRegex.test(val)) {
+                            contactError = true;
+                            $contactInputErr = $input;
+                            contactErrorMsg = 'El correo electrónico no tiene un formato válido.';
+                            return false;
+                        }
+                    } else {
+                        const cleanDigits = val.replace(/[^0-9]/g, '');
+                        if (/[a-zA-Z]/.test(val) || cleanDigits.length < 7 || cleanDigits.length > 15) {
+                            contactError = true;
+                            $contactInputErr = $input;
+                            contactErrorMsg = 'El teléfono debe contener entre 7 y 15 dígitos numéricos.';
+                            return false;
+                        }
+                    }
+                });
+
+                if (contactError && $contactInputErr) {
+                    window.marcarErrorInput($contactInputErr, contactErrorMsg, true);
+                    return;
+                }
             }
 
             // Ir al paso 3
@@ -908,6 +985,7 @@ $(document).ready(function() {
 
         $('#contactsContainer').empty();
         agregarFilaContacto('principal');
+        agregarFilaContacto('correo');
         $('#btnAddNewContact').show();
     }
 
@@ -919,7 +997,7 @@ $(document).ready(function() {
     function agregarFilaContacto(forcedType = '') {
         contactCount++;
         const isPrincipal = forcedType === 'principal' || $('#contactsContainer .contact-row').length === 0;
-        const typeSelected = isPrincipal ? 'principal' : 'secundario';
+        const typeSelected = forcedType ? forcedType : (isPrincipal ? 'principal' : 'secundario');
         const deleteButton = isPrincipal 
             ? '<div style="width:28px;"></div>' 
             : `<button type="button" class="btn-remove-contact btn-eliminar-contacto-row" title="Eliminar Contacto">✕</button>`;
@@ -977,16 +1055,18 @@ $(document).ready(function() {
                     showGlobalAlert(response.message, 'success');
                     listarCitas();
                 } else {
-                    alert(response.message);
+                    window.mapearErrorServidorAFormulario('#formCrearCita', response.message);
                 }
             },
             error: function(xhr) {
                 $btn.prop('disabled', false).text('Agendar Cita');
                 let errorMsg = 'Error en el servidor al registrar la cita.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMsg = xhr.responseJSON.message;
+                let field = null;
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) errorMsg = xhr.responseJSON.message;
+                    if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                 }
-                alert(errorMsg);
+                window.mapearErrorServidorAFormulario('#formCrearCita', errorMsg, field);
             }
         });
     }
@@ -1075,16 +1155,18 @@ $(document).ready(function() {
                     showGlobalAlert(response.message, 'success');
                     listarCitas();
                 } else {
-                    alert(response.message);
+                    window.mapearErrorServidorAFormulario('#formEditarCita', response.message);
                 }
             },
             error: function(xhr) {
                 $btn.prop('disabled', false).text('Guardar Cambios');
                 let errorMsg = 'Error en el servidor al intentar actualizar la cita.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMsg = xhr.responseJSON.message;
+                let field = null;
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) errorMsg = xhr.responseJSON.message;
+                    if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                 }
-                alert(errorMsg);
+                window.mapearErrorServidorAFormulario('#formEditarCita', errorMsg, field);
             }
         });
     });

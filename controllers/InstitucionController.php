@@ -180,10 +180,12 @@ function crearInstitucionAction($db) {
 
     // Validaciones en Controller
     if (empty($documento) || empty($nombre_completo) || empty($tipo_organizacion) || empty($tipo_gestion)) {
+        $missingField = empty($documento) ? "documento" : (empty($nombre_completo) ? "nombre_completo" : (empty($tipo_organizacion) ? "tipo_organizacion" : "tipo_gestion"));
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Todos los datos identificativos de la institución son obligatorios (Tipo, RIF, Razón Social, Tipo de Org. y Gestión)."
+            "message" => "Todos los datos identificativos de la institución son obligatorios (Tipo, RIF, Razón Social, Tipo de Org. y Gestión).",
+            "field" => $missingField
         ]);
         return;
     }
@@ -192,7 +194,8 @@ function crearInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Tipo de documento/RIF no válido."
+            "message" => "Tipo de documento/RIF no válido.",
+            "field" => "tipo_documento"
         ]);
         return;
     }
@@ -201,7 +204,8 @@ function crearInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El número de documento/RIF no es válido."
+            "message" => "El número de documento/RIF no es válido.",
+            "field" => "documento"
         ]);
         return;
     }
@@ -210,7 +214,8 @@ function crearInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La razón social debe tener entre 3 y 150 caracteres."
+            "message" => "La razón social debe tener entre 3 y 150 caracteres.",
+            "field" => "nombre_completo"
         ]);
         return;
     }
@@ -219,7 +224,8 @@ function crearInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El tipo de gestión proporcionado no es válido."
+            "message" => "El tipo de gestión proporcionado no es válido.",
+            "field" => "tipo_gestion"
         ]);
         return;
     }
@@ -246,7 +252,8 @@ function crearInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Debe agregar al menos una sede válida con su respectivo Estado, Municipio, Parroquia y Ciudad."
+            "message" => "Debe agregar al menos una sede válida con su respectivo Estado, Municipio, Parroquia y Ciudad.",
+            "field" => "sedes"
         ]);
         return;
     }
@@ -264,7 +271,8 @@ function crearInstitucionAction($db) {
                         http_response_code(400);
                         echo json_encode([
                             "status" => "error",
-                            "message" => "El número de teléfono '{$contVal}' es inválido. No debe contener letras y debe tener al menos 7 dígitos."
+                            "message" => "El número de teléfono '{$contVal}' es inválido. No debe contener letras y debe tener al menos 7 dígitos.",
+                            "field" => "contacto"
                         ]);
                         return;
                     }
@@ -273,7 +281,8 @@ function crearInstitucionAction($db) {
                         http_response_code(400);
                         echo json_encode([
                             "status" => "error",
-                            "message" => "El correo electrónico '{$contVal}' no tiene un formato válido."
+                            "message" => "El correo electrónico '{$contVal}' no tiene un formato válido.",
+                            "field" => "contacto"
                         ]);
                         return;
                     }
@@ -290,7 +299,20 @@ function crearInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Debe ingresar al menos un número de contacto válido."
+            "message" => "Debe ingresar al menos un número de teléfono o correo de contacto válido.",
+            "field" => "contacto"
+        ]);
+        return;
+    }
+
+    // Validar existencia previa de la institución por documento en el Controller
+    $existente = Institucion::buscarPorDocumento($db, $tipo_documento, $documento);
+    if ($existente) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La institución con el documento indicado ya se encuentra registrada.",
+            "field" => "documento"
         ]);
         return;
     }
@@ -356,10 +378,12 @@ function actualizarInstitucionAction($db) {
     }
 
     if (empty($documento) || empty($nombre_completo) || empty($tipo_organizacion) || empty($tipo_gestion)) {
+        $missingField = empty($documento) ? "documento" : (empty($nombre_completo) ? "nombre_completo" : (empty($tipo_organizacion) ? "tipo_organizacion" : "tipo_gestion"));
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Todos los campos de la institución son obligatorios."
+            "message" => "Todos los campos de la institución son obligatorios.",
+            "field" => $missingField
         ]);
         return;
     }
@@ -368,7 +392,8 @@ function actualizarInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Tipo de documento inválido para la institución."
+            "message" => "Tipo de documento inválido para la institución.",
+            "field" => "tipo_documento"
         ]);
         return;
     }
@@ -377,7 +402,8 @@ function actualizarInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El número de documento/RIF no es válido."
+            "message" => "El número de documento/RIF no es válido.",
+            "field" => "documento"
         ]);
         return;
     }
@@ -386,7 +412,8 @@ function actualizarInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La razón social debe tener entre 3 y 150 caracteres."
+            "message" => "La razón social debe tener entre 3 y 150 caracteres.",
+            "field" => "nombre_completo"
         ]);
         return;
     }
@@ -424,7 +451,8 @@ function actualizarInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Debe especificar al menos una sede válida para la institución."
+            "message" => "Debe especificar al menos una sede válida para la institución.",
+            "field" => "sedes"
         ]);
         return;
     }
@@ -441,7 +469,8 @@ function actualizarInstitucionAction($db) {
                         http_response_code(400);
                         echo json_encode([
                             "status" => "error",
-                            "message" => "El número de teléfono '{$contVal}' es inválido. No debe contener letras y debe tener al menos 7 dígitos."
+                            "message" => "El número de teléfono '{$contVal}' es inválido. No debe contener letras y debe tener al menos 7 dígitos.",
+                            "field" => "contacto"
                         ]);
                         return;
                     }
@@ -450,7 +479,8 @@ function actualizarInstitucionAction($db) {
                         http_response_code(400);
                         echo json_encode([
                             "status" => "error",
-                            "message" => "El correo electrónico '{$contVal}' no tiene un formato válido."
+                            "message" => "El correo electrónico '{$contVal}' no tiene un formato válido.",
+                            "field" => "contacto"
                         ]);
                         return;
                     }
@@ -467,7 +497,24 @@ function actualizarInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Debe ingresar al menos un número de contacto válido."
+            "message" => "Debe ingresar al menos un número de teléfono o correo de contacto válido.",
+            "field" => "contacto"
+        ]);
+        return;
+    }
+
+    // Validar si el RIF/documento ya pertenece a otra institución
+    $stmtCheck = $db->prepare("SELECT COUNT(*) FROM entidades WHERE tipo_documento = :tipo_documento AND documento = :documento AND id != :entidad_id");
+    $stmtCheck->bindValue(":tipo_documento", $tipo_documento, PDO::PARAM_STR);
+    $stmtCheck->bindValue(":documento", $documento, PDO::PARAM_STR);
+    $stmtCheck->bindValue(":entidad_id", $entidad_id, PDO::PARAM_INT);
+    $stmtCheck->execute();
+    if ($stmtCheck->fetchColumn() > 0) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El RIF/documento ingresado ya pertenece a otra entidad o institución.",
+            "field" => "documento"
         ]);
         return;
     }

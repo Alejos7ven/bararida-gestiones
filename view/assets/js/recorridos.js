@@ -220,9 +220,21 @@ $(document).ready(function() {
             $('#modalCrearZona').modal('show');
         });
 
+        $('#modalCrearZona').on('shown.bs.modal', function () {
+            setTimeout(function() {
+                $('#nombreZona').trigger('focus');
+            }, 100);
+        });
+
         // Al cerrar o cancelar el modal de zona, borramos el pin temporal rojo
         $('#modalCrearZona').on('hidden.bs.modal', function () {
             $pinsContainer.find('.temp-pin').remove();
+            if (typeof window.limpiarErroresFormulario === 'function') {
+                window.limpiarErroresFormulario('#formCrearZona');
+            } else {
+                $('#formCrearZona').find('.is-invalid').removeClass('is-valid');
+                $('#formCrearZona').find('.invalid-feedback').hide().text('');
+            }
         });
 
         // Guardar la nueva zona vía AJAX
@@ -252,16 +264,18 @@ $(document).ready(function() {
                         // Recargar zonas del sistema y redibujar
                         cargarZonas();
                     } else {
-                        alert(response.message);
+                        window.mapearErrorServidorAFormulario('#formCrearZona', response.message);
                     }
                 },
                 error: function(xhr) {
                     $btn.prop('disabled', false).text('Registrar Zona');
                     let errorMsg = 'Error al registrar la zona en el servidor.';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        errorMsg = xhr.responseJSON.message;
+                    let field = null;
+                    if (xhr.responseJSON) {
+                        if (xhr.responseJSON.message) errorMsg = xhr.responseJSON.message;
+                        if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                     }
-                    alert(errorMsg);
+                    window.mapearErrorServidorAFormulario('#formCrearZona', errorMsg, field);
                 }
             });
         });
@@ -345,8 +359,9 @@ $(document).ready(function() {
 
             const $btn = $('#btnGuardarRecorrido');
 
-            if (recorridoZonasSeleccionadas.length < 1) {
-                showGlobalAlert('Debe hacer clic y seleccionar al menos una zona sobre el mapa para conformar una ruta.', 'danger');
+            if (recorridoZonasSeleccionadas.length < 2) {
+                window.marcarErrorInput('#nombreRecorrido', 'Debe seleccionar al menos dos zonas sobre el mapa para conformar la ruta del recorrido.', true);
+                showGlobalAlert('Debe hacer clic y seleccionar al menos dos zonas sobre el mapa para conformar un recorrido.', 'danger');
                 return;
             }
 
@@ -374,15 +389,19 @@ $(document).ready(function() {
                         // Recargar todo el listado
                         cargarRecorridos();
                     } else {
+                        window.mapearErrorServidorAFormulario('#formCrearRecorrido', response.message);
                         showGlobalAlert(response.message, 'danger');
                     }
                 },
                 error: function(xhr) {
                     $btn.prop('disabled', false).text('Guardar Recorrido');
                     let errorMsg = 'Error al registrar el recorrido en el servidor.';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        errorMsg = xhr.responseJSON.message;
+                    let field = null;
+                    if (xhr.responseJSON) {
+                        if (xhr.responseJSON.message) errorMsg = xhr.responseJSON.message;
+                        if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                     }
+                    window.mapearErrorServidorAFormulario('#formCrearRecorrido', errorMsg, field);
                     showGlobalAlert(errorMsg, 'danger');
                 }
             });
@@ -887,6 +906,12 @@ $(document).ready(function() {
             // Extraer los IDs de zonas en el nuevo orden temporal
             const idsZonasOrdenadas = paradasTemporalOrden.map(p => p.zona_id);
 
+            if (idsZonasOrdenadas.length < 2) {
+                showGlobalAlert('Un recorrido debe incluir al menos dos zonas en su ruta.', 'danger');
+                $btn.prop('disabled', false).text('✓');
+                return;
+            }
+
             // Obtener el nuevo nombre del input
             const nuevoNombre = $row.find('.input-edit-nombre').val() || recorridoSeleccionadoEdicion.nombre;
 
@@ -1108,8 +1133,16 @@ $(document).ready(function() {
         recorridoZonasSeleccionadas = [];
 
         $('#formCrearRecorrido')[0].reset();
+        if (typeof window.limpiarErroresFormulario === 'function') {
+            window.limpiarErroresFormulario('#formCrearRecorrido');
+        } else {
+            $('#formCrearRecorrido').find('.is-invalid').removeClass('is-valid');
+            $('#formCrearRecorrido').find('.invalid-feedback').hide().text('');
+        }
         $('#btnModoRecorrido').addClass('active');
-        $('#panelCrearRecorridoForm').slideDown(250);
+        $('#panelCrearRecorridoForm').slideDown(250, function() {
+            $('#nombreRecorrido').trigger('focus');
+        });
 
         // Limpiar pines y resetear sus contenidos (permitirá interactuar y numerar)
         renderizarPinesZonas(listaZonas);
@@ -1168,7 +1201,7 @@ $(document).ready(function() {
         $wrapper.empty();
 
         if (recorridoZonasSeleccionadas.length === 0) {
-            $wrapper.append('<p class="text-muted italic text-center fs-0.85">Haz clic sobre los pines del mapa en orden para ir trazando el recorrido...</p>');
+            $wrapper.append('<p class="text-muted italic text-center fs-0.85">Haz clic en orden sobre al menos dos zonas del mapa para trazar el recorrido...</p>');
             return;
         }
 

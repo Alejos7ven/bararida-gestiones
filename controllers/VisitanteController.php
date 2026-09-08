@@ -154,10 +154,12 @@ function crearVisitanteAction($db) {
     $fecha_nacimiento = isset($_POST['fecha_nacimiento']) ? trim($_POST['fecha_nacimiento']) : '';
 
     if (empty($nombres) || empty($apellidos) || empty($fecha_nacimiento)) {
+        $missingField = empty($nombres) ? "nombres" : (empty($apellidos) ? "apellidos" : "fecha_nacimiento");
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Los nombres, apellidos y fecha de nacimiento son obligatorios."
+            "message" => "Los nombres, apellidos y fecha de nacimiento son obligatorios.",
+            "field" => $missingField
         ]);
         exit;
     }
@@ -166,7 +168,8 @@ function crearVisitanteAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre del visitante no es válido o supera los 100 caracteres."
+            "message" => "El nombre del visitante no es válido o supera los 100 caracteres.",
+            "field" => "nombres"
         ]);
         exit;
     }
@@ -175,7 +178,8 @@ function crearVisitanteAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El apellido del visitante no es válido o supera los 100 caracteres."
+            "message" => "El apellido del visitante no es válido o supera los 100 caracteres.",
+            "field" => "apellidos"
         ]);
         exit;
     }
@@ -184,16 +188,43 @@ function crearVisitanteAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La fecha de nacimiento debe tener el formato AAAA-MM-DD."
+            "message" => "La fecha de nacimiento debe tener el formato AAAA-MM-DD.",
+            "field" => "fecha_nacimiento"
         ]);
         exit;
     }
+
+    $rawCedula = preg_replace('/[^0-9]/', '', $cedula);
+    if (!empty($rawCedula)) {
+        if (strlen($rawCedula) < 6 || strlen($rawCedula) > 12) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "La cédula debe contener entre 6 y 12 dígitos numéricos.",
+                "field" => "cedula"
+            ]);
+            exit;
+        }
+
+        $existente = Visitante::buscarPorCedula($db, $rawCedula);
+        if ($existente) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Ya existe un visitante registrado con la cédula " . $rawCedula . " (" . $existente['nombres'] . " " . $existente['apellidos'] . ").",
+                "field" => "cedula"
+            ]);
+            exit;
+        }
+    }
+
+    $cedulaFinal = !empty($rawCedula) ? $rawCedula : null;
 
     try {
         $visitante = new Visitante($db);
         $visitante->setNombres($nombres);
         $visitante->setApellidos($apellidos);
-        $visitante->setCedula($cedula);
+        $visitante->setCedula($cedulaFinal);
         $visitante->setFechaNacimiento($fecha_nacimiento);
 
         if ($visitante->registrar($db)) {
@@ -214,9 +245,11 @@ function crearVisitanteAction($db) {
         }
     } catch (InvalidArgumentException $e) {
         http_response_code(400);
+        $field = (stripos($e->getMessage(), 'cédula') !== false || stripos($e->getMessage(), 'cedula') !== false) ? 'cedula' : null;
         echo json_encode([
             "status" => "error",
-            "message" => $e->getMessage()
+            "message" => $e->getMessage(),
+            "field" => $field
         ]);
     } catch (Exception $e) {
         http_response_code(500);
@@ -238,10 +271,12 @@ function actualizarVisitanteAction($db) {
     $fecha_nacimiento = isset($_POST['fecha_nacimiento']) ? trim($_POST['fecha_nacimiento']) : '';
 
     if ($id <= 0 || empty($nombres) || empty($apellidos) || empty($fecha_nacimiento)) {
+        $missingField = empty($nombres) ? "nombres" : (empty($apellidos) ? "apellidos" : "fecha_nacimiento");
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Todos los campos obligatorios (*) son requeridos."
+            "message" => "Todos los campos obligatorios (*) son requeridos.",
+            "field" => $missingField
         ]);
         exit;
     }
@@ -250,7 +285,8 @@ function actualizarVisitanteAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre del visitante no es válido o supera los 100 caracteres."
+            "message" => "El nombre del visitante no es válido o supera los 100 caracteres.",
+            "field" => "nombres"
         ]);
         exit;
     }
@@ -259,7 +295,8 @@ function actualizarVisitanteAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El apellido del visitante no es válido o supera los 100 caracteres."
+            "message" => "El apellido del visitante no es válido o supera los 100 caracteres.",
+            "field" => "apellidos"
         ]);
         exit;
     }
@@ -268,17 +305,44 @@ function actualizarVisitanteAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La fecha de nacimiento debe tener el formato AAAA-MM-DD."
+            "message" => "La fecha de nacimiento debe tener el formato AAAA-MM-DD.",
+            "field" => "fecha_nacimiento"
         ]);
         exit;
     }
+
+    $rawCedula = preg_replace('/[^0-9]/', '', $cedula);
+    if (!empty($rawCedula)) {
+        if (strlen($rawCedula) < 6 || strlen($rawCedula) > 12) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "La cédula debe contener entre 6 y 12 dígitos numéricos.",
+                "field" => "cedula"
+            ]);
+            exit;
+        }
+
+        $existente = Visitante::buscarPorCedula($db, $rawCedula, $id);
+        if ($existente) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "La cédula " . $rawCedula . " ya pertenece a otro visitante registrado (" . $existente['nombres'] . " " . $existente['apellidos'] . ").",
+                "field" => "cedula"
+            ]);
+            exit;
+        }
+    }
+
+    $cedulaFinal = !empty($rawCedula) ? $rawCedula : null;
 
     try {
         $visitante = new Visitante($db);
         $visitante->setId($id);
         $visitante->setNombres($nombres);
         $visitante->setApellidos($apellidos);
-        $visitante->setCedula($cedula);
+        $visitante->setCedula($cedulaFinal);
         $visitante->setFechaNacimiento($fecha_nacimiento);
 
         if ($visitante->actualizar($db)) {
@@ -295,9 +359,11 @@ function actualizarVisitanteAction($db) {
         }
     } catch (InvalidArgumentException $e) {
         http_response_code(400);
+        $field = (stripos($e->getMessage(), 'cédula') !== false || stripos($e->getMessage(), 'cedula') !== false) ? 'cedula' : null;
         echo json_encode([
             "status" => "error",
-            "message" => $e->getMessage()
+            "message" => $e->getMessage(),
+            "field" => $field
         ]);
     } catch (Exception $e) {
         http_response_code(500);

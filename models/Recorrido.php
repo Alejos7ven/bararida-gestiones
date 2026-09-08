@@ -20,7 +20,7 @@ class Recorrido {
     }
 
     // =========================================================================
-    // GETTERS Y SETTERS CON VALIDACIÓN
+    // GETTERS Y SETTERS
     // =========================================================================
 
     public function getId() {
@@ -28,7 +28,7 @@ class Recorrido {
     }
 
     public function setId($id) {
-        $this->id = filter_var($id, FILTER_VALIDATE_INT) ? (int)$id : null;
+        $this->id = $id;
     }
 
     public function getNombre() {
@@ -36,7 +36,7 @@ class Recorrido {
     }
 
     public function setNombre($nombre) {
-        $this->nombre = strip_tags(trim($nombre));
+        $this->nombre = $nombre;
     }
 
     // =========================================================================
@@ -165,23 +165,18 @@ class Recorrido {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        $cleanId = filter_var($id, FILTER_VALIDATE_INT) ? (int)$id : null;
-        if (!$cleanId) {
-            throw new InvalidArgumentException("ID de recorrido inválido.");
-        }
-
         try {
             $this->db->beginTransaction();
 
             // 1. Eliminar las paradas asociadas en la tabla 'rutas' primero
             require_once __DIR__ . "/Ruta.php";
             $ruta = new Ruta($this->db);
-            $ruta->eliminarPorRecorrido($cleanId);
+            $ruta->eliminarPorRecorrido($id);
 
             // 2. Eliminar el recorrido principal
             $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(":id", $cleanId, PDO::PARAM_INT);
+            $stmt->bindParam(":id", $id, PDO::PARAM_INT);
             $stmt->execute();
 
             $this->db->commit();

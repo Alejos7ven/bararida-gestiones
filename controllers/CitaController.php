@@ -213,7 +213,8 @@ function crearCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Los campos fecha de visita, hora de inicio y método de pago son requeridos."
+            "message" => "Los campos fecha de visita, hora de inicio y método de pago son requeridos.",
+            "field" => empty($fecha_visita) ? "fecha_visita" : (empty($hora_inicio) ? "hora_inicio" : "metodo_pago")
         ]);
         return;
     }
@@ -222,7 +223,8 @@ function crearCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La fecha de la visita debe tener el formato AAAA-MM-DD."
+            "message" => "La fecha de la visita debe tener el formato AAAA-MM-DD.",
+            "field" => "fecha_visita"
         ]);
         return;
     }
@@ -231,7 +233,8 @@ function crearCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La hora de inicio de la visita no es válida."
+            "message" => "La hora de inicio de la visita no es válida.",
+            "field" => "hora_inicio"
         ]);
         return;
     }
@@ -240,7 +243,8 @@ function crearCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El método de pago no es válido."
+            "message" => "El método de pago no es válido.",
+            "field" => "metodo_pago"
         ]);
         return;
     }
@@ -249,7 +253,8 @@ function crearCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El estado de pago no es válido."
+            "message" => "El estado de pago no es válido.",
+            "field" => "pago_estado"
         ]);
         return;
     }
@@ -258,7 +263,8 @@ function crearCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El recorrido seleccionado no es válido."
+            "message" => "El recorrido seleccionado no es válido.",
+            "field" => "recorrido_id"
         ]);
         return;
     }
@@ -580,10 +586,34 @@ function importarVisitantesAction($db) {
                 continue;
             }
 
+            // Validaciones en el Controller
+            if (empty($nom) || empty($ape) || empty($fNac)) {
+                fclose($handle);
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowIndex}: Los campos Nombres, Apellidos y Fecha de Nacimiento son obligatorios."
+                ]);
+                return;
+            }
+
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fNac)) {
+                fclose($handle);
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowIndex}: La fecha de nacimiento del visitante '{$nom}' debe tener formato AAAA-MM-DD."
+                ]);
+                return;
+            }
+
+            $rawCed = preg_replace('/[^0-9]/', '', $ced);
+            $cedulaFinal = !empty($rawCed) ? $rawCed : null;
+
             $visitantes[] = [
-                'cedula' => $ced,
-                'nombres' => $nom,
-                'apellidos' => $ape,
+                'cedula' => $cedulaFinal,
+                'nombres' => strip_tags($nom),
+                'apellidos' => strip_tags($ape),
                 'fecha_nacimiento' => $fNac
             ];
         }
@@ -763,10 +793,12 @@ function editarCitaAction($db) {
     $estatus = isset($_POST['estatus']) ? trim($_POST['estatus']) : 'pendiente';
 
     if (empty($fecha_visita) || empty($hora_inicio) || empty($metodo_pago) || empty($estatus)) {
+        $missingField = empty($fecha_visita) ? "fecha_visita" : (empty($hora_inicio) ? "hora_inicio" : (empty($metodo_pago) ? "metodo_pago" : "estatus"));
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Los campos fecha de visita, hora de inicio, método de pago y estado de la cita son requeridos."
+            "message" => "Los campos fecha de visita, hora de inicio, método de pago y estado de la cita son requeridos.",
+            "field" => $missingField
         ]);
         return;
     }
@@ -775,7 +807,8 @@ function editarCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La fecha de la visita debe tener el formato AAAA-MM-DD."
+            "message" => "La fecha de la visita debe tener el formato AAAA-MM-DD.",
+            "field" => "fecha_visita"
         ]);
         return;
     }
@@ -784,7 +817,8 @@ function editarCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La hora de inicio de la visita no es válida."
+            "message" => "La hora de inicio de la visita no es válida.",
+            "field" => "hora_inicio"
         ]);
         return;
     }
@@ -793,7 +827,8 @@ function editarCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El método de pago no es válido."
+            "message" => "El método de pago no es válido.",
+            "field" => "metodo_pago"
         ]);
         return;
     }
@@ -802,7 +837,8 @@ function editarCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El estado de pago no es válido."
+            "message" => "El estado de pago no es válido.",
+            "field" => "pago_estado"
         ]);
         return;
     }
@@ -811,7 +847,8 @@ function editarCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El recorrido seleccionado no es válido."
+            "message" => "El recorrido seleccionado no es válido.",
+            "field" => "recorrido_id"
         ]);
         return;
     }
@@ -820,7 +857,8 @@ function editarCitaAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El estado de la cita proporcionado no es válido."
+            "message" => "El estado de la cita proporcionado no es válido.",
+            "field" => "estatus"
         ]);
         return;
     }

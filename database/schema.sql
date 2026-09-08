@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS visitantes (
   `cedula` varchar(30) DEFAULT NULL,
   `nombres` varchar(100) NOT NULL,
   `apellidos` varchar(100) NOT NULL,
-  `fecha_nacimiento` date NOT NULL
+  `fecha_nacimiento` date NOT NULL,
+  UNIQUE KEY `idx_visitantes_cedula` (`cedula`)
 );
 
 CREATE TABLE IF NOT EXISTS estados (

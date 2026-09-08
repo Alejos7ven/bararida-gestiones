@@ -34,32 +34,32 @@ class Personal {
     public function getLoginError() { return $this->loginError; }
 
     public function getId() { return $this->id; }
-    public function setId($id) { $this->id = $id !== null ? (int)$id : null; }
+    public function setId($id) { $this->id = $id; }
 
     public function getTipoDocumento() { return $this->tipo_documento; }
-    public function setTipoDocumento($tipo_documento) { $this->tipo_documento = $tipo_documento !== null ? strtoupper(trim($tipo_documento)) : 'V'; }
+    public function setTipoDocumento($tipo_documento) { $this->tipo_documento = $tipo_documento; }
 
     public function getCedula() { return $this->cedula; }
-    public function setCedula($cedula) { $this->cedula = $cedula !== null ? trim($cedula) : ''; }
+    public function setCedula($cedula) { $this->cedula = $cedula; }
 
     public function getNombreCompleto() { return $this->nombre_completo; }
-    public function setNombreCompleto($nombre_completo) { $this->nombre_completo = $nombre_completo !== null ? trim($nombre_completo) : ''; }
+    public function setNombreCompleto($nombre_completo) { $this->nombre_completo = $nombre_completo; }
 
     // Compatibilidad
     public function getNombre() { return $this->nombre_completo; }
-    public function setNombre($nombre) { $this->nombre_completo = $nombre !== null ? trim($nombre) : ''; }
+    public function setNombre($nombre) { $this->nombre_completo = $nombre; }
 
     public function getRol() { return $this->rol; }
-    public function setRol($rol) { $this->rol = $rol !== null ? strtolower(trim($rol)) : ''; }
+    public function setRol($rol) { $this->rol = $rol; }
 
     public function getRolId() { return $this->rol_id; }
-    public function setRolId($rol_id) { $this->rol_id = $rol_id !== null ? (int)$rol_id : null; }
+    public function setRolId($rol_id) { $this->rol_id = $rol_id; }
 
     public function getPassword() { return $this->password; }
     public function setPassword($passwordHash) { $this->password = $passwordHash; }
 
     public function setPlainPassword($plainPassword) {
-        $this->password = password_hash(trim($plainPassword), PASSWORD_BCRYPT);
+        $this->password = password_hash($plainPassword, PASSWORD_BCRYPT);
     }
 
     // =========================================================================
@@ -78,22 +78,14 @@ class Personal {
         }
 
         try {
-            $cleanCedula = preg_replace('/[^0-9]/', '', trim($cedula));
-            $cleanTipoDoc = strtoupper(trim($tipo_documento));
-            
-            if (empty($cleanTipoDoc) || empty($cleanCedula) || empty($password)) {
-                $this->loginError = "El tipo de documento, documento y contraseña son requeridos.";
-                return false;
-            }
-
             $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre_completo, r.id AS rol_id, r.nombre AS rol, p.password 
                       FROM " . $this->table_name . " p
                       INNER JOIN entidades e ON p.entidad_id = e.id
                       INNER JOIN roles r ON p.rol_id = r.id
-                      WHERE UPPER(e.tipo_documento) = :tipo_documento AND e.documento = :cedula LIMIT 1";
+                      WHERE UPPER(e.tipo_documento) = UPPER(:tipo_documento) AND e.documento = :cedula LIMIT 1";
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(":tipo_documento", $cleanTipoDoc, PDO::PARAM_STR);
-            $stmt->bindParam(":cedula", $cleanCedula, PDO::PARAM_STR);
+            $stmt->bindParam(":tipo_documento", $tipo_documento, PDO::PARAM_STR);
+            $stmt->bindParam(":cedula", $cedula, PDO::PARAM_STR);
             $stmt->execute();
 
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -170,19 +162,17 @@ class Personal {
         if (!$db) {
             return false;
         }
-        $cleanCedula = preg_replace('/[^0-9]/', '', trim($cedula));
-        $cleanTipoDoc = strtoupper(trim($tipo_documento));
         $query = "SELECT COUNT(*) 
                   FROM personal p
                   INNER JOIN entidades e ON p.entidad_id = e.id
-                  WHERE UPPER(e.tipo_documento) = :tipo_documento AND e.documento = :cedula";
+                  WHERE UPPER(e.tipo_documento) = UPPER(:tipo_documento) AND e.documento = :cedula";
         if ($excluirId !== null) {
             $query .= " AND p.id != :excluirId";
         }
         
         $stmt = $db->prepare($query);
-        $stmt->bindParam(":tipo_documento", $cleanTipoDoc, PDO::PARAM_STR);
-        $stmt->bindParam(":cedula", $cleanCedula, PDO::PARAM_STR);
+        $stmt->bindParam(":tipo_documento", $tipo_documento, PDO::PARAM_STR);
+        $stmt->bindParam(":cedula", $cedula, PDO::PARAM_STR);
         if ($excluirId !== null) {
             $cleanExcluir = (int)$excluirId;
             $stmt->bindParam(":excluirId", $cleanExcluir, PDO::PARAM_INT);

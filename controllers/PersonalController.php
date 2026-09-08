@@ -185,10 +185,12 @@ function crearAction($db) {
 
     // Validar campos requeridos
     if (empty($tipo_documento) || empty($cedula) || empty($nombre_completo) || empty($rol) || empty($password)) {
+        $missingField = empty($tipo_documento) ? "tipo_documento" : (empty($cedula) ? "cedula" : (empty($nombre_completo) ? "nombre_completo" : (empty($rol) ? "rol" : "password")));
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Todos los campos son obligatorios para el registro (Tipo, Documento, Nombre Completo, Rol y Contraseña)."
+            "message" => "Todos los campos son obligatorios para el registro (Tipo, Documento, Nombre Completo, Rol y Contraseña).",
+            "field" => $missingField
         ]);
         return;
     }
@@ -199,7 +201,8 @@ function crearAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El tipo de documento proporcionado no es válido."
+            "message" => "El tipo de documento proporcionado no es válido.",
+            "field" => "tipo_documento"
         ]);
         return;
     }
@@ -210,7 +213,8 @@ function crearAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La cédula debe contener solo números y tener entre 6 y 15 dígitos."
+            "message" => "La cédula debe contener solo números y tener entre 6 y 15 dígitos.",
+            "field" => "cedula"
         ]);
         return;
     }
@@ -221,7 +225,8 @@ function crearAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre completo debe tener entre 3 y 150 caracteres."
+            "message" => "El nombre completo debe tener entre 3 y 150 caracteres.",
+            "field" => "nombre_completo"
         ]);
         return;
     }
@@ -231,7 +236,8 @@ function crearAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La contraseña debe tener al menos 6 caracteres."
+            "message" => "La contraseña debe tener al menos 6 caracteres.",
+            "field" => "password"
         ]);
         return;
     }
@@ -257,7 +263,8 @@ function crearAction($db) {
                 if ($r === 'admin') return 'Administrador';
                 if ($r === 'guia') return 'Guía de Campo';
                 return ucfirst($r);
-            }, $validRoles))
+            }, $validRoles)),
+            "field" => "rol"
         ]);
         return;
     }
@@ -313,10 +320,12 @@ function actualizarAction($db) {
     $password = isset($_POST['password']) ? trim($_POST['password']) : '';
 
     if ($id === null || $id < 0 || empty($tipo_documento) || empty($cedula) || empty($nombre_completo) || empty($rol)) {
+        $missingField = empty($tipo_documento) ? "tipo_documento" : (empty($cedula) ? "cedula" : (empty($nombre_completo) ? "nombre_completo" : "rol"));
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Los campos ID, tipo de documento, documento, nombre completo y rol son requeridos."
+            "message" => "Los campos ID, tipo de documento, documento, nombre completo y rol son requeridos.",
+            "field" => $missingField
         ]);
         return;
     }
@@ -326,7 +335,8 @@ function actualizarAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El tipo de documento proporcionado no es válido."
+            "message" => "El tipo de documento proporcionado no es válido.",
+            "field" => "tipo_documento"
         ]);
         return;
     }
@@ -336,7 +346,8 @@ function actualizarAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La cédula debe contener solo números y tener entre 6 y 15 dígitos."
+            "message" => "La cédula debe contener solo números y tener entre 6 y 15 dígitos.",
+            "field" => "cedula"
         ]);
         return;
     }
@@ -346,7 +357,8 @@ function actualizarAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre completo debe tener entre 3 y 150 caracteres."
+            "message" => "El nombre completo debe tener entre 3 y 150 caracteres.",
+            "field" => "nombre_completo"
         ]);
         return;
     }
@@ -355,7 +367,8 @@ function actualizarAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La contraseña debe tener al menos 6 caracteres."
+            "message" => "La contraseña debe tener al menos 6 caracteres.",
+            "field" => "password"
         ]);
         return;
     }
@@ -375,7 +388,8 @@ function actualizarAction($db) {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
-                "message" => "No está permitido promover personal al rol de Super Administrador."
+                "message" => "No está permitido promover personal al rol de Super Administrador.",
+                "field" => "rol"
             ]);
             return;
         }
@@ -384,7 +398,8 @@ function actualizarAction($db) {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
-                "message" => "No está permitido degradar o cambiar el rol de un Super Administrador."
+                "message" => "No está permitido degradar o cambiar el rol de un Super Administrador.",
+                "field" => "rol"
             ]);
             return;
         }
@@ -405,7 +420,8 @@ function actualizarAction($db) {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
-                "message" => "El rol especificado no es válido."
+                "message" => "El rol especificado no es válido.",
+                "field" => "rol"
             ]);
             return;
         }

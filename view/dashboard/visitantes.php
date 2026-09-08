@@ -65,7 +65,7 @@ if (!isset($userPermissions)) {
     </div>
 
     <!-- MODAL: REGISTRAR VISITANTE MANUALMENTE -->
-    <div class="modal fade modal-premium" id="modalCrearVisitante" tabindex="-1" aria-labelledby="modalCrearVisitanteLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal fade modal-premium" id="modalCrearVisitante" tabindex="-1" aria-labelledby="modalCrearVisitanteLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
@@ -102,7 +102,7 @@ if (!isset($userPermissions)) {
     </div>
 
     <!-- MODAL: EDITAR VISITANTE -->
-    <div class="modal fade modal-premium" id="modalEditarVisitante" tabindex="-1" aria-labelledby="modalEditarVisitanteLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal fade modal-premium" id="modalEditarVisitante" tabindex="-1" aria-labelledby="modalEditarVisitanteLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">

@@ -21,7 +21,7 @@ if (!isset($userPermissions)) {
 
         <div class="search-filter-row">
             <div class="search-input-group">
-                <svg class="search-icon-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 14z"/></svg>
+                <svg class="search-icon-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                 <input type="text" id="searchInstituciones" placeholder="Filtrar por RIF, Razón Social, Sede o Tipo...">
             </div>
         </div>
@@ -65,7 +65,7 @@ if (!isset($userPermissions)) {
     </div>
 
     <!-- MODAL: REGISTRAR INSTITUCIÓN STANDALONE -->
-    <div class="modal fade modal-premium" id="modalCrearInstitucion" tabindex="-1" aria-labelledby="modalCrearInstitucionLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal fade modal-premium" id="modalCrearInstitucion" tabindex="-1" aria-labelledby="modalCrearInstitucionLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">
@@ -174,7 +174,7 @@ if (!isset($userPermissions)) {
     </div>
 
     <!-- MODAL: EDITAR INSTITUCIÓN -->
-    <div class="modal fade modal-premium" id="modalEditarInstitucion" tabindex="-1" aria-labelledby="modalEditarInstitucionLabel" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal fade modal-premium" id="modalEditarInstitucion" tabindex="-1" aria-labelledby="modalEditarInstitucionLabel" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 20px 24px;">

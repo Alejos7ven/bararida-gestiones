@@ -4,6 +4,31 @@
  * Manejo modular de instituciones y sedes múltiples
  */
 
+// Asegurar disponibilidad de utilidades globales de validación
+if (typeof window.limpiarErroresFormulario !== 'function') {
+    window.limpiarErroresFormulario = function(formSelector) {
+        const $form = $(formSelector);
+        if (!$form.length) return;
+        $form.find('.is-invalid').removeClass('is-valid');
+        $form.find('.invalid-feedback').hide().text('');
+    };
+}
+if (typeof window.marcarErrorInput !== 'function') {
+    window.marcarErrorInput = function(element, mensaje, doFocus = true) {
+        const $el = $(element);
+        if (!$el.length) return;
+        $el.addClass('is-invalid').removeClass('is-valid');
+        if (doFocus) setTimeout(function() { $el.trigger('focus'); }, 80);
+    };
+}
+if (typeof window.mapearErrorServidorAFormulario !== 'function') {
+    window.mapearErrorServidorAFormulario = function(formSelector, errorMessage, fieldName = null, $alertBanner = null) {
+        if ($alertBanner && $alertBanner.length) {
+            $alertBanner.removeClass('alert-success').addClass('alert-danger').text(errorMessage).fadeIn(200);
+        }
+    };
+}
+
 $(document).ready(function() {
     // Referencias DOM principales
     const $tablaInst = $('#tablaInstitucionesBody');
@@ -534,7 +559,7 @@ $(document).ready(function() {
         const contactHtml = `
             <div class="input-group input-group-sm mb-1 contact-row" data-tipo="${tipo}">
                 <span class="input-group-text bg-white">${tipo === 'telefono' ? '📞' : '✉'}</span>
-                <input type="${inputType}" ${inputMode} class="form-control input-contacto-val ${extraClass}" placeholder="${placeholder}" value="${valor}" required>
+                <input type="${inputType}" ${inputMode} class="form-control input-contacto-val ${extraClass}" placeholder="${placeholder}" value="${valor}">
                 <button type="button" class="btn btn-outline-danger btn-remove-contact" title="Eliminar Contacto">&times;</button>
             </div>
         `;
@@ -574,6 +599,12 @@ $(document).ready(function() {
     // Al abrir el modal de crear, inicializar con 1 sede y 1 teléfono por defecto
     $('#modalCrearInstitucion').on('show.bs.modal', function() {
         $('#alertCrearInstFeedback').hide();
+        if (typeof window.limpiarErroresFormulario === 'function') {
+            window.limpiarErroresFormulario('#formCrearInstitucion');
+        } else {
+            $('#formCrearInstitucion').find('.is-invalid').removeClass('is-valid');
+            $('#formCrearInstitucion').find('.invalid-feedback').hide().text('');
+        }
         $('#createSedesContainer').empty();
         $('#createPhonesContainer').empty();
         $('#createEmailsContainer').empty();
@@ -582,6 +613,14 @@ $(document).ready(function() {
         agregarSedeCard('#createSedesContainer', 'create');
         // 1 teléfono por defecto
         agregarContacto('createPhonesContainer', 'telefono');
+        // 1 correo por defecto
+        agregarContacto('createEmailsContainer', 'correo');
+    });
+
+    $('#modalCrearInstitucion').on('shown.bs.modal', function() {
+        setTimeout(function() {
+            $('#create_documento').trigger('focus');
+        }, 100);
     });
 
     $('#formCrearInstitucion').on('submit', function(e) {
@@ -591,47 +630,83 @@ $(document).ready(function() {
         const $alert = $('#alertCrearInstFeedback');
         $alert.hide();
 
+        if (!$('#formCrearInstitucion').valid()) {
+            return;
+        }
+
         const tipo_documento = $('#create_tipo_documento').val();
         const documento = $.trim($('#create_documento').val());
         const nombre_completo = $.trim($('#create_nombre_completo').val());
         let tipo_organizacion = $('#create_tipo_organizacion_select').val();
         if (tipo_organizacion === 'Otro') {
             tipo_organizacion = $.trim($('#create_tipo_organizacion').val());
+            if (!tipo_organizacion) {
+                window.marcarErrorInput('#create_tipo_organizacion', 'Debe especificar el tipo de organización.', true);
+                return;
+            }
         }
         const tipo_gestion = $('#create_tipo_gestion').val();
-
-        if (!documento || !nombre_completo || !tipo_organizacion) {
-            showAlert($alert, 'Por favor complete todos los datos identificativos requeridos.', 'danger');
-            return;
-        }
 
         // Recolectar sedes
         const sedes = [];
         let sedeError = false;
+        let $firstSedeErr = null;
+        let sedeErrorMsg = '';
+
+        if ($('#createSedesContainer .sede-card').length === 0) {
+            window.marcarErrorInput('#btnCreateAddSede', 'Debe agregar al menos una sede para la institución.', true);
+            return;
+        }
+
         $('#createSedesContainer .sede-card').each(function() {
-            const ciudadId = $(this).find('.select-ciudad').val();
-            const parroquiaId = $(this).find('.select-parroquia').val();
+            const $ciudad = $(this).find('.select-ciudad');
+            const $parroquia = $(this).find('.select-parroquia');
+            const $municipio = $(this).find('.select-municipio');
+            const $estado = $(this).find('.select-estado');
             const detalles = $.trim($(this).find('.input-detalles').val());
 
-            if (!ciudadId || !parroquiaId) {
+            if (!$estado.val()) {
                 sedeError = true;
+                $firstSedeErr = $estado;
+                sedeErrorMsg = 'Debe seleccionar el estado para esta sede.';
                 return false;
             }
+            if (!$municipio.val()) {
+                sedeError = true;
+                $firstSedeErr = $municipio;
+                sedeErrorMsg = 'Debe seleccionar el municipio para esta sede.';
+                return false;
+            }
+            if (!$parroquia.val()) {
+                sedeError = true;
+                $firstSedeErr = $parroquia;
+                sedeErrorMsg = 'Debe seleccionar la parroquia para esta sede.';
+                return false;
+            }
+            if (!$ciudad.val()) {
+                sedeError = true;
+                $firstSedeErr = $ciudad;
+                sedeErrorMsg = 'Debe seleccionar la ciudad para esta sede.';
+                return false;
+            }
+
             sedes.push({
-                ciudad_id: ciudadId,
-                parroquia_id: parroquiaId,
+                ciudad_id: $ciudad.val(),
+                parroquia_id: $parroquia.val(),
                 detalles: detalles
             });
         });
 
-        if (sedeError || sedes.length === 0) {
-            showAlert($alert, 'Debe completar la ubicación geográfica de todas las sedes registradas (Estado, Municipio, Parroquia y Ciudad).', 'danger');
+        if (sedeError && $firstSedeErr) {
+            window.marcarErrorInput($firstSedeErr, sedeErrorMsg, true);
+            showAlert($alert, sedeErrorMsg, 'danger');
             return;
         }
 
         // Recolectar contactos y validar formatos
         const contactos = [];
         let contactError = false;
+        let $firstContactErr = null;
         let contactErrorMsg = '';
 
         $('#createPhonesContainer .contact-row, #createEmailsContainer .contact-row').each(function() {
@@ -643,33 +718,36 @@ $(document).ready(function() {
                     const cleanDigits = val.replace(/[^0-9]/g, '');
                     if (/[a-zA-Z]/.test(val) || cleanDigits.length < 7 || cleanDigits.length > 15) {
                         contactError = true;
+                        $firstContactErr = $input;
                         contactErrorMsg = `El número de teléfono "${val}" no es válido. No debe contener letras y debe tener entre 7 y 15 dígitos.`;
-                        $input.addClass('is-invalid');
                         return false;
-                    } else {
-                        $input.removeClass('is-invalid');
                     }
                 } else if (tipo === 'correo') {
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (!emailRegex.test(val)) {
                         contactError = true;
+                        $firstContactErr = $input;
                         contactErrorMsg = `El correo electrónico "${val}" no tiene un formato válido.`;
-                        $input.addClass('is-invalid');
                         return false;
-                    } else {
-                        $input.removeClass('is-invalid');
                     }
                 }
                 contactos.push({ tipo: tipo, contacto: val });
             }
         });
 
-        if (contactError) {
+        if (contactError && $firstContactErr) {
+            window.marcarErrorInput($firstContactErr, contactErrorMsg, true);
             showAlert($alert, contactErrorMsg, 'danger');
             return;
         }
 
         if (contactos.length === 0) {
+            let $firstContact = $('#createPhonesContainer .input-contacto-val, #createEmailsContainer .input-contacto-val').first();
+            if (!$firstContact.length) {
+                agregarContacto('createPhonesContainer', 'telefono');
+                $firstContact = $('#createPhonesContainer .input-contacto-val').last();
+            }
+            window.marcarErrorInput($firstContact, 'Debe registrar al menos un número de teléfono o correo de contacto.', true);
             showAlert($alert, 'Debe registrar al menos un número de teléfono o correo de contacto.', 'danger');
             return;
         }
@@ -699,16 +777,18 @@ $(document).ready(function() {
                     $searchInst.val('');
                     listarInstituciones();
                 } else {
-                    showAlert($alert, response.message, 'danger');
+                    window.mapearErrorServidorAFormulario('#formCrearInstitucion', response.message, null, $alert);
                 }
             },
             error: function(xhr) {
                 $btn.prop('disabled', false).text('Registrar Institución');
                 let msg = 'Error en el servidor al registrar la institución.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    msg = xhr.responseJSON.message;
+                let field = null;
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                    if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                 }
-                showAlert($alert, msg, 'danger');
+                window.mapearErrorServidorAFormulario('#formCrearInstitucion', msg, field, $alert);
             }
         });
     });
@@ -720,6 +800,12 @@ $(document).ready(function() {
         const id = $(this).data('id');
         const $alert = $('#alertEditarInstFeedback');
         $alert.hide();
+        if (typeof window.limpiarErroresFormulario === 'function') {
+            window.limpiarErroresFormulario('#formEditarInstitucion');
+        } else {
+            $('#formEditarInstitucion').find('.is-invalid').removeClass('is-valid');
+            $('#formEditarInstitucion').find('.invalid-feedback').hide().text('');
+        }
         $('#editSedesContainer').empty();
         $('#editPhonesContainer').empty();
         $('#editEmailsContainer').empty();
@@ -760,15 +846,27 @@ $(document).ready(function() {
                     }
 
                     // Poblar Contactos
+                    let hasEmail = false;
+                    let hasPhone = false;
                     if (inst.contactos && inst.contactos.length > 0) {
                         inst.contactos.forEach(function(c) {
                             if (c.tipo === 'correo') {
                                 agregarContacto('editEmailsContainer', 'correo', c.contacto);
+                                hasEmail = true;
                             } else {
                                 agregarContacto('editPhonesContainer', 'telefono', c.contacto);
+                                hasPhone = true;
                             }
                         });
-                    } else {
+                    }
+
+                    // Si no tiene correos registrados, mostrar 1 campo de correo por defecto para facilitar agregarlo
+                    if (!hasEmail) {
+                        agregarContacto('editEmailsContainer', 'correo');
+                    }
+
+                    // Solo si no tiene ningún contacto registrado (ni teléfono ni correo), agregar un campo de teléfono
+                    if (!hasPhone && !hasEmail) {
                         agregarContacto('editPhonesContainer', 'telefono');
                     }
 
@@ -783,12 +881,22 @@ $(document).ready(function() {
         });
     });
 
+    $('#modalEditarInstitucion').on('shown.bs.modal', function() {
+        setTimeout(function() {
+            $('#edit_documento').trigger('focus');
+        }, 100);
+    });
+
     $('#formEditarInstitucion').on('submit', function(e) {
         e.preventDefault();
 
         const $btn = $('#btnGuardarEditInst');
         const $alert = $('#alertEditarInstFeedback');
         $alert.hide();
+
+        if (!$('#formEditarInstitucion').valid()) {
+            return;
+        }
 
         const id = $('#edit_id').val();
         const entidad_id = $('#edit_entidad_id').val();
@@ -798,43 +906,75 @@ $(document).ready(function() {
         let tipo_organizacion = $('#edit_tipo_organizacion_select').val();
         if (tipo_organizacion === 'Otro') {
             tipo_organizacion = $.trim($('#edit_tipo_organizacion').val());
+            if (!tipo_organizacion) {
+                window.marcarErrorInput('#edit_tipo_organizacion', 'Debe especificar el tipo de organización.', true);
+                return;
+            }
         }
         const tipo_gestion = $('#edit_tipo_gestion').val();
-
-        if (!documento || !nombre_completo || !tipo_organizacion) {
-            showAlert($alert, 'Por favor complete todos los datos identificativos requeridos.', 'danger');
-            return;
-        }
 
         // Recolectar sedes
         const sedes = [];
         let sedeError = false;
+        let $firstSedeErr = null;
+        let sedeErrorMsg = '';
+
+        if ($('#editSedesContainer .sede-card').length === 0) {
+            window.marcarErrorInput('#btnEditAddSede', 'Debe existir al menos una sede registrada.', true);
+            return;
+        }
+
         $('#editSedesContainer .sede-card').each(function() {
             const sId = $(this).find('.sede-id-input').val();
-            const ciudadId = $(this).find('.select-ciudad').val();
-            const parroquiaId = $(this).find('.select-parroquia').val();
+            const $ciudad = $(this).find('.select-ciudad');
+            const $parroquia = $(this).find('.select-parroquia');
+            const $municipio = $(this).find('.select-municipio');
+            const $estado = $(this).find('.select-estado');
             const detalles = $.trim($(this).find('.input-detalles').val());
 
-            if (!ciudadId || !parroquiaId) {
+            if (!$estado.val()) {
                 sedeError = true;
+                $firstSedeErr = $estado;
+                sedeErrorMsg = 'Debe seleccionar el estado para esta sede.';
                 return false;
             }
+            if (!$municipio.val()) {
+                sedeError = true;
+                $firstSedeErr = $municipio;
+                sedeErrorMsg = 'Debe seleccionar el municipio para esta sede.';
+                return false;
+            }
+            if (!$parroquia.val()) {
+                sedeError = true;
+                $firstSedeErr = $parroquia;
+                sedeErrorMsg = 'Debe seleccionar la parroquia para esta sede.';
+                return false;
+            }
+            if (!$ciudad.val()) {
+                sedeError = true;
+                $firstSedeErr = $ciudad;
+                sedeErrorMsg = 'Debe seleccionar la ciudad para esta sede.';
+                return false;
+            }
+
             sedes.push({
                 id: sId || null,
-                ciudad_id: ciudadId,
-                parroquia_id: parroquiaId,
+                ciudad_id: $ciudad.val(),
+                parroquia_id: $parroquia.val(),
                 detalles: detalles
             });
         });
 
-        if (sedeError || sedes.length === 0) {
-            showAlert($alert, 'Debe completar la ubicación geográfica de todas las sedes registradas.', 'danger');
+        if (sedeError && $firstSedeErr) {
+            window.marcarErrorInput($firstSedeErr, sedeErrorMsg, true);
+            showAlert($alert, sedeErrorMsg, 'danger');
             return;
         }
 
         // Recolectar contactos y validar formatos
         const contactos = [];
         let contactError = false;
+        let $firstContactErr = null;
         let contactErrorMsg = '';
 
         $('#editPhonesContainer .contact-row, #editEmailsContainer .contact-row').each(function() {
@@ -846,33 +986,36 @@ $(document).ready(function() {
                     const cleanDigits = val.replace(/[^0-9]/g, '');
                     if (/[a-zA-Z]/.test(val) || cleanDigits.length < 7 || cleanDigits.length > 15) {
                         contactError = true;
+                        $firstContactErr = $input;
                         contactErrorMsg = `El número de teléfono "${val}" no es válido. No debe contener letras y debe tener entre 7 y 15 dígitos.`;
-                        $input.addClass('is-invalid');
                         return false;
-                    } else {
-                        $input.removeClass('is-invalid');
                     }
                 } else if (tipo === 'correo') {
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (!emailRegex.test(val)) {
                         contactError = true;
+                        $firstContactErr = $input;
                         contactErrorMsg = `El correo electrónico "${val}" no tiene un formato válido.`;
-                        $input.addClass('is-invalid');
                         return false;
-                    } else {
-                        $input.removeClass('is-invalid');
                     }
                 }
                 contactos.push({ tipo: tipo, contacto: val });
             }
         });
 
-        if (contactError) {
+        if (contactError && $firstContactErr) {
+            window.marcarErrorInput($firstContactErr, contactErrorMsg, true);
             showAlert($alert, contactErrorMsg, 'danger');
             return;
         }
 
         if (contactos.length === 0) {
+            let $firstContact = $('#editPhonesContainer .input-contacto-val, #editEmailsContainer .input-contacto-val').first();
+            if (!$firstContact.length) {
+                agregarContacto('editPhonesContainer', 'telefono');
+                $firstContact = $('#editPhonesContainer .input-contacto-val').last();
+            }
+            window.marcarErrorInput($firstContact, 'Debe registrar al menos un número de teléfono o correo de contacto.', true);
             showAlert($alert, 'Debe registrar al menos un número de teléfono o correo de contacto.', 'danger');
             return;
         }
@@ -901,16 +1044,18 @@ $(document).ready(function() {
                     showGlobalAlert(response.message, 'success');
                     listarInstituciones();
                 } else {
-                    showAlert($alert, response.message, 'danger');
+                    window.mapearErrorServidorAFormulario('#formEditarInstitucion', response.message, null, $alert);
                 }
             },
             error: function(xhr) {
                 $btn.prop('disabled', false).text('Guardar Cambios');
                 let msg = 'Error en el servidor al actualizar la institución.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    msg = xhr.responseJSON.message;
+                let field = null;
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                    if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                 }
-                showAlert($alert, msg, 'danger');
+                window.mapearErrorServidorAFormulario('#formEditarInstitucion', msg, field, $alert);
             }
         });
     });
