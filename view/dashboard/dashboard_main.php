@@ -59,11 +59,12 @@ if (!isset($userRol)) {
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 10%;">ID Cita</th>
-                                    <th style="width: 12%;">Hora</th>
-                                    <th style="width: 25%;">Institución</th>
-                                    <th style="width: 18%;">Recorrido</th>
-                                    <th style="width: 12%;">Visitantes</th>
-                                    <th style="width: 23%;">Guía(s) Asignado(s)</th>
+                                    <th style="width: 10%;">Hora</th>
+                                    <th style="width: 22%;">Institución</th>
+                                    <th style="width: 16%;">Recorrido</th>
+                                    <th style="width: 10%;">Visitantes</th>
+                                    <th style="width: 16%;">Guía(s) Asignado(s)</th>
+                                    <th style="width: 16%;">Estado / Recorrido</th>
                                 </tr>
                             </thead>
                             <tbody id="tablaCitasHoyBody">

@@ -83,6 +83,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'desasignar_guia':
             desasignarGuiaAction($db);
             break;
+        case 'empezar_recorrido':
+            empezarRecorridoAction($db);
+            break;
+        case 'terminar_recorrido':
+            terminarRecorridoAction($db);
+            break;
         default:
             http_response_code(400);
             echo json_encode([
@@ -1508,6 +1514,98 @@ function guiasCitaAction($db) {
     }
 }
 
+/**
+ * Inicia el recorrido de una cita (cambia estatus a 'en_recorrido' y fija hora de inicio)
+ */
+function empezarRecorridoAction($db) {
+    $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
 
+    if (!$cita_id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "ID de cita no válido o ausente."
+        ]);
+        return;
+    }
 
+    $personal = $_SESSION['personal'];
+    $rolNorm = strtolower(trim((string)$personal['rol']));
+    $personalId = (int)$personal['id'];
 
+    // Si es guía, comprobar que esté asignado a la cita
+    if ($rolNorm === 'guia' || $rolNorm === 'guía') {
+        if (!Cita::esGuiaAsignado($db, $cita_id, $personalId)) {
+            http_response_code(403);
+            echo json_encode([
+                "status" => "error",
+                "message" => "No tienes permisos para iniciar este recorrido ya que no eres un guía asignado a esta cita."
+            ]);
+            return;
+        }
+    }
+
+    $success = Cita::empezarRecorrido($db, $cita_id);
+
+    if ($success) {
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "message" => "¡El recorrido ha comenzado exitosamente! Duración estimada: 2 horas."
+        ]);
+    } else {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "No se pudo iniciar el recorrido. Intente nuevamente."
+        ]);
+    }
+}
+
+/**
+ * Finaliza manualmente el recorrido de una cita (cambia estatus a 'completado')
+ */
+function terminarRecorridoAction($db) {
+    $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
+
+    if (!$cita_id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "ID de cita no válido o ausente."
+        ]);
+        return;
+    }
+
+    $personal = $_SESSION['personal'];
+    $rolNorm = strtolower(trim((string)$personal['rol']));
+    $personalId = (int)$personal['id'];
+
+    // Si es guía, comprobar que esté asignado a la cita
+    if ($rolNorm === 'guia' || $rolNorm === 'guía') {
+        if (!Cita::esGuiaAsignado($db, $cita_id, $personalId)) {
+            http_response_code(403);
+            echo json_encode([
+                "status" => "error",
+                "message" => "No tienes permisos para finalizar este recorrido ya que no eres un guía asignado a esta cita."
+            ]);
+            return;
+        }
+    }
+
+    $success = Cita::terminarRecorrido($db, $cita_id);
+
+    if ($success) {
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "message" => "El recorrido ha sido finalizado con éxito."
+        ]);
+    } else {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "No se pudo finalizar el recorrido. Intente nuevamente."
+        ]);
+    }
+}

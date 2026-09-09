@@ -588,6 +588,46 @@
 
     let allGuias = [];
 
+    let timerRecorridosInterval = null;
+
+    function iniciarContadorRecorridos() {
+        if (timerRecorridosInterval) {
+            clearInterval(timerRecorridosInterval);
+            timerRecorridosInterval = null;
+        }
+
+        if ($('.timer-recorrido').length === 0) return;
+
+        timerRecorridosInterval = setInterval(function() {
+            let hayActivos = false;
+            $('.timer-recorrido').each(function() {
+                let restantes = parseInt($(this).data('restantes'), 10);
+                if (isNaN(restantes)) return;
+
+                if (restantes > 0) {
+                    restantes--;
+                    $(this).data('restantes', restantes);
+                    const h = Math.floor(restantes / 3600);
+                    const m = Math.floor((restantes % 3600) / 60);
+                    const s = restantes % 60;
+                    const format = (h > 0 ? (h < 10 ? '0' + h : h) + ':' : '') + 
+                                   (m < 10 ? '0' + m : m) + ':' + 
+                                   (s < 10 ? '0' + s : s);
+                    $(this).find('.tiempo-display').text(format);
+                    hayActivos = true;
+                } else {
+                    $(this).find('.tiempo-display').text('00:00 (Completando...)');
+                    cargarCitasHoy();
+                }
+            });
+
+            if (!hayActivos && timerRecorridosInterval) {
+                clearInterval(timerRecorridosInterval);
+                timerRecorridosInterval = null;
+            }
+        }, 1000);
+    }
+
     function cargarCitasHoy() {
         const $loader = $('#loaderCitasHoy');
         const $wrapper = $('#citasHoyWrapper');
@@ -609,7 +649,7 @@
                 if (response.status === 'success') {
                     const citas = response.data || [];
                     if (citas.length === 0) {
-                        $body.append('<tr><td colspan="6" class="text-center text-muted py-4">No hay visitas guiadas programadas para el día de hoy.</td></tr>');
+                        $body.append('<tr><td colspan="7" class="text-center text-muted py-4">No hay visitas guiadas programadas para el día de hoy.</td></tr>');
                         $wrapper.fadeIn(300);
                         return;
                     }
@@ -619,13 +659,14 @@
                         let guiasHtml = '';
                         
                         // Si el usuario es administrador o superadmin, permitir asignación
-                        // Detectar rol del usuario desde el atributo data inyectado por PHP
                         const userRol = $('#quickAccessCard').data('user-rol') || '';
                         const esAdmin = userRol === 'superadmin' || userRol === 'admin';
+                        const esMiAsignacion = parseInt(c.es_mi_asignacion, 10) === 1;
+                        const tieneGuia = !!c.guias_asignados;
+                        const puedeGestionarRecorrido = esAdmin || esMiAsignacion;
 
                         if (esAdmin) {
                             if (c.guias_asignados) {
-                                // Tiene guías: mostrar nombres + botón de edición (btn-action-edit) idéntico al de otras tablas
                                 guiasHtml = `<div class="table-actions d-flex align-items-center justify-content-center gap-2 flex-wrap">
                                     <span class="badge bg-success" style="font-size:0.75rem; font-weight:600;">${c.guias_asignados}</span>
                                     <button class="btn-action btn-action-edit btn-gestionar-guia-dash" data-id="${c.id}" title="Gestionar guías asignados">
@@ -633,7 +674,6 @@
                                     </button>
                                 </div>`;
                             } else {
-                                // Sin guía: solo el botón de asignar (btn-action-edit con ícono de agregar persona)
                                 guiasHtml = `<div class="table-actions justify-content-center">
                                     <button class="btn-action btn-action-edit btn-gestionar-guia-dash" data-id="${c.id}" title="Asignar guía a esta cita">
                                         <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
@@ -641,10 +681,60 @@
                                 </div>`;
                             }
                         } else {
-                            // Guía de campo: solo ver
                             guiasHtml = c.guias_asignados
                                 ? `<span class="badge bg-success" style="font-size:0.75rem; font-weight:600;">${c.guias_asignados}</span>`
                                 : '<span class="text-muted" style="font-size:0.8rem; font-style:italic;">No asignado</span>';
+                        }
+
+                        // Construcción de la columna Estado / Recorrido
+                        let estadoRecorridoHtml = '';
+                        if (c.estatus === 'en_recorrido') {
+                            const segRestantes = parseInt(c.segundos_restantes, 10) || 0;
+                            const h = Math.floor(segRestantes / 3600);
+                            const m = Math.floor((segRestantes % 3600) / 60);
+                            const s = segRestantes % 60;
+                            const formatInit = (h > 0 ? (h < 10 ? '0' + h : h) + ':' : '') + 
+                                               (m < 10 ? '0' + m : m) + ':' + 
+                                               (s < 10 ? '0' + s : s);
+
+                            let btnTerminar = '';
+                            if (puedeGestionarRecorrido) {
+                                btnTerminar = `<div class="mt-1"><button class="btn btn-sm btn-outline-danger py-0 px-2 btn-terminar-recorrido" data-id="${c.id}" style="font-size:0.75rem; border-radius:6px;" title="Finalizar recorrido">⏹ Terminar</button></div>`;
+                            }
+
+                            estadoRecorridoHtml = `
+                                <div>
+                                    <span class="badge bg-primary d-inline-flex align-items-center gap-1" style="font-size:0.75rem; padding: 0.35em 0.65em;">
+                                        <span class="spinner-grow spinner-grow-sm text-light" style="width:0.45rem;height:0.45rem;" role="status"></span>
+                                        En Recorrido
+                                    </span>
+                                    <div class="mt-1 font-monospace text-primary fw-bold timer-recorrido" data-restantes="${segRestantes}" style="font-size:0.75rem;">
+                                        Restante: <span class="tiempo-display">${formatInit}</span>
+                                    </div>
+                                    ${btnTerminar}
+                                </div>
+                            `;
+                        } else if (c.estatus === 'completado') {
+                            estadoRecorridoHtml = `
+                                <span class="badge bg-secondary d-inline-flex align-items-center gap-1" style="font-size:0.75rem; padding: 0.35em 0.65em;">
+                                    <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:currentColor;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Completado
+                                </span>
+                            `;
+                        } else if (c.estatus === 'cancelado') {
+                            estadoRecorridoHtml = `<span class="badge bg-danger" style="font-size:0.75rem;">Cancelado</span>`;
+                        } else {
+                            // Cita pendiente / aprobada
+                            if (tieneGuia && puedeGestionarRecorrido) {
+                                estadoRecorridoHtml = `
+                                    <button class="btn btn-sm btn-success py-1 px-3 btn-empezar-recorrido shadow-sm" data-id="${c.id}" style="font-size:0.78rem; font-weight:600; border-radius:8px; background-color: #0D9039; border-color: #0D9039;" title="Iniciar el recorrido ahora">
+                                        ▶ Empezar Recorrido
+                                    </button>
+                                `;
+                            } else if (tieneGuia) {
+                                estadoRecorridoHtml = `<span class="badge bg-info text-dark" style="font-size:0.75rem;">Guía Asignado</span>`;
+                            } else {
+                                estadoRecorridoHtml = `<span class="badge bg-warning text-dark" style="font-size:0.75rem;">Sin Asignar</span>`;
+                            }
                         }
 
                         const rowHtml = `
@@ -658,21 +748,26 @@
                                 <td>${c.recorrido_nombre || '<span class="text-muted" style="font-style:italic;">Sin recorrido</span>'}</td>
                                 <td><span class="badge bg-info text-dark" style="font-size:0.75rem; font-weight:600;">${c.total_visitantes}</span></td>
                                 <td>${guiasHtml}</td>
+                                <td>${estadoRecorridoHtml}</td>
                             </tr>
                         `;
                         $body.append(rowHtml);
                     });
+
+                    iniciarContadorRecorridos();
                     $wrapper.fadeIn(300);
                 } else {
-                    $body.append(`<tr><td colspan="6" class="text-center text-danger py-4">No se pudo cargar la agenda del día: ${response.message}</td></tr>`);
+                    $body.append(`<tr><td colspan="7" class="text-center text-danger py-4">No se pudo cargar la agenda del día: ${response.message}</td></tr>`);
                     $wrapper.fadeIn(300);
                 }
             },
             error: function() {
                 $loader.hide();
-                $body.append('<tr><td colspan="6" class="text-center text-danger py-4">Error al cargar la agenda de hoy.</td></tr>');
+                $body.append('<tr><td colspan="7" class="text-center text-danger py-4">Error al cargar la agenda de hoy.</td></tr>');
                 $wrapper.fadeIn(300);
             }
+        });
+    }
         });
     }
 
@@ -817,6 +912,70 @@
             error: function() {
                 $btn.prop('disabled', false).text('✕ Quitar');
                 alert('Error al remover la asignación de guía.');
+            }
+        });
+    });
+
+    // Evento: Iniciar recorrido
+    $(document).on('click', '.btn-empezar-recorrido', function() {
+        const citaId = $(this).data('id');
+        const $btn = $(this);
+
+        if (!confirm('¿Desea iniciar el recorrido guiado para esta cita? Se activará el contador de 2 horas.')) {
+            return;
+        }
+
+        $btn.prop('disabled', true).text('Iniciando...');
+
+        $.ajax({
+            url: 'controllers/CitaController.php?action=empezar_recorrido',
+            method: 'POST',
+            data: { cita_id: citaId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    cargarCitasHoy();
+                } else {
+                    $btn.prop('disabled', false).text('▶ Empezar Recorrido');
+                    alert(response.message || 'Error al iniciar el recorrido.');
+                }
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).text('▶ Empezar Recorrido');
+                const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al comunicarse con el servidor.';
+                alert(msg);
+            }
+        });
+    });
+
+    // Evento: Terminar recorrido manualmente
+    $(document).on('click', '.btn-terminar-recorrido', function() {
+        const citaId = $(this).data('id');
+        const $btn = $(this);
+
+        if (!confirm('¿Está seguro de dar por finalizado este recorrido guiado?')) {
+            return;
+        }
+
+        $btn.prop('disabled', true).text('Terminando...');
+
+        $.ajax({
+            url: 'controllers/CitaController.php?action=terminar_recorrido',
+            method: 'POST',
+            data: { cita_id: citaId },
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    cargarCitasHoy();
+                } else {
+                    $btn.prop('disabled', false).text('⏹ Terminar');
+                    alert(response.message || 'Error al finalizar el recorrido.');
+                }
+            },
+            error: function(xhr) {
+                $btn.prop('disabled', false).text('⏹ Terminar');
+                const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al comunicarse con el servidor.';
+                alert(msg);
             }
         });
     });

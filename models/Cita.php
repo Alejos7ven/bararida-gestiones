@@ -297,10 +297,25 @@ class Cita {
 
     /**
      * Obtiene las citas programadas para el día de hoy.
+    /**
+     * Obtiene las citas programadas para el día de hoy con control de recorridos y guías.
      */
     public static function obtenerCitasHoy(PDO $db, string $rol, ?int $personalId = null): array {
         try {
-            $base = "SELECT c.id, c.hora_inicio, c.estatus, c.pago_estado,
+            // AUTO-TERMINACIÓN EN 2 HORAS (120 MINUTOS):
+            // Cualquier recorrido que haya iniciado hace 2 horas o más, o en días anteriores,
+            // se finaliza automáticamente como 'completado'.
+            $db->exec("UPDATE citas 
+                       SET estatus = 'completado' 
+                       WHERE estatus = 'en_recorrido' 
+                         AND (
+                           fecha_visita < CURDATE() 
+                           OR (fecha_visita = CURDATE() AND TIMESTAMPDIFF(MINUTE, hora_inicio, CURTIME()) >= 120)
+                         )");
+
+            $loggedId = ($personalId !== null) ? (int)$personalId : 0;
+
+            $base = "SELECT c.id, c.hora_inicio, c.estatus, c.pago_estado, c.fecha_visita,
                             e.nombre_completo AS razon_social, e.tipo_documento, e.documento AS rif,
                             r.nombre AS recorrido_nombre,
                             s.detalles AS sede_detalles, ciu.ciudad AS sede_ciudad,
@@ -308,7 +323,22 @@ class Cita {
                             GROUP_CONCAT(
                                 e2.nombre_completo
                                 ORDER BY ga.rol_guia ASC SEPARATOR ', '
-                            ) AS guias_asignados
+                            ) AS guias_asignados,
+                            CASE 
+                                WHEN :logged_personal_id > 0 AND EXISTS (
+                                    SELECT 1 FROM guia_asignado ga_me 
+                                    WHERE ga_me.cita_id = c.id AND ga_me.personal_id = :logged_personal_id2
+                                ) THEN 1 
+                                ELSE 0 
+                            END AS es_mi_asignacion,
+                            CASE 
+                                WHEN c.estatus = 'en_recorrido' THEN TIMESTAMPDIFF(SECOND, CONCAT(c.fecha_visita, ' ', c.hora_inicio), NOW())
+                                ELSE 0 
+                            END AS segundos_transcurridos,
+                            CASE 
+                                WHEN c.estatus = 'en_recorrido' THEN GREATEST(0, 7200 - TIMESTAMPDIFF(SECOND, CONCAT(c.fecha_visita, ' ', c.hora_inicio), NOW()))
+                                ELSE 0 
+                            END AS segundos_restantes
                      FROM citas c
                      INNER JOIN instituciones i ON c.institucion_id = i.id
                      INNER JOIN entidades e ON i.entidad_id = e.id
@@ -320,17 +350,23 @@ class Cita {
                      LEFT JOIN entidades e2 ON p.entidad_id = e2.id
                      WHERE DATE(c.fecha_visita) = CURDATE()";
 
-            if ($rol === 'guia' && $personalId !== null) {
+            $rolNorm = strtolower(trim((string)$rol));
+            if (($rolNorm === 'guia' || $rolNorm === 'guía') && $personalId !== null) {
+                // El guía ve las citas asignadas a él
                 $base .= " AND EXISTS (
                             SELECT 1 FROM guia_asignado ga2
-                            WHERE ga2.cita_id = c.id AND ga2.personal_id = :personal_id
+                            WHERE ga2.cita_id = c.id AND ga2.personal_id = :filter_personal_id
                           )";
                 $base .= " GROUP BY c.id ORDER BY c.hora_inicio ASC";
                 $stmt = $db->prepare($base);
-                $stmt->bindParam(':personal_id', $personalId, PDO::PARAM_INT);
+                $stmt->bindValue(':logged_personal_id',  $loggedId,   PDO::PARAM_INT);
+                $stmt->bindValue(':logged_personal_id2', $loggedId,   PDO::PARAM_INT);
+                $stmt->bindValue(':filter_personal_id',  $personalId, PDO::PARAM_INT);
             } else {
                 $base .= " GROUP BY c.id ORDER BY c.hora_inicio ASC";
                 $stmt = $db->prepare($base);
+                $stmt->bindValue(':logged_personal_id',  $loggedId, PDO::PARAM_INT);
+                $stmt->bindValue(':logged_personal_id2', $loggedId, PDO::PARAM_INT);
             }
 
             $stmt->execute();
@@ -338,6 +374,50 @@ class Cita {
         } catch (PDOException $e) {
             error_log("Error en Cita::obtenerCitasHoy(): " . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Inicia un recorrido para la cita especificada, actualizando estatus a 'en_recorrido' y hora_inicio a la hora actual.
+     */
+    public static function empezarRecorrido(PDO $db, int $citaId): bool {
+        try {
+            $stmt = $db->prepare("UPDATE citas SET estatus = 'en_recorrido', hora_inicio = CURTIME() WHERE id = :id");
+            $stmt->bindParam(':id', $citaId, PDO::PARAM_INT);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Error en Cita::empezarRecorrido(): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Finaliza un recorrido manualmente, cambiando su estatus a 'completado'.
+     */
+    public static function terminarRecorrido(PDO $db, int $citaId): bool {
+        try {
+            $stmt = $db->prepare("UPDATE citas SET estatus = 'completado' WHERE id = :id");
+            $stmt->bindParam(':id', $citaId, PDO::PARAM_INT);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Error en Cita::terminarRecorrido(): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Verifica si un personal específico está asignado como guía a una cita.
+     */
+    public static function esGuiaAsignado(PDO $db, int $citaId, int $personalId): bool {
+        try {
+            $stmt = $db->prepare("SELECT 1 FROM guia_asignado WHERE cita_id = :cita_id AND personal_id = :personal_id LIMIT 1");
+            $stmt->bindParam(':cita_id', $citaId, PDO::PARAM_INT);
+            $stmt->bindParam(':personal_id', $personalId, PDO::PARAM_INT);
+            $stmt->execute();
+            return (bool)$stmt->fetchColumn();
+        } catch (PDOException $e) {
+            error_log("Error en Cita::esGuiaAsignado(): " . $e->getMessage());
+            return false;
         }
     }
 
