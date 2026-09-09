@@ -231,7 +231,8 @@ INSERT INTO `modulos` (`nombre`, `label`) VALUES
 ('recorridos', 'Recorridos'),
 ('visitantes', 'Visitantes'),
 ('personal', 'Personal'),
-('app', 'Configuración');
+('app', 'Configuración'),
+('reportes', 'Reportes');
 
 -- Permisos por rol (rol_id: 1=superadmin, 2=admin, 3=guia | modulo_id según orden de INSERT)
 -- superadmin: acceso total
@@ -241,7 +242,8 @@ INSERT INTO `permisos` (`rol_id`, `modulo_id`, `puede_acceder`) VALUES
 (1, 3, 1), -- superadmin > instituciones
 (1, 4, 1), -- superadmin > recorridos
 (1, 5, 1), -- superadmin > visitantes
-(1, 6, 1); -- superadmin > personal
+(1, 6, 1), -- superadmin > personal
+(1, 8, 1); -- superadmin > reportes
 
 -- admin: sin acceso a personal
 INSERT INTO `permisos` (`rol_id`, `modulo_id`, `puede_acceder`) VALUES
@@ -250,7 +252,8 @@ INSERT INTO `permisos` (`rol_id`, `modulo_id`, `puede_acceder`) VALUES
 (2, 3, 1), -- admin > instituciones
 (2, 4, 1), -- admin > recorridos
 (2, 5, 1), -- admin > visitantes
-(2, 6, 0); -- admin > personal (denegado)
+(2, 6, 0), -- admin > personal (denegado)
+(2, 8, 1); -- admin > reportes
 
 -- guia: solo citas
 INSERT INTO `permisos` (`rol_id`, `modulo_id`, `puede_acceder`) VALUES
@@ -259,7 +262,8 @@ INSERT INTO `permisos` (`rol_id`, `modulo_id`, `puede_acceder`) VALUES
 (3, 3, 0), -- guia > instituciones (denegado)
 (3, 4, 0), -- guia > recorridos (denegado)
 (3, 5, 0), -- guia > visitantes (denegado)
-(3, 6, 0); -- guia > personal (denegado)
+(3, 6, 0), -- guia > personal (denegado)
+(3, 8, 0); -- guia > reportes (denegado)
 
 -- SET FOREIGN_KEY_CHECKS = 1;
 

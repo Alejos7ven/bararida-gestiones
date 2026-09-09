@@ -11,10 +11,10 @@ if (!isset($userRol)) {
             <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
                 <div>
                     <h3 style="font-size: 1.35rem; font-family: 'Outfit'; font-weight: 700; color: var(--park-dark); margin: 0;">
-                        👋 ¡Hola, <?php echo htmlspecialchars($_SESSION['personal']['nombre']); ?>!
+                        👋 ¡Hola, <?php echo htmlspecialchars($_SESSION['personal']['nombre'] ?? ($userName ?? 'Usuario')); ?>!
                     </h3>
                     <p class="text-muted mb-0" style="font-size: 0.88rem;">
-                        Panel de accesos rápidos para rol de <strong><?php echo ($userRol === 'superadmin' ? 'Super Administrador' : ($userRol === 'admin' ? 'Administrador' : 'Guía de Campo')); ?></strong>.
+                        Panel de accesos rápidos para rol de <strong><?php echo htmlspecialchars(obtenerEtiquetaRol($userRol)); ?></strong>.
                     </p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
