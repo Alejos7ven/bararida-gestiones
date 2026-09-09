@@ -789,7 +789,8 @@
                     const $select = $('#selectGuiaDashboard');
                     $select.empty().append('<option value="">Seleccione un guía...</option>');
                     allGuias.forEach(function(g) {
-                        $select.append(`<option value="${g.id}">${g.nombre} ${g.apellido}</option>`);
+                        const nombreMostrar = g.nombre_completo || `${g.nombre || ''} ${g.apellido || ''}`.trim();
+                        $select.append(`<option value="${g.id}">${nombreMostrar}</option>`);
                     });
 
                     if (callback) callback(allGuias);
@@ -797,8 +798,8 @@
                     console.error('Error al cargar guías:', response.message);
                 }
             },
-            error: function() {
-                console.error('Error de red al cargar guías.');
+            error: function(xhr) {
+                console.error('Error de red al cargar guías:', xhr);
             }
         });
     }
@@ -818,10 +819,11 @@
                     response.data.forEach(function(g) {
                         const rolText = g.rol_guia === 'principal' ? 'Principal' : 'Apoyo';
                         const badgeClass = g.rol_guia === 'principal' ? 'bg-success' : 'bg-secondary';
+                        const nombreMostrar = g.nombre_completo || `${g.nombre || ''} ${g.apellido || ''}`.trim();
                         const itemHtml = `
-                            <div class="d-flex justify-content-between align-items-center p-2 rounded border bg-white">
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded border bg-white mb-2">
                                 <div>
-                                    <strong>${g.nombre} ${g.apellido}</strong> 
+                                    <strong>${nombreMostrar}</strong> 
                                     <span class="badge ${badgeClass} ms-1" style="font-size: 0.65rem;">${rolText}</span>
                                 </div>
                                 <button type="button" class="btn btn-sm btn-link text-danger p-0 btn-quitar-guia-dash" data-cita-id="${citaId}" data-guia-id="${g.personal_id}" style="text-decoration:none; font-weight:700;" title="Quitar asignación">✕ Quitar</button>
@@ -833,8 +835,9 @@
                     $container.append('<div class="text-center text-muted py-2 italic">Ningún guía asignado aún para esta visita.</div>');
                 }
             },
-            error: function() {
-                $container.empty().append('<div class="text-center text-danger py-2">Error al cargar asignaciones.</div>');
+            error: function(xhr) {
+                const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al cargar asignaciones.';
+                $container.empty().append(`<div class="text-center text-danger py-2">${msg}</div>`);
             }
         });
     }

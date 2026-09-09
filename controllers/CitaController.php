@@ -1382,12 +1382,12 @@ function desvincularVisitanteAction($db) {
  */
 function listarGuiasAction($db) {
     try {
-        $query = "SELECT p.id, e.nombre, e.apellido 
+        $query = "SELECT p.id, e.nombre_completo, e.nombre_completo AS nombre, '' AS apellido 
                   FROM personal p
                   INNER JOIN entidades e ON p.entidad_id = e.id
                   INNER JOIN roles r ON p.rol_id = r.id
                   WHERE r.nombre = 'guia'
-                  ORDER BY e.nombre ASC, e.apellido ASC";
+                  ORDER BY e.nombre_completo ASC";
         $stmt = $db->prepare($query);
         $stmt->execute();
         $guias = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -1489,7 +1489,7 @@ function guiasCitaAction($db) {
     }
 
     try {
-        $query = "SELECT ga.personal_id, e.nombre, e.apellido, ga.rol_guia 
+        $query = "SELECT ga.personal_id, e.nombre_completo, e.nombre_completo AS nombre, '' AS apellido, ga.rol_guia 
                   FROM guia_asignado ga
                   INNER JOIN personal p ON ga.personal_id = p.id
                   INNER JOIN entidades e ON p.entidad_id = e.id
