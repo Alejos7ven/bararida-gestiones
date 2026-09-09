@@ -62,7 +62,7 @@ function cargarPermisosUsuario($userRol, &$userRolId) {
         $fallback = [
             'superadmin' => array_fill_keys($modulosRegistrados, true),
             'admin'      => ['dashboard'=>true,'citas'=>true,'instituciones'=>true,'recorridos'=>true,'visitantes'=>true,'personal'=>false,'app'=>false,'reportes'=>true],
-            'guia'       => ['dashboard'=>true,'citas'=>true,'instituciones'=>false,'recorridos'=>false,'visitantes'=>false,'personal'=>false,'app'=>false,'reportes'=>false],
+            'guia'       => ['dashboard'=>true,'citas'=>false,'instituciones'=>false,'recorridos'=>false,'visitantes'=>false,'personal'=>false,'app'=>false,'reportes'=>false],
         ];
         $userPermissions = isset($fallback[$userRol])
             ? $fallback[$userRol]

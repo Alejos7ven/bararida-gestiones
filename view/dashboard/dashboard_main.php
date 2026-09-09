@@ -28,7 +28,7 @@ if (!isset($userRol)) {
                             Gestionar Citas
                         </button>
                     <?php else: ?>
-                        <button class="btn-premium-primary" onclick="window.location.href='index.php?view=citas'">
+                        <button class="btn-premium-primary" onclick="document.getElementById('seccionCitasHoy')?.scrollIntoView({ behavior: 'smooth' });">
                             <svg viewBox="0 0 24 24"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H5V8h14v10z"/></svg>
                             Ver Mis Citas Asignadas
                         </button>
@@ -39,7 +39,7 @@ if (!isset($userRol)) {
             <hr class="my-3" style="border-color: #e2e8f0;">
 
             <!-- Citas del Día de Hoy -->
-            <div class="citas-hoy-section">
+            <div class="citas-hoy-section" id="seccionCitasHoy">
                 <h4 style="font-size: 1.05rem; font-family: 'Outfit'; font-weight: 700; color: #334155; display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
                     <span style="font-size: 1.25rem;">📅</span> Visitas Guiadas Programadas para Hoy
                 </h4>
@@ -54,17 +54,18 @@ if (!isset($userRol)) {
 
                 <!-- Tabla de visitas de hoy -->
                 <div id="citasHoyWrapper" style="display: none;">
-                    <div class="table-responsive" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-                        <table class="table align-middle mb-0 text-center table-hover" style="font-size: 0.85rem;">
+                    <div class="table-responsive table-responsive-citas-hoy" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y pan-x;">
+                        <table class="table align-middle mb-0 text-center table-hover" style="font-size: 0.85rem; min-width: 820px; touch-action: pan-y pan-x;">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 10%;">ID Cita</th>
                                     <th style="width: 10%;">Hora</th>
                                     <th style="width: 22%;">Institución</th>
-                                    <th style="width: 16%;">Recorrido</th>
+                                    <th style="width: 14%;">Recorrido</th>
                                     <th style="width: 10%;">Visitantes</th>
-                                    <th style="width: 16%;">Guía(s) Asignado(s)</th>
-                                    <th style="width: 16%;">Estado / Recorrido</th>
+                                    <th style="width: 14%;">Guía(s)</th>
+                                    <th style="width: 10%;">Estado</th>
+                                    <th style="width: 10%;">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tablaCitasHoyBody">

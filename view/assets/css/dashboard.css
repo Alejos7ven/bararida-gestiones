@@ -1147,4 +1147,18 @@ body {
     color: #ffffff !important;
 }
 
+/* ==========================================================================
+   Soporte Touch y Scroll Vertical para Agenda de Citas de Hoy en Móviles
+   ========================================================================== */
+.table-responsive-citas-hoy {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y pan-x;
+    border-radius: 12px;
+}
 
+.table-responsive-citas-hoy table {
+    min-width: 820px;
+    touch-action: pan-y pan-x;
+}

@@ -183,6 +183,17 @@ function comprobarInstitucionAction($db) {
  * Lista todas las citas
  */
 function listarCitasAction($db) {
+    $personal = $_SESSION['personal'] ?? null;
+    $rolNorm = strtolower(trim((string)($personal['rol'] ?? '')));
+    if ($rolNorm === 'guia' || $rolNorm === 'guía') {
+        http_response_code(403);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Acceso restringido. Los guías gestionan sus visitas asignadas desde el Dashboard."
+        ]);
+        return;
+    }
+
     try {
         $citaModel = new Cita($db);
         $citas = $citaModel->listarTodas();
@@ -205,6 +216,17 @@ function listarCitasAction($db) {
  * Registra institución (si aplica) y la cita
  */
 function crearCitaAction($db) {
+    $personal = $_SESSION['personal'] ?? null;
+    $rolNorm = strtolower(trim((string)($personal['rol'] ?? '')));
+    if ($rolNorm === 'guia' || $rolNorm === 'guía') {
+        http_response_code(403);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Acceso no autorizado para crear citas."
+        ]);
+        return;
+    }
+
     $institucion_id = isset($_POST['institucion_id']) ? filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT) : null;
     $sede_id = isset($_POST['sede_id']) ? filter_var($_POST['sede_id'], FILTER_VALIDATE_INT) : null;
     
@@ -444,6 +466,17 @@ function crearCitaAction($db) {
  * Elimina una cita
  */
 function eliminarCitaAction($db) {
+    $personal = $_SESSION['personal'] ?? null;
+    $rolNorm = strtolower(trim((string)($personal['rol'] ?? '')));
+    if ($rolNorm === 'guia' || $rolNorm === 'guía') {
+        http_response_code(403);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Acceso no autorizado para eliminar citas."
+        ]);
+        return;
+    }
+
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
 
     if (!$id) {
@@ -1120,6 +1153,17 @@ function obtenerCitaAction($db) {
  * Modifica una cita existente
  */
 function editarCitaAction($db) {
+    $personal = $_SESSION['personal'] ?? null;
+    $rolNorm = strtolower(trim((string)($personal['rol'] ?? '')));
+    if ($rolNorm === 'guia' || $rolNorm === 'guía') {
+        http_response_code(403);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Acceso no autorizado para editar citas."
+        ]);
+        return;
+    }
+
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
     
     if (!$id) {

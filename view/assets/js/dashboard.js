@@ -649,45 +649,29 @@
                 if (response.status === 'success') {
                     const citas = response.data || [];
                     if (citas.length === 0) {
-                        $body.append('<tr><td colspan="7" class="text-center text-muted py-4">No hay visitas guiadas programadas para el día de hoy.</td></tr>');
+                        $body.append('<tr><td colspan="8" class="text-center text-muted py-4">No hay visitas guiadas programadas para el día de hoy.</td></tr>');
                         $wrapper.fadeIn(300);
                         return;
                     }
 
                     citas.forEach(function(c) {
                         const hora = formatTime(c.hora_inicio);
-                        let guiasHtml = '';
-                        
-                        // Si el usuario es administrador o superadmin, permitir asignación
                         const userRol = $('#quickAccessCard').data('user-rol') || '';
                         const esAdmin = userRol === 'superadmin' || userRol === 'admin';
                         const esMiAsignacion = parseInt(c.es_mi_asignacion, 10) === 1;
                         const tieneGuia = !!c.guias_asignados;
                         const puedeGestionarRecorrido = esAdmin || esMiAsignacion;
 
-                        if (esAdmin) {
-                            if (c.guias_asignados) {
-                                guiasHtml = `<div class="table-actions d-flex align-items-center justify-content-center gap-2 flex-wrap">
-                                    <span class="badge bg-success" style="font-size:0.75rem; font-weight:600;">${c.guias_asignados}</span>
-                                    <button class="btn-action btn-action-edit btn-gestionar-guia-dash" data-id="${c.id}" title="Gestionar guías asignados">
-                                        <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                                    </button>
-                                </div>`;
-                            } else {
-                                guiasHtml = `<div class="table-actions justify-content-center">
-                                    <button class="btn-action btn-action-edit btn-gestionar-guia-dash" data-id="${c.id}" title="Asignar guía a esta cita">
-                                        <svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                                    </button>
-                                </div>`;
-                            }
+                        // 1. Columna Guía(s)
+                        let guiasHtml = '';
+                        if (c.guias_asignados) {
+                            guiasHtml = `<span class="badge bg-success" style="font-size:0.75rem; font-weight:600;">${c.guias_asignados}</span>`;
                         } else {
-                            guiasHtml = c.guias_asignados
-                                ? `<span class="badge bg-success" style="font-size:0.75rem; font-weight:600;">${c.guias_asignados}</span>`
-                                : '<span class="text-muted" style="font-size:0.8rem; font-style:italic;">No asignado</span>';
+                            guiasHtml = `<span class="badge bg-light text-muted border" style="font-size:0.75rem;">Sin asignar</span>`;
                         }
 
-                        // Construcción de la columna Estado / Recorrido
-                        let estadoRecorridoHtml = '';
+                        // 2. Columna Estado
+                        let estadoHtml = '';
                         if (c.estatus === 'en_recorrido') {
                             const segRestantes = parseInt(c.segundos_restantes, 10) || 0;
                             const h = Math.floor(segRestantes / 3600);
@@ -697,44 +681,71 @@
                                                (m < 10 ? '0' + m : m) + ':' + 
                                                (s < 10 ? '0' + s : s);
 
-                            let btnTerminar = '';
-                            if (puedeGestionarRecorrido) {
-                                btnTerminar = `<div class="mt-1"><button class="btn btn-sm btn-outline-danger py-0 px-2 btn-terminar-recorrido" data-id="${c.id}" style="font-size:0.75rem; border-radius:6px;" title="Finalizar recorrido">⏹ Terminar</button></div>`;
-                            }
-
-                            estadoRecorridoHtml = `
+                            estadoHtml = `
                                 <div>
                                     <span class="badge bg-primary d-inline-flex align-items-center gap-1" style="font-size:0.75rem; padding: 0.35em 0.65em;">
-                                        <span class="spinner-grow spinner-grow-sm text-light" style="width:0.45rem;height:0.45rem;" role="status"></span>
+                                        <span class="spinner-grow spinner-grow-sm text-light" style="width:0.4rem;height:0.4rem;" role="status"></span>
                                         En Recorrido
                                     </span>
                                     <div class="mt-1 font-monospace text-primary fw-bold timer-recorrido" data-restantes="${segRestantes}" style="font-size:0.75rem;">
                                         Restante: <span class="tiempo-display">${formatInit}</span>
                                     </div>
-                                    ${btnTerminar}
                                 </div>
                             `;
                         } else if (c.estatus === 'completado') {
-                            estadoRecorridoHtml = `
+                            estadoHtml = `
                                 <span class="badge bg-secondary d-inline-flex align-items-center gap-1" style="font-size:0.75rem; padding: 0.35em 0.65em;">
                                     <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:currentColor;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Completado
                                 </span>
                             `;
                         } else if (c.estatus === 'cancelado') {
-                            estadoRecorridoHtml = `<span class="badge bg-danger" style="font-size:0.75rem;">Cancelado</span>`;
+                            estadoHtml = `<span class="badge bg-danger" style="font-size:0.75rem;">Cancelado</span>`;
+                        } else if (c.estatus === 'aprobado') {
+                            estadoHtml = `<span class="badge bg-success" style="font-size:0.75rem;">Aprobada</span>`;
                         } else {
-                            // Cita pendiente / aprobada
-                            if (tieneGuia && puedeGestionarRecorrido) {
-                                estadoRecorridoHtml = `
-                                    <button class="btn btn-sm btn-success py-1 px-3 btn-empezar-recorrido shadow-sm" data-id="${c.id}" style="font-size:0.78rem; font-weight:600; border-radius:8px; background-color: #0D9039; border-color: #0D9039;" title="Iniciar el recorrido ahora">
-                                        ▶ Empezar Recorrido
-                                    </button>
-                                `;
-                            } else if (tieneGuia) {
-                                estadoRecorridoHtml = `<span class="badge bg-info text-dark" style="font-size:0.75rem;">Guía Asignado</span>`;
-                            } else {
-                                estadoRecorridoHtml = `<span class="badge bg-warning text-dark" style="font-size:0.75rem;">Sin Asignar</span>`;
-                            }
+                            estadoHtml = `<span class="badge bg-warning text-dark" style="font-size:0.75rem;">Pendiente</span>`;
+                        }
+
+                        // 3. Columna Acciones (Aquí se agrupan ordenadamente todos los botones de acción)
+                        let accionesBtns = [];
+
+                        // Botón Gestionar / Asignar Guía (Solo Administradores)
+                        if (esAdmin) {
+                            const asigTitle = tieneGuia ? 'Gestionar guías asignados' : 'Asignar guía a esta cita';
+                            const asigIcon = tieneGuia
+                                ? '<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>'
+                                : '<svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+                            
+                            accionesBtns.push(`
+                                <button class="btn-action btn-action-edit btn-gestionar-guia-dash" data-id="${c.id}" title="${asigTitle}">
+                                    ${asigIcon}
+                                </button>
+                            `);
+                        }
+
+                        // Botón Iniciar Recorrido
+                        if (tieneGuia && puedeGestionarRecorrido && c.estatus !== 'en_recorrido' && c.estatus !== 'completado' && c.estatus !== 'cancelado') {
+                            accionesBtns.push(`
+                                <button class="btn-action btn-action-edit btn-empezar-recorrido" data-id="${c.id}" title="Iniciar recorrido guiado" style="color: #0D9039;">
+                                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:#0D9039;"><path d="M8 5v14l11-7z"/></svg>
+                                </button>
+                            `);
+                        }
+
+                        // Botón Finalizar Recorrido
+                        if (c.estatus === 'en_recorrido' && puedeGestionarRecorrido) {
+                            accionesBtns.push(`
+                                <button class="btn-action btn-action-delete btn-terminar-recorrido" data-id="${c.id}" title="Finalizar recorrido anticipadamente">
+                                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;"><path d="M6 6h12v12H6z"/></svg>
+                                </button>
+                            `);
+                        }
+
+                        let accionesHtml = '';
+                        if (accionesBtns.length > 0) {
+                            accionesHtml = `<div class="table-actions justify-content-center flex-wrap gap-1">${accionesBtns.join('')}</div>`;
+                        } else {
+                            accionesHtml = `<span class="text-muted" style="font-size:0.8rem;">—</span>`;
                         }
 
                         const rowHtml = `
@@ -748,7 +759,8 @@
                                 <td>${c.recorrido_nombre || '<span class="text-muted" style="font-style:italic;">Sin recorrido</span>'}</td>
                                 <td><span class="badge bg-info text-dark" style="font-size:0.75rem; font-weight:600;">${c.total_visitantes}</span></td>
                                 <td>${guiasHtml}</td>
-                                <td>${estadoRecorridoHtml}</td>
+                                <td>${estadoHtml}</td>
+                                <td>${accionesHtml}</td>
                             </tr>
                         `;
                         $body.append(rowHtml);
@@ -757,13 +769,15 @@
                     iniciarContadorRecorridos();
                     $wrapper.fadeIn(300);
                 } else {
-                    $body.append(`<tr><td colspan="7" class="text-center text-danger py-4">No se pudo cargar la agenda del día: ${response.message}</td></tr>`);
+                    $body.append(`<tr><td colspan="8" class="text-center text-danger py-4">No se pudo cargar la agenda del día: ${response.message}</td></tr>`);
                     $wrapper.fadeIn(300);
                 }
             },
             error: function() {
                 $loader.hide();
-                $body.append('<tr><td colspan="7" class="text-center text-danger py-4">Error al cargar la agenda de hoy.</td></tr>');
+                $body.append('<tr><td colspan="8" class="text-center text-danger py-4">Error al cargar la agenda de hoy.</td></tr>');
+                $wrapper.fadeIn(300);
+            }
                 $wrapper.fadeIn(300);
             }
         });
