@@ -171,11 +171,21 @@ class ExcelWriter {
     }
 
     private function xmlSheet(array $headerIdx, array $rowsIdx): string {
-        // Letras de columna A-Z
-        $letters = range('A', 'Z');
+        // Letras de columna A-Z (Soporta combinaciones como AA, AB si hay muchas columnas)
+        $getColLetter = function(int $index): string {
+            $letter = '';
+            while ($index >= 0) {
+                $letter = chr(($index % 26) + 65) . $letter;
+                $index = intval($index / 26) - 1;
+            }
+            return $letter;
+        };
 
         $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
              . '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">';
+
+        // CRUCIAL: El bloque <sheetViews> DEBÍA ir aquí, antes de <cols> y <sheetData>
+        $xml .= '<sheetViews><sheetView workbookViewId="0"><selection activeCell="A2" sqref="A2"/></sheetView></sheetViews>';
 
         // Anchos de columna
         if (!empty($this->colWidths)) {
@@ -192,7 +202,7 @@ class ExcelWriter {
         // Fila 1: cabecera (estilo 1 = verde)
         $xml .= '<row r="1">';
         foreach ($headerIdx as $ci => $si) {
-            $col  = $letters[$ci];
+            $col  = $getColLetter($ci);
             $xml .= '<c r="' . $col . '1" t="s" s="1"><v>' . $si . '</v></c>';
         }
         $xml .= '</row>';
@@ -202,15 +212,21 @@ class ExcelWriter {
             $rowNum = $ri + 2;
             $xml   .= '<row r="' . $rowNum . '">';
             foreach ($cols as $ci => $si) {
-                $col  = $letters[$ci];
-                $xml .= '<c r="' . $col . $rowNum . '" t="s"><v>' . $si . '</v></c>';
+                $col  = $getColLetter($ci);
+                
+                // VALIDACIÓN EXTRA: Si el índice no existe o está vacío, no rompe el XML
+                if ($si === null || $si === '') {
+                    $xml .= '<c r="' . $col . $rowNum . '"/>';
+                } else {
+                    $xml .= '<c r="' . $col . $rowNum . '" t="s"><v>' . $si . '</v></c>';
+                }
             }
             $xml .= '</row>';
         }
 
-        $xml .= '</sheetData>'
-              . '<sheetViews><sheetView workbookViewId="0"><selection activeCell="A2" sqref="A2"/></sheetView></sheetViews>'
-              . '</worksheet>';
+        $xml .= '</sheetData>';
+        $xml .= '</worksheet>';
+        
         return $xml;
     }
 }
