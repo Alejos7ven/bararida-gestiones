@@ -225,3 +225,63 @@ if (!isset($userRol)) {
         </div>
     </div>
 </div>
+
+<!-- MODAL: ASIGNAR RECORRIDO A LA VISITA DESDE EL DASHBOARD -->
+<div class="modal fade modal-premium" id="modalAsignarRecorridoDashboard" tabindex="-1" aria-labelledby="modalAsignarRecorridoDashboardLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="background: var(--park-primary); color: #ffffff; padding: 16px 20px;">
+                <h5 class="modal-title text-white" id="modalAsignarRecorridoDashboardLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">
+                    <svg viewBox="0 0 24 24" style="width:20px;height:20px;fill:currentColor;margin-right:6px;vertical-align:text-bottom;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                    Asignar Recorrido a la Visita
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form id="formAsignarRecorridoDashboard">
+                <input type="hidden" name="cita_id" id="modal_recorrido_cita_id">
+                <div class="modal-body" style="padding: 20px;">
+                    <!-- Información de la Cita -->
+                    <div class="p-3 mb-3 rounded border bg-light">
+                        <div class="text-muted text-uppercase" style="font-size: 0.72rem; font-weight: 700; letter-spacing: 0.5px;">Institución / Visita:</div>
+                        <strong id="modalRecorridoInstitucionText" style="font-size: 0.95rem; color: var(--park-dark);"></strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="selectRecorridoModal" class="form-label" style="font-weight:600; font-size:0.88rem; color:var(--park-dark);">
+                            Seleccione el Recorrido o Itinerario:
+                        </label>
+                        <select class="form-select" id="selectRecorridoModal" name="recorrido_id" required>
+                            <option value="">Cargando recorridos disponibles...</option>
+                        </select>
+                        <div class="form-text" style="font-size: 0.75rem;">
+                            Al cambiar de recorrido se actualizará en tiempo real la ruta en el módulo interactivo del mapa.
+                        </div>
+                    </div>
+
+                    <!-- Caja de Previsualización Dinámica de las Paradas -->
+                    <div id="modalRecorridoPreviewBox" class="p-3 border rounded shadow-xs" style="background-color: #f8fafc; display: none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="text-muted" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">Detalles del Itinerario:</span>
+                            <span class="badge bg-success" id="previewRecorridoParadasCount" style="font-size: 0.72rem;"></span>
+                        </div>
+                        <div id="previewRecorridoStepsList" class="d-flex flex-column gap-1.5" style="font-size: 0.8rem; max-height: 130px; overflow-y: auto;">
+                            <!-- Dinámico -->
+                        </div>
+                        <div class="mt-2.5 pt-2 border-top d-flex justify-content-end">
+                            <button type="button" id="btnPreviewVerEnMapa" class="btn btn-sm btn-outline-success py-1 px-2.5 d-inline-flex align-items-center gap-1" style="font-size: 0.76rem; border-radius: 6px;">
+                                <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                                Ver trazado en el mapa abajo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 12px 20px;">
+                    <button type="button" class="btn btn-secondary btn-sm px-3" data-bs-dismiss="modal" style="border-radius: 8px;">Cerrar</button>
+                    <button type="submit" class="btn btn-success btn-sm px-4" style="border-radius: 8px; background-color: var(--park-primary); border-color: var(--park-primary); font-weight:600;">
+                        Guardar Recorrido
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

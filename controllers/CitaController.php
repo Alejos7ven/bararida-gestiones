@@ -89,6 +89,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'terminar_recorrido':
             terminarRecorridoAction($db);
             break;
+        case 'asignar_recorrido':
+            asignarRecorridoAction($db);
+            break;
         default:
             http_response_code(400);
             echo json_encode([
@@ -1688,6 +1691,98 @@ function terminarRecorridoAction($db) {
         echo json_encode([
             "status" => "error",
             "message" => "No se pudo finalizar el recorrido. Intente nuevamente."
+        ]);
+    }
+}
+
+/**
+ * Asigna o modifica el recorrido asignado a una cita.
+ * Permitido tanto para el Administrador como para el Guía asignado a dicha cita.
+ */
+function asignarRecorridoAction($db) {
+    $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
+    $recorrido_id = (isset($_POST['recorrido_id']) && $_POST['recorrido_id'] !== '') 
+        ? filter_var($_POST['recorrido_id'], FILTER_VALIDATE_INT) 
+        : null;
+
+    if (!$cita_id) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El ID de cita es obligatorio."
+        ]);
+        return;
+    }
+
+    $personal = $_SESSION['personal'] ?? null;
+    if (!$personal) {
+        http_response_code(401);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Sesión no válida."
+        ]);
+        return;
+    }
+
+    $rolNorm = strtolower(trim((string)$personal['rol']));
+    $personalId = (int)$personal['id'];
+
+    // Permisos: SuperAdmin, Admin o Guía asignado a esta cita
+    $esAdmin = ($rolNorm === 'superadmin' || $rolNorm === 'admin');
+    if (!$esAdmin) {
+        if ($rolNorm === 'guia' || $rolNorm === 'guía') {
+            if (!Cita::esGuiaAsignado($db, $cita_id, $personalId)) {
+                http_response_code(403);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "No tienes permisos para asignar el recorrido a esta cita ya que no eres un guía asignado a ella."
+                ]);
+                return;
+            }
+        } else {
+            http_response_code(403);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Acceso no autorizado para asignar recorridos."
+            ]);
+            return;
+        }
+    }
+
+    // Validar existencia del recorrido si se suministró un ID
+    $nombreRecorrido = 'Ninguno / Libre';
+    if ($recorrido_id !== null && $recorrido_id > 0) {
+        $stmtR = $db->prepare("SELECT nombre FROM recorrido WHERE id = :id LIMIT 1");
+        $stmtR->bindParam(':id', $recorrido_id, PDO::PARAM_INT);
+        $stmtR->execute();
+        $nombreRecorrido = $stmtR->fetchColumn();
+        if (!$nombreRecorrido) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "El recorrido seleccionado no existe en el sistema."
+            ]);
+            return;
+        }
+    } else {
+        $recorrido_id = null;
+    }
+
+    $success = Cita::actualizarRecorrido($db, $cita_id, $recorrido_id);
+
+    if ($success) {
+        http_response_code(200);
+        echo json_encode([
+            "status" => "success",
+            "message" => "Recorrido asignado exitosamente.",
+            "recorrido_id" => $recorrido_id,
+            "recorrido_nombre" => $nombreRecorrido
+        ]);
+    } else {
+        http_response_code(500);
+        echo json_encode([
+            "status" => "error",
+            "message" => "No se pudo actualizar el recorrido de la cita."
         ]);
     }
 }

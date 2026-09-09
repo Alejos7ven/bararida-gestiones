@@ -66,6 +66,7 @@
     // =========================================================================
     let cacheEstadisticas = [];
     let cacheCitas = [];
+    let cacheRecorridosDisponibles = [];
     let chartInstance = null;
     let fullCalendarInstance = null;
 
@@ -756,6 +757,38 @@
                             accionesHtml = `<span class="text-muted" style="font-size:0.8rem;">—</span>`;
                         }
 
+                        // 4. Columna Recorrido (Visualización interactiva y asignación)
+                        let recorridoHtml = '';
+                        const recId = c.recorrido_id ? parseInt(c.recorrido_id, 10) : null;
+                        const recNombre = c.recorrido_nombre || '';
+
+                        if (recNombre && recId) {
+                            recorridoHtml = `
+                                <div class="d-inline-flex align-items-center justify-content-center flex-wrap gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-success btn-ver-recorrido-mapa py-0.5 px-2 d-inline-flex align-items-center gap-1 shadow-2xs fw-medium" data-recorrido-id="${recId}" title="Ver trazado en el mapa interactivo">
+                                        <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                                        <span>${recNombre}</span>
+                                    </button>
+                                    ${puedeGestionarRecorrido ? `
+                                        <button type="button" class="btn btn-sm btn-link text-success p-0 ms-1 btn-abrir-asignar-recorrido" data-id="${c.id}" data-institucion="${c.razon_social}" data-recorrido-id="${recId}" title="Cambiar recorrido">
+                                            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            `;
+                        } else {
+                            if (puedeGestionarRecorrido) {
+                                recorridoHtml = `
+                                    <button type="button" class="btn btn-sm btn-outline-primary btn-abrir-asignar-recorrido py-0.5 px-2 d-inline-flex align-items-center gap-1 shadow-2xs fw-bold" data-id="${c.id}" data-institucion="${c.razon_social}" data-recorrido-id="" style="border-radius:8px; font-size:0.75rem;" title="Asignar recorrido a esta cita">
+                                        <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:currentColor;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                                        Asignar
+                                    </button>
+                                `;
+                            } else {
+                                recorridoHtml = `<span class="badge bg-light text-muted border" style="font-size:0.75rem;">Sin recorrido</span>`;
+                            }
+                        }
+
                         const rowHtml = `
                             <tr>
                                 <td><strong>#CIT-${c.id}</strong></td>
@@ -764,7 +797,7 @@
                                     <strong>${c.tipo_documento}-${c.rif}</strong><br>
                                     <small class="text-muted">${c.razon_social}</small>
                                 </td>
-                                <td>${c.recorrido_nombre || '<span class="text-muted" style="font-style:italic;">Sin recorrido</span>'}</td>
+                                <td>${recorridoHtml}</td>
                                 <td><span class="badge bg-info text-dark" style="font-size:0.75rem; font-weight:600;">${c.total_visitantes}</span></td>
                                 <td>${guiasHtml}</td>
                                 <td>${estadoHtml}</td>
@@ -1006,6 +1039,173 @@
             error: function(xhr) {
                 $btn.prop('disabled', false).text('⏹ Terminar');
                 const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al comunicarse con el servidor.';
+                alert(msg);
+            }
+        });
+    });
+
+    // =========================================================================
+    // LÓGICA DE ASIGNACIÓN INTERACTIVA DE RECORRIDOS (ADMIN Y GUÍA ASIGNADO)
+    // =========================================================================
+
+    // Cargar todos los recorridos disponibles en el sistema para el modal
+    function cargarRecorridosParaModal(callback) {
+        if (cacheRecorridosDisponibles.length > 0) {
+            if (callback) callback(cacheRecorridosDisponibles);
+            return;
+        }
+
+        $.ajax({
+            url: 'controllers/RecorridoController.php?action=listar_recorridos',
+            method: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === 'success') {
+                    cacheRecorridosDisponibles = response.data || [];
+                    if (callback) callback(cacheRecorridosDisponibles);
+                } else {
+                    console.error('Error al cargar recorridos:', response.message);
+                }
+            },
+            error: function(xhr) {
+                console.error('Error de red al cargar lista de recorridos:', xhr);
+            }
+        });
+    }
+
+    // Poblar el selector del modal con los recorridos
+    function poblarSelectRecorridosModal(recorridoActualId) {
+        const $select = $('#selectRecorridoModal');
+        $select.empty().append('<option value="">-- Seleccione un recorrido / itinerario --</option>');
+
+        cacheRecorridosDisponibles.forEach(function(rec) {
+            const paradasCount = (rec.paradas && Array.isArray(rec.paradas)) ? rec.paradas.length : 0;
+            const selected = (recorridoActualId && parseInt(rec.id, 10) === parseInt(recorridoActualId, 10)) ? 'selected' : '';
+            $select.append(`<option value="${rec.id}" ${selected}>${rec.nombre} (${paradasCount} paradas)</option>`);
+        });
+
+        actualizarPreviewRecorridoModal(recorridoActualId);
+    }
+
+    // Actualizar previsualización interactiva de paradas del recorrido y sincronizar con el mapa
+    function actualizarPreviewRecorridoModal(recId) {
+        const $box = $('#modalRecorridoPreviewBox');
+        const $list = $('#previewRecorridoStepsList');
+        const $count = $('#previewRecorridoParadasCount');
+
+        if (!recId) {
+            $box.hide();
+            $list.empty();
+            return;
+        }
+
+        const rec = cacheRecorridosDisponibles.find(r => parseInt(r.id, 10) === parseInt(recId, 10));
+        if (!rec || !rec.paradas || rec.paradas.length === 0) {
+            $box.show();
+            $count.text('0 paradas');
+            $list.html('<span class="text-muted italic">Este recorrido no tiene paradas registradas aún.</span>');
+            return;
+        }
+
+        $count.text(`${rec.paradas.length} paradas`);
+        let stepsHtml = '';
+        rec.paradas.forEach(function(p, idx) {
+            stepsHtml += `
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary rounded-circle" style="width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.7rem;flex-shrink:0;">${p.orden || (idx + 1)}</span>
+                    <span class="fw-semibold text-dark text-truncate">${p.zona_nombre || 'Zona del Parque'}</span>
+                </div>
+            `;
+        });
+        $list.html(stepsHtml);
+        $box.slideDown(200);
+
+        // Sincronizar en tiempo real el trazado en el módulo interactivo del mapa ("Itinerarios y Zonas")
+        if ($('#selectRecorridoDashboard').length > 0) {
+            $('#selectRecorridoDashboard').val(recId).trigger('change');
+        }
+    }
+
+    // Evento: Abrir modal de asignación de recorrido desde la tabla
+    $(document).on('click', '.btn-abrir-asignar-recorrido', function() {
+        const citaId = $(this).data('id');
+        const institucion = $(this).data('institucion') || `Visita #CIT-${citaId}`;
+        const recorridoId = $(this).data('recorrido-id') || '';
+
+        $('#modal_recorrido_cita_id').val(citaId);
+        $('#modalRecorridoInstitucionText').text(institucion);
+
+        cargarRecorridosParaModal(function() {
+            poblarSelectRecorridosModal(recorridoId);
+            $('#modalAsignarRecorridoDashboard').modal('show');
+        });
+    });
+
+    // Evento: Cambio en el select de recorridos del modal
+    $(document).on('change', '#selectRecorridoModal', function() {
+        const recId = $(this).val();
+        actualizarPreviewRecorridoModal(recId);
+    });
+
+    // Evento: Ver en mapa desde el modal de previsualización
+    $(document).on('click', '#btnPreviewVerEnMapa', function() {
+        $('#modalAsignarRecorridoDashboard').modal('hide');
+        const mapCard = document.querySelector('.dashboard-map-card');
+        if (mapCard) {
+            mapCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            $(mapCard).addClass('map-highlight-pulse');
+            setTimeout(() => $(mapCard).removeClass('map-highlight-pulse'), 1800);
+        }
+    });
+
+    // Evento: Hacer clic en el botón de un recorrido en la tabla para visualizarlo directamente en el mapa
+    $(document).on('click', '.btn-ver-recorrido-mapa', function() {
+        const recId = $(this).data('recorrido-id');
+        if (!recId) return;
+
+        if ($('#selectRecorridoDashboard').length > 0) {
+            $('#selectRecorridoDashboard').val(recId).trigger('change');
+        }
+
+        const mapCard = document.querySelector('.dashboard-map-card');
+        if (mapCard) {
+            mapCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            $(mapCard).addClass('map-highlight-pulse');
+            setTimeout(() => $(mapCard).removeClass('map-highlight-pulse'), 1800);
+        }
+    });
+
+    // Evento: Guardar recorrido asignado a la cita
+    $('#formAsignarRecorridoDashboard').on('submit', function(e) {
+        e.preventDefault();
+        const citaId = $('#modal_recorrido_cita_id').val();
+        const recId = $('#selectRecorridoModal').val();
+        const $submitBtn = $(this).find('button[type="submit"]');
+
+        $submitBtn.prop('disabled', true).text('Guardando...');
+
+        $.ajax({
+            url: 'controllers/CitaController.php?action=asignar_recorrido',
+            method: 'POST',
+            data: $(this).serialize(),
+            dataType: 'json',
+            success: function(response) {
+                $submitBtn.prop('disabled', false).text('Guardar Recorrido');
+                if (response.status === 'success') {
+                    $('#modalAsignarRecorridoDashboard').modal('hide');
+                    // Recargar tabla de citas para mostrar el nuevo recorrido
+                    cargarCitasHoy();
+                    // Sincronizar en el mapa interactivo
+                    if (recId && $('#selectRecorridoDashboard').length > 0) {
+                        $('#selectRecorridoDashboard').val(recId).trigger('change');
+                    }
+                } else {
+                    alert(response.message || 'No se pudo asignar el recorrido.');
+                }
+            },
+            error: function(xhr) {
+                $submitBtn.prop('disabled', false).text('Guardar Recorrido');
+                const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al guardar el recorrido.';
                 alert(msg);
             }
         });

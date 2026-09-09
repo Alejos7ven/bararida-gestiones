@@ -315,7 +315,7 @@ class Cita {
 
             $loggedId = ($personalId !== null) ? (int)$personalId : 0;
 
-            $base = "SELECT c.id, c.hora_inicio, c.estatus, c.pago_estado, c.fecha_visita,
+            $base = "SELECT c.id, c.hora_inicio, c.estatus, c.pago_estado, c.fecha_visita, c.recorrido_id,
                             e.nombre_completo AS razon_social, e.tipo_documento, e.documento AS rif,
                             r.nombre AS recorrido_nombre,
                             s.detalles AS sede_detalles, ciu.ciudad AS sede_ciudad,
@@ -481,6 +481,25 @@ class Cita {
             return $stmt->execute();
         } catch (PDOException $e) {
             error_log("Error en Cita::desasignarGuia(): " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Actualiza el recorrido asociado a una cita.
+     */
+    public static function actualizarRecorrido(PDO $db, int $citaId, ?int $recorridoId): bool {
+        try {
+            $stmt = $db->prepare("UPDATE citas SET recorrido_id = :recorrido_id WHERE id = :id");
+            if ($recorridoId !== null && $recorridoId > 0) {
+                $stmt->bindValue(':recorrido_id', $recorridoId, PDO::PARAM_INT);
+            } else {
+                $stmt->bindValue(':recorrido_id', null, PDO::PARAM_NULL);
+            }
+            $stmt->bindParam(':id', $citaId, PDO::PARAM_INT);
+            return $stmt->execute();
+        } catch (PDOException $e) {
+            error_log("Error en Cita::actualizarRecorrido(): " . $e->getMessage());
             return false;
         }
     }

@@ -1162,3 +1162,46 @@ body {
     min-width: 820px;
     touch-action: pan-y pan-x;
 }
+
+/* ==========================================================================
+   Efectos y Estilos Interactivos para Visualizador de Recorridos en Dashboard
+   ========================================================================== */
+@keyframes mapHighlightPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(13, 144, 57, 0.6);
+        border-color: #0D9039;
+    }
+    50% {
+        box-shadow: 0 0 0 14px rgba(13, 144, 57, 0.18);
+        border-color: #0D9039;
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(13, 144, 57, 0);
+        border-color: #e2e8f0;
+    }
+}
+
+.map-highlight-pulse {
+    animation: mapHighlightPulse 1.8s ease-out;
+    transition: all 0.3s ease;
+}
+
+.btn-ver-recorrido-mapa {
+    transition: all 0.2s ease;
+    border-radius: 8px;
+    font-size: 0.76rem;
+    cursor: pointer;
+}
+
+.btn-ver-recorrido-mapa:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 10px rgba(13, 144, 57, 0.2);
+}
+
+.btn-abrir-asignar-recorrido {
+    transition: all 0.2s ease;
+}
+
+.btn-abrir-asignar-recorrido:hover {
+    transform: scale(1.04);
+}
