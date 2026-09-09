@@ -457,6 +457,7 @@ if (!isset($userPermissions)) {
                 <form id="formImportarVisitantes" enctype="multipart/form-data" novalidate>
                     <input type="hidden" name="cita_id" id="import_cita_id">
                     <div class="modal-body" style="padding: 24px;">
+                        <div id="alertImportarVisitantes" class="alert alert-danger" style="display:none; border-radius:10px; font-size:0.82rem; padding:10px 14px; margin-bottom:15px;"></div>
                         <!-- Panel 1: Carga de Archivo -->
                         <div id="importUploadPanel">
                             <p class="text-muted" style="font-size:0.85rem; line-height:1.45;">Cargue la plantilla Excel o CSV con el listado de visitantes de la cita: <strong id="importCitaNombreSpan" class="text-success"></strong>.</p>
@@ -471,7 +472,7 @@ if (!isset($userPermissions)) {
                             </div>
 
                             <div class="alert alert-info mt-3 p-2.5 mb-0" style="border-radius:10px; font-size:0.75rem; line-height:1.35;">
-                                <strong>Instrucciones:</strong> Descarga la plantilla Excel (.xlsx) y llénala con los datos de los visitantes. Las columnas son: Cédula (opcional), Nombres, Apellidos y Fecha Nacimiento en formato <code>AAAA-MM-DD</code>. Puedes subir <strong>.xlsx</strong> o <strong>.csv</strong>.
+                                <strong>Instrucciones:</strong> Descarga la plantilla oficial (.xlsx o .csv). Para mayor claridad y evitar confusiones de formato, la fecha se ingresa en 3 columnas separadas: <strong>Día de Nacimiento (1-31)</strong>, <strong>Mes de Nacimiento (1-12)</strong> y <strong>Año de Nacimiento (ej. 2010)</strong>. Las columnas son: Cédula (opcional, mín. 5 dígitos si posee), Nombres, Apellidos, Día de Nacimiento, Mes de Nacimiento y Año de Nacimiento.
                             </div>
                         </div>
 
@@ -488,7 +489,7 @@ if (!isset($userPermissions)) {
                                             <th style="width: 25%; text-align: left; padding-left: 10px;">Cédula (Opcional)</th>
                                             <th style="width: 25%; text-align: left;">Nombres *</th>
                                             <th style="width: 25%; text-align: left;">Apellidos *</th>
-                                            <th style="width: 20%; text-align: left;">F. Nacimiento *</th>
+                                            <th style="width: 20%; text-align: left;">Fecha de Nacimiento *</th>
                                             <th style="width: 5%;"></th>
                                         </tr>
                                     </thead>
@@ -590,11 +591,11 @@ if (!isset($userPermissions)) {
                                     <div class="row g-2 mt-2">
                                         <div class="col-md-6">
                                             <label for="reg_visitante_nombres" class="form-premium-label" style="font-size: 0.75rem;">Nombres *</label>
-                                            <input type="text" class="form-control form-premium-control" id="reg_visitante_nombres" name="nombres" placeholder="Nombres del visitante" required style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
+                                            <input type="text" class="form-control form-premium-control" id="reg_visitante_nombres" name="nombres" placeholder="Ej. Carlos Eduardo" required style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
                                         </div>
                                         <div class="col-md-6">
                                             <label for="reg_visitante_apellidos" class="form-premium-label" style="font-size: 0.75rem;">Apellidos *</label>
-                                            <input type="text" class="form-control form-premium-control" id="reg_visitante_apellidos" name="apellidos" placeholder="Apellidos del visitante" required style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
+                                            <input type="text" class="form-control form-premium-control" id="reg_visitante_apellidos" name="apellidos" placeholder="Ej. Pérez Gómez" required style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
                                         </div>
                                     </div>
                                     <div class="d-flex justify-content-end mt-3 gap-2">

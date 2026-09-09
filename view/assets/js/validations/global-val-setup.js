@@ -94,7 +94,15 @@
 
         // 1. Si el servidor envió el nombre del campo explícitamente
         if (fieldName) {
-            $targetInput = $form.find(`[name="${fieldName}"], #${fieldName}, [name*="[${fieldName}]"]`).first();
+            if (fieldName === 'telefono') {
+                $targetInput = $form.find('.input-telefono-val, input[type="tel"], [name*="telefono"]').filter(':visible').first();
+            } else if (fieldName === 'correo') {
+                $targetInput = $form.find('.input-correo-val, input[type="email"], [name*="correo"]').filter(':visible').first();
+            } else if (fieldName === 'contacto') {
+                $targetInput = $form.find('.input-contacto-val, .input-telefono-val, .input-correo-val').filter(':visible').first();
+            } else {
+                $targetInput = $form.find(`[name="${fieldName}"], #${fieldName}, [name*="[${fieldName}]"]`).filter(':visible, [type!="hidden"]').first();
+            }
         }
 
         // 2. Si no se encontró o no vino, buscar por palabras clave en el mensaje de error
@@ -111,9 +119,11 @@
             } else if (msgLower.includes('contraseña') || msgLower.includes('password') || msgLower.includes('clave')) {
                 $targetInput = $form.find('[name="password"], #password, #create_password, #edit_password').first();
             } else if (msgLower.includes('teléfono') || msgLower.includes('telefono')) {
-                $targetInput = $form.find('.input-telefono-val, input[type="tel"], [name*="telefono"], [name*="contacto"]').first();
+                $targetInput = $form.find('.input-telefono-val, input[type="tel"], [name*="telefono"]').first();
             } else if (msgLower.includes('correo') || msgLower.includes('email')) {
                 $targetInput = $form.find('.input-correo-val, input[type="email"], [name*="correo"]').first();
+            } else if (msgLower.includes('contacto')) {
+                $targetInput = $form.find('.input-contacto-val, .input-telefono-val, .input-correo-val').first();
             } else if (msgLower.includes('fecha') || msgLower.includes('cupo') || msgLower.includes('visita')) {
                 $targetInput = $form.find('[name="fecha_visita"], #fecha_visita, #edit_fecha_visita, [name="fecha_nacimiento"]').first();
             } else if (msgLower.includes('hora')) {

@@ -1277,13 +1277,14 @@ $(document).ready(function() {
 
     function handleFileSelect(file) {
         if (!file) return;
+        $('#alertImportarVisitantes').hide().text('');
 
         // Aceptar .xlsx y .csv
         const name = file.name;
         const extension = name.split('.').pop().toLowerCase();
 
         if (extension !== 'csv' && extension !== 'xlsx') {
-            alert('Por favor, seleccione un archivo Excel (.xlsx) o CSV (.csv).');
+            $('#alertImportarVisitantes').html('<strong>Formato no válido:</strong> Por favor seleccione un archivo Excel (.xlsx) o CSV (.csv).').slideDown(200);
             $fileInput.val('');
             selectedCsvFile = null;
             $fileInfo.hide();
@@ -1304,6 +1305,7 @@ $(document).ready(function() {
     // Botón: Siguiente (Cargar y Previsualizar)
     $('#btnSiguientePrevisualizar').on('click', function() {
         if (!selectedCsvFile) return;
+        $('#alertImportarVisitantes').hide().text('');
 
         const extension = selectedCsvFile.name.split('.').pop().toLowerCase();
 
@@ -1326,7 +1328,7 @@ $(document).ready(function() {
         if (extension === 'xlsx') {
             // ── Parsear con SheetJS ──────────────────────────────────────────
             if (typeof XLSX === 'undefined') {
-                alert('La librería de lectura Excel no está disponible. Intente recargar la página.');
+                $('#alertImportarVisitantes').html('<strong>Error:</strong> La librería de lectura Excel no está disponible. Intente recargar la página.').slideDown(200);
                 return;
             }
             const reader = new FileReader();
@@ -1341,20 +1343,27 @@ $(document).ready(function() {
                     const visitors = [];
                     for (let i = 1; i < rawRows.length; i++) { // i=1 salta la fila de cabecera
                         const row = rawRows[i];
-                        const ced  = String(row[0] || '').trim();
-                        const nom  = String(row[1] || '').trim();
-                        const ape  = String(row[2] || '').trim();
-                        const fNac = String(row[3] || '').trim();
+                        if (!row || row.length === 0) continue;
 
-                        // Omitir fila de ejemplo y filas vacías
+                        const ced  = String(row[0] !== undefined && row[0] !== null ? row[0] : '').trim();
+                        const nom  = String(row[1] !== undefined && row[1] !== null ? row[1] : '').trim();
+                        const ape  = String(row[2] !== undefined && row[2] !== null ? row[2] : '').trim();
+
+                        // Omitir cabecera si se repite o fila de ejemplo
+                        if (nom.toLowerCase() === 'nombres' || nom.toLowerCase() === 'nombre') continue;
                         if (ced === '12345678' && nom === 'Pedro' && ape === 'Pérez') continue;
                         if (nom === '' && ape === '') continue;
 
-                        visitors.push({ cedula: ced, nombres: nom, apellidos: ape, fecha_nacimiento: sanitizeCsvDate(fNac) });
+                        const col3 = row[3] !== undefined ? row[3] : '';
+                        const col4 = row[4] !== undefined ? row[4] : '';
+                        const col5 = row[5] !== undefined ? row[5] : '';
+                        const fNac = resolveBirthDate(col3, col4, col5);
+
+                        visitors.push({ cedula: ced, nombres: nom, apellidos: ape, fecha_nacimiento: fNac });
                     }
                     renderPreview(visitors);
                 } catch (err) {
-                    alert('No se pudo leer el archivo Excel. Asegúrese de que no esté dañado o protegido.\n\nDetalle: ' + err.message);
+                    $('#alertImportarVisitantes').html('<strong>Error al leer el archivo Excel:</strong> Asegúrese de que no esté dañado o protegido.<br><small>' + err.message + '</small>').slideDown(200);
                 }
             };
             reader.readAsArrayBuffer(selectedCsvFile);
@@ -1390,6 +1399,172 @@ $(document).ready(function() {
         $(this).closest('tr').remove();
     });
 
+    // =========================================================================
+    // UTILIDADES DE PARSEO Y NORMALIZACIÓN DE FECHAS DE NACIMIENTO
+    // =========================================================================
+    const MESES_MAP = {
+        'enero': 1, 'ene': 1, 'january': 1, 'jan': 1,
+        'febrero': 2, 'feb': 2, 'febr': 2, 'february': 2,
+        'marzo': 3, 'mar': 3, 'march': 3,
+        'abril': 4, 'abr': 4, 'april': 4, 'apr': 4,
+        'mayo': 5, 'may': 5,
+        'junio': 6, 'jun': 6, 'june': 6,
+        'julio': 7, 'jul': 7, 'july': 7,
+        'agosto': 8, 'ago': 8, 'august': 8, 'aug': 8,
+        'septiembre': 9, 'setiembre': 9, 'sep': 9, 'sept': 9, 'september': 9,
+        'octubre': 10, 'oct': 10, 'october': 10,
+        'noviembre': 11, 'nov': 11, 'november': 11,
+        'diciembre': 12, 'dic': 12, 'december': 12, 'dec': 12
+    };
+
+    function parseMonthVal(val) {
+        if (val === undefined || val === null) return 0;
+        const s = String(val).trim().toLowerCase();
+        if (!s) return 0;
+        if (MESES_MAP[s]) return MESES_MAP[s];
+        const num = parseInt(s.replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(num) && num >= 1 && num <= 31) return num;
+        return 0;
+    }
+
+    function parseYearVal(val) {
+        if (val === undefined || val === null) return 0;
+        let s = String(val).trim();
+        if (!s) return 0;
+        let num = parseInt(s.replace(/[^0-9]/g, ''), 10);
+        if (isNaN(num) || num <= 0) return 0;
+
+        // Si pusieron 2 dígitos (ej. 98 o 05)
+        if (num < 100) {
+            num = num <= 30 ? 2000 + num : 1900 + num;
+        }
+        // Si pusieron un cero de más por error tipográfico (ej. 20000 -> 2000, 19950 -> 1995)
+        else if (num > 2100) {
+            const numStr = String(num);
+            if (numStr.startsWith('19') || numStr.startsWith('20')) {
+                num = parseInt(numStr.substring(0, 4), 10);
+            }
+        }
+        return (num >= 1900 && num <= 2100) ? num : 0;
+    }
+
+    function parseDayVal(val) {
+        if (val === undefined || val === null) return 0;
+        const num = parseInt(String(val).replace(/[^0-9]/g, ''), 10);
+        if (!isNaN(num) && num >= 1 && num <= 31) return num;
+        return 0;
+    }
+
+    function parseExcelSerialDate(serial) {
+        const num = parseFloat(serial);
+        if (isNaN(num) || num < 1 || num > 100000) return '';
+        const epoch = new Date(1899, 11, 30);
+        const date = new Date(epoch.getTime() + num * 86400000);
+        if (!isNaN(date.getTime())) {
+            const y = date.getUTCFullYear();
+            const m = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const d = String(date.getUTCDate()).padStart(2, '0');
+            if (y >= 1900 && y <= 2100) {
+                return `${y}-${m}-${d}`;
+            }
+        }
+        return '';
+    }
+
+    // Resuelve flexiblemente fechas desde 3 columnas (Día, Mes, Año) o fecha combinada
+    function resolveBirthDate(valCol3, valCol4, valCol5) {
+        const s3 = String(valCol3 !== undefined && valCol3 !== null ? valCol3 : '').trim();
+        const s4 = String(valCol4 !== undefined && valCol4 !== null ? valCol4 : '').trim();
+        const s5 = String(valCol5 !== undefined && valCol5 !== null ? valCol5 : '').trim();
+
+        // 1. Columnas separadas Día, Mes, Año (cuando hay al menos 2 columnas o las 3 con datos)
+        if (s3 !== '' && (s4 !== '' || s5 !== '')) {
+            let d = parseDayVal(s3);
+            let m = parseMonthVal(s4);
+            let y = parseYearVal(s5);
+
+            // Si día está en rango de mes (1-12) y mes está en rango de día (>12 y <=31), se detecta inversión
+            if (m > 12 && m <= 31 && d >= 1 && d <= 12) {
+                const temp = d;
+                d = m;
+                m = temp;
+            }
+
+            if (d >= 1 && d <= 31 && m >= 1 && m <= 12 && y >= 1900 && y <= 2100) {
+                const dateObj = new Date(y, m - 1, d);
+                if (dateObj.getFullYear() === y && dateObj.getMonth() === m - 1 && dateObj.getDate() === d) {
+                    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                }
+            }
+            // Si vino en formato de 3 columnas pero los valores no son válidos, no inventar seriales
+            return '';
+        }
+
+        // 2. Fecha combinada en una sola celda
+        const testStr = s3 || s5 || s4;
+        if (!testStr) return '';
+
+        // ISO YYYY-MM-DD (soporta año con 5 dígitos corregido a 4)
+        const isoMatch = testStr.match(/^(\d{4,5})-(\d{1,2})-(\d{1,2})$/);
+        if (isoMatch) {
+            const y = parseYearVal(isoMatch[1]);
+            let m = parseInt(isoMatch[2], 10);
+            let d = parseInt(isoMatch[3], 10);
+            if (m > 12 && m <= 31 && d >= 1 && d <= 12) {
+                const temp = d; d = m; m = temp;
+            }
+            if (y && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                const dateObj = new Date(y, m - 1, d);
+                if (dateObj.getFullYear() === y && dateObj.getMonth() === m - 1 && dateObj.getDate() === d) {
+                    return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                }
+            }
+        }
+
+        // DD/MM/YYYY o YYYY/MM/DD
+        const slashParts = testStr.split(/[\/\-\.]/);
+        if (slashParts.length === 3) {
+            if (slashParts[0].length >= 4) {
+                const y = parseYearVal(slashParts[0]);
+                let m = parseMonthVal(slashParts[1]);
+                let d = parseDayVal(slashParts[2]);
+                if (m > 12 && m <= 31 && d >= 1 && d <= 12) {
+                    const temp = d; d = m; m = temp;
+                }
+                if (y && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                    const dateObj = new Date(y, m - 1, d);
+                    if (dateObj.getFullYear() === y && dateObj.getMonth() === m - 1 && dateObj.getDate() === d) {
+                        return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    }
+                }
+            } else {
+                let d = parseDayVal(slashParts[0]);
+                let m = parseMonthVal(slashParts[1]);
+                const y = parseYearVal(slashParts[2]);
+                if (m > 12 && m <= 31 && d >= 1 && d <= 12) {
+                    const temp = d; d = m; m = temp;
+                }
+                if (y && m >= 1 && m <= 12 && d >= 1 && d <= 31) {
+                    const dateObj = new Date(y, m - 1, d);
+                    if (dateObj.getFullYear() === y && dateObj.getMonth() === m - 1 && dateObj.getDate() === d) {
+                        return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                    }
+                }
+            }
+        }
+
+        // Número serial de Excel (únicamente en celda individual y en rango válido de fecha serial > 10000)
+        if (/^\d{4,5}(\.\d+)?$/.test(testStr)) {
+            const numVal = parseFloat(testStr);
+            if (numVal >= 10000 && numVal <= 60000) {
+                const parsedSerial = parseExcelSerialDate(testStr);
+                if (parsedSerial) return parsedSerial;
+            }
+        }
+
+        return '';
+    }
+
     // Parsear texto del archivo CSV a JSON Array
     function parseCsvToJSON(text) {
         const lines = text.split(/\r?\n/);
@@ -1417,7 +1592,6 @@ $(document).ready(function() {
             const ced = fields[0] || '';
             const nom = fields[1] || '';
             const ape = fields[2] || '';
-            const fNac = fields[3] || '';
 
             // Omitir cabecera
             if (nom.toLowerCase() === 'nombres' || nom.toLowerCase() === 'nombre') continue;
@@ -1425,6 +1599,11 @@ $(document).ready(function() {
             if (ced === '12345678' && nom === 'Pedro' && ape === 'Pérez') continue;
             // Omitir vacíos
             if (nom === '' && ape === '') continue;
+
+            const col3 = fields[3] || '';
+            const col4 = fields[4] || '';
+            const col5 = fields[5] || '';
+            const fNac = resolveBirthDate(col3, col4, col5);
 
             visitors.push({
                 cedula: ced,
@@ -1436,51 +1615,168 @@ $(document).ready(function() {
         return visitors;
     }
 
-    // Normalizar fechas de la plantilla para el control input[type=date]
     function sanitizeCsvDate(dateStr) {
-        if (!dateStr) return '';
-        dateStr = dateStr.trim();
-        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
-
-        const parts = dateStr.split(/[\/-]/);
-        if (parts.length === 3) {
-            if (parts[0].length === 4) {
-                return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
-            }
-            if (parts[2].length === 4) {
-                return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-            }
-        }
-        return dateStr;
+        return resolveBirthDate(dateStr, '', '');
     }
 
-    // Renderiza una fila en la tabla de previsualización
+    // Renderiza una fila en la tabla de previsualización con soporte de feedback de error por input
     function renderPreviewRow(v) {
-        const dateVal = sanitizeCsvDate(v.fecha_nacimiento);
+        const todayStr = new Date().toISOString().split('T')[0];
+        const dateVal = v.fecha_nacimiento ? sanitizeCsvDate(v.fecha_nacimiento) : '';
+        const cedVal = v.cedula !== undefined && v.cedula !== null ? String(v.cedula).trim() : '';
+        const nomVal = v.nombres !== undefined && v.nombres !== null ? String(v.nombres).trim() : '';
+        const apeVal = v.apellidos !== undefined && v.apellidos !== null ? String(v.apellidos).trim() : '';
+
+        // Validación Cédula (opcional para menores, pero si se coloca debe ser estrictamente numérica de 5 a 12 dígitos)
+        let isCedInvalid = false;
+        let cedFeedback = '';
+        if (cedVal !== '') {
+            if (!/^\d+$/.test(cedVal)) {
+                isCedInvalid = true;
+                cedFeedback = 'Solo números';
+            } else if (cedVal.length < 5 || cedVal.length > 12) {
+                isCedInvalid = true;
+                cedFeedback = 'Mín. 5 dígitos';
+            }
+        }
+
+        // Validación Nombres (obligatorio, solo letras, sin números)
+        let isNomInvalid = false;
+        let nomFeedback = '';
+        if (!nomVal) {
+            isNomInvalid = true;
+            nomFeedback = 'Nombre requerido';
+        } else if (/\d/.test(nomVal)) {
+            isNomInvalid = true;
+            nomFeedback = 'Sin números';
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(nomVal) || nomVal.length < 2) {
+            isNomInvalid = true;
+            nomFeedback = 'Solo letras';
+        }
+
+        // Validación Apellidos (obligatorio, solo letras, sin números)
+        let isApeInvalid = false;
+        let apeFeedback = '';
+        if (!apeVal) {
+            isApeInvalid = true;
+            apeFeedback = 'Apellido requerido';
+        } else if (/\d/.test(apeVal)) {
+            isApeInvalid = true;
+            apeFeedback = 'Sin números';
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(apeVal) || apeVal.length < 2) {
+            isApeInvalid = true;
+            apeFeedback = 'Solo letras';
+        }
+
+        // Validación Fecha
+        const isFechaInvalid = !dateVal || dateVal > todayStr;
+        const fechaFeedback = !dateVal ? 'Fecha requerida' : (dateVal > todayStr ? 'No puede ser futura' : '');
+
         return `
             <tr class="preview-visitor-row">
-                <td style="padding-left: 10px;">
-                    <input type="text" class="form-control form-premium-control p-1 text-center input-preview-cedula" 
-                           value="${v.cedula || ''}" placeholder="Opcional" style="font-size:0.8rem; border-radius: 6px;">
+                <td style="padding-left: 8px; vertical-align: top;">
+                    <input type="text" class="form-control form-premium-control p-1 text-center input-preview-cedula ${isCedInvalid ? 'is-invalid' : ''}" 
+                           value="${cedVal}" placeholder="Ej. 12345678" maxlength="12" style="font-size:0.8rem; border-radius: 6px;">
+                    <div class="invalid-feedback text-start" style="font-size:0.7rem; line-height:1.1; margin-top:2px; ${isCedInvalid ? 'display:block;' : ''}">${cedFeedback}</div>
                 </td>
-                <td>
-                    <input type="text" class="form-control form-premium-control p-1 input-preview-nombres" 
-                           value="${v.nombres || ''}" placeholder="Nombres" required style="font-size:0.8rem; border-radius: 6px;">
+                <td style="vertical-align: top;">
+                    <input type="text" class="form-control form-premium-control p-1 input-preview-nombres ${isNomInvalid ? 'is-invalid' : ''}" 
+                           value="${nomVal}" placeholder="Ej. Carlos Eduardo" required style="font-size:0.8rem; border-radius: 6px;">
+                    <div class="invalid-feedback text-start" style="font-size:0.7rem; line-height:1.1; margin-top:2px; ${isNomInvalid ? 'display:block;' : ''}">${nomFeedback}</div>
                 </td>
-                <td>
-                    <input type="text" class="form-control form-premium-control p-1 input-preview-apellidos" 
-                           value="${v.apellidos || ''}" placeholder="Apellidos" required style="font-size:0.8rem; border-radius: 6px;">
+                <td style="vertical-align: top;">
+                    <input type="text" class="form-control form-premium-control p-1 input-preview-apellidos ${isApeInvalid ? 'is-invalid' : ''}" 
+                           value="${apeVal}" placeholder="Ej. Pérez Gómez" required style="font-size:0.8rem; border-radius: 6px;">
+                    <div class="invalid-feedback text-start" style="font-size:0.7rem; line-height:1.1; margin-top:2px; ${isApeInvalid ? 'display:block;' : ''}">${apeFeedback}</div>
                 </td>
-                <td>
-                    <input type="date" class="form-control form-premium-control p-1 input-preview-fecha" 
-                           value="${dateVal}" required style="font-size:0.8rem; border-radius: 6px;">
+                <td style="vertical-align: top;">
+                    <input type="date" class="form-control form-premium-control p-1 input-preview-fecha ${isFechaInvalid ? 'is-invalid' : ''}" 
+                           value="${dateVal}" max="${todayStr}" required style="font-size:0.8rem; border-radius: 6px;">
+                    <div class="invalid-feedback text-start" style="font-size:0.7rem; line-height:1.1; margin-top:2px; ${isFechaInvalid ? 'display:block;' : ''}">${fechaFeedback}</div>
                 </td>
-                <td>
-                    <button type="button" class="btn-remove-preview-visitor btn-remove-contact" title="Quitar de la lista" style="width:24px; height:24px; font-size:10px; padding:0; display:flex; align-items:center; justify-content:center;">✕</button>
+                <td style="vertical-align: middle; text-align: center; width: 35px;">
+                    <button type="button" class="btn-remove-preview-visitor btn-remove-contact" title="Quitar de la lista" style="width:24px; height:24px; font-size:10px; padding:0; display:inline-flex; align-items:center; justify-content:center;">✕</button>
                 </td>
             </tr>
         `;
     }
+
+    // Eventos en tiempo real para inputs de la tabla de previsualización
+    $(document).on('input change', '.input-preview-cedula', function() {
+        const val = $(this).val().trim();
+        const $fb = $(this).siblings('.invalid-feedback');
+        if (val !== '') {
+            if (!/^\d+$/.test(val)) {
+                $(this).addClass('is-invalid');
+                $fb.text('Solo números permitidos').show();
+            } else if (val.length < 5 || val.length > 12) {
+                $(this).addClass('is-invalid');
+                $fb.text('Mínimo 5 y máx. 12 dígitos').show();
+            } else {
+                $(this).removeClass('is-invalid');
+                $fb.hide().text('');
+            }
+        } else {
+            $(this).removeClass('is-invalid');
+            $fb.hide().text('');
+        }
+        $('#alertImportarVisitantes').slideUp(150);
+    });
+
+    $(document).on('input change', '.input-preview-nombres', function() {
+        const val = $(this).val().trim();
+        const $fb = $(this).siblings('.invalid-feedback');
+        if (!val) {
+            $(this).addClass('is-invalid');
+            $fb.text('Nombre requerido').show();
+        } else if (/\d/.test(val)) {
+            $(this).addClass('is-invalid');
+            $fb.text('No puede contener números').show();
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(val) || val.length < 2) {
+            $(this).addClass('is-invalid');
+            $fb.text('Solo letras permitidas').show();
+        } else {
+            $(this).removeClass('is-invalid');
+            $fb.hide().text('');
+        }
+        $('#alertImportarVisitantes').slideUp(150);
+    });
+
+    $(document).on('input change', '.input-preview-apellidos', function() {
+        const val = $(this).val().trim();
+        const $fb = $(this).siblings('.invalid-feedback');
+        if (!val) {
+            $(this).addClass('is-invalid');
+            $fb.text('Apellido requerido').show();
+        } else if (/\d/.test(val)) {
+            $(this).addClass('is-invalid');
+            $fb.text('No puede contener números').show();
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(val) || val.length < 2) {
+            $(this).addClass('is-invalid');
+            $fb.text('Solo letras permitidas').show();
+        } else {
+            $(this).removeClass('is-invalid');
+            $fb.hide().text('');
+        }
+        $('#alertImportarVisitantes').slideUp(150);
+    });
+
+    $(document).on('input change', '.input-preview-fecha', function() {
+        const val = $(this).val().trim();
+        const todayStr = new Date().toISOString().split('T')[0];
+        const $fb = $(this).siblings('.invalid-feedback');
+        if (!val) {
+            $(this).addClass('is-invalid');
+            $fb.text('Fecha requerida').show();
+        } else if (val > todayStr) {
+            $(this).addClass('is-invalid');
+            $fb.text('No puede ser fecha futura').show();
+        } else {
+            $(this).removeClass('is-invalid');
+            $fb.hide().text('');
+        }
+        $('#alertImportarVisitantes').slideUp(150);
+    });
 
     // Submit del formulario de importación (envío final de datos previsualizados)
     $('#formImportarVisitantes').on('submit', function(e) {
@@ -1494,21 +1790,94 @@ $(document).ready(function() {
             return;
         }
 
+        $('#alertImportarVisitantes').hide().text('');
         const citaId = $('#import_cita_id').val();
         const visitorsList = [];
         let isValid = true;
+        let $firstInvalid = null;
+        let errorCount = 0;
+        const todayStr = new Date().toISOString().split('T')[0];
 
         $('.preview-visitor-row').each(function() {
-            const ced = $(this).find('.input-preview-cedula').val().trim();
-            const nom = $(this).find('.input-preview-nombres').val().trim();
-            const ape = $(this).find('.input-preview-apellidos').val().trim();
-            const fNac = $(this).find('.input-preview-fecha').val().trim();
+            const $row = $(this);
+            const $inputCed = $row.find('.input-preview-cedula');
+            const $inputNom = $row.find('.input-preview-nombres');
+            const $inputApe = $row.find('.input-preview-apellidos');
+            const $inputFecha = $row.find('.input-preview-fecha');
 
-            if (nom === '' || ape === '' || fNac === '') {
+            const ced = $inputCed.val().trim();
+            const nom = $inputNom.val().trim();
+            const ape = $inputApe.val().trim();
+            const fNac = $inputFecha.val().trim();
+
+            if (ced !== '') {
+                if (!/^\d+$/.test(ced)) {
+                    $inputCed.addClass('is-invalid');
+                    $inputCed.siblings('.invalid-feedback').text('Solo números permitidos').show();
+                    isValid = false;
+                    errorCount++;
+                    if (!$firstInvalid) $firstInvalid = $inputCed;
+                } else if (ced.length < 5 || ced.length > 12) {
+                    $inputCed.addClass('is-invalid');
+                    $inputCed.siblings('.invalid-feedback').text('Mínimo 5 y máx. 12 dígitos').show();
+                    isValid = false;
+                    errorCount++;
+                    if (!$firstInvalid) $firstInvalid = $inputCed;
+                }
+            }
+
+            if (!nom) {
+                $inputNom.addClass('is-invalid');
+                $inputNom.siblings('.invalid-feedback').text('Nombre requerido').show();
                 isValid = false;
-                $(this).css('background-color', '#fff5f5');
-            } else {
-                $(this).css('background-color', '');
+                errorCount++;
+                if (!$firstInvalid) $firstInvalid = $inputNom;
+            } else if (/\d/.test(nom)) {
+                $inputNom.addClass('is-invalid');
+                $inputNom.siblings('.invalid-feedback').text('No puede contener números').show();
+                isValid = false;
+                errorCount++;
+                if (!$firstInvalid) $firstInvalid = $inputNom;
+            } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(nom) || nom.length < 2) {
+                $inputNom.addClass('is-invalid');
+                $inputNom.siblings('.invalid-feedback').text('Solo letras permitidas').show();
+                isValid = false;
+                errorCount++;
+                if (!$firstInvalid) $firstInvalid = $inputNom;
+            }
+
+            if (!ape) {
+                $inputApe.addClass('is-invalid');
+                $inputApe.siblings('.invalid-feedback').text('Apellido requerido').show();
+                isValid = false;
+                errorCount++;
+                if (!$firstInvalid) $firstInvalid = $inputApe;
+            } else if (/\d/.test(ape)) {
+                $inputApe.addClass('is-invalid');
+                $inputApe.siblings('.invalid-feedback').text('No puede contener números').show();
+                isValid = false;
+                errorCount++;
+                if (!$firstInvalid) $firstInvalid = $inputApe;
+            } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(ape) || ape.length < 2) {
+                $inputApe.addClass('is-invalid');
+                $inputApe.siblings('.invalid-feedback').text('Solo letras permitidas').show();
+                isValid = false;
+                errorCount++;
+                if (!$firstInvalid) $firstInvalid = $inputApe;
+            }
+
+            if (!fNac) {
+                $inputFecha.addClass('is-invalid');
+                $inputFecha.siblings('.invalid-feedback').text('Fecha requerida').show();
+                isValid = false;
+                errorCount++;
+                if (!$firstInvalid) $firstInvalid = $inputFecha;
+            } else if (fNac > todayStr) {
+                $inputFecha.addClass('is-invalid');
+                $inputFecha.siblings('.invalid-feedback').text('No puede ser fecha futura').show();
+                isValid = false;
+                errorCount++;
+                if (!$firstInvalid) $firstInvalid = $inputFecha;
             }
 
             visitorsList.push({
@@ -1520,12 +1889,18 @@ $(document).ready(function() {
         });
 
         if (!isValid) {
-            alert('Por favor, complete todos los campos obligatorios (*) marcados en rojo.');
+            $('#alertImportarVisitantes').html(`<strong>Datos incompletos o inválidos:</strong> Se detectaron ${errorCount} campo(s) con error. Por favor, corríjalos en la tabla para continuar.`).slideDown(200);
+            if ($firstInvalid) {
+                $firstInvalid.trigger('focus');
+                if ($firstInvalid[0] && typeof $firstInvalid[0].scrollIntoView === 'function') {
+                    $firstInvalid[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
             return;
         }
 
         if (visitorsList.length === 0) {
-            alert('Debe añadir al menos un visitante para importar.');
+            $('#alertImportarVisitantes').html('<strong>Atención:</strong> Debe añadir al menos un visitante para importar.').slideDown(200);
             return;
         }
 
@@ -1541,13 +1916,13 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 $btnImport.prop('disabled', false).text('Confirmar y Guardar');
-                $('#modalImportarVisitantes').modal('hide');
 
                 if (response.status === 'success') {
+                    $('#modalImportarVisitantes').modal('hide');
                     showGlobalAlert(response.message, 'success');
                     listarCitas();
                 } else {
-                    alert(response.message);
+                    $('#alertImportarVisitantes').html(`<strong>Error:</strong> ${response.message}`).slideDown(200);
                 }
             },
             error: function(xhr) {
@@ -1556,7 +1931,7 @@ $(document).ready(function() {
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMsg = xhr.responseJSON.message;
                 }
-                alert(errorMsg);
+                $('#alertImportarVisitantes').html(`<strong>Error:</strong> ${errorMsg}`).slideDown(200);
             }
         });
     });
@@ -1808,7 +2183,7 @@ $(document).ready(function() {
         });
 
         if (selectedIds.length === 0) {
-            alert('Debe seleccionar al menos un visitante para agregar.');
+            showGlobalAlert('Debe seleccionar al menos un visitante para agregar.', 'danger');
             return;
         }
 
@@ -1831,7 +2206,7 @@ $(document).ready(function() {
                     cargarVisitantesCita(citaId);
                     listarCitas(); // Refrescar tabla del dashboard principal
                 } else {
-                    alert(response.message);
+                    showGlobalAlert(response.message, 'danger');
                 }
             },
             error: function(xhr) {
@@ -1840,7 +2215,7 @@ $(document).ready(function() {
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMsg = xhr.responseJSON.message;
                 }
-                alert(errorMsg);
+                showGlobalAlert(errorMsg, 'danger');
             }
         });
     });
@@ -1850,15 +2225,66 @@ $(document).ready(function() {
         e.preventDefault();
         
         const citaId = $('#modalVerVisitantes').data('cita-id');
-        const cedula = $('#reg_visitante_cedula').val().trim();
-        const nombres = $('#reg_visitante_nombres').val().trim();
-        const apellidos = $('#reg_visitante_apellidos').val().trim();
-        const fechaNac = $('#reg_visitante_fecha_nac').val().trim();
+        const $cedula = $('#reg_visitante_cedula');
+        const $nombres = $('#reg_visitante_nombres');
+        const $apellidos = $('#reg_visitante_apellidos');
+        const $fechaNac = $('#reg_visitante_fecha_nac');
 
-        if (!nombres || !apellidos || !fechaNac) {
-            alert('Por favor, rellene todos los campos obligatorios (*).');
-            return;
+        const cedula = $cedula.val().trim();
+        const nombres = $nombres.val().trim();
+        const apellidos = $apellidos.val().trim();
+        const fechaNac = $fechaNac.val().trim();
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        let valid = true;
+
+        if (cedula !== '') {
+            const cleanCed = cedula.replace(/[^0-9]/g, '');
+            if (cleanCed.length < 5 || cleanCed.length > 12) {
+                if (typeof marcarErrorInput === 'function') {
+                    marcarErrorInput($cedula, 'La cédula debe tener al menos 5 dígitos numéricos.');
+                } else {
+                    $cedula.addClass('is-invalid');
+                }
+                valid = false;
+            }
         }
+
+        if (!fechaNac) {
+            if (typeof marcarErrorInput === 'function') {
+                marcarErrorInput($fechaNac, 'La fecha de nacimiento es obligatoria.');
+            } else {
+                $fechaNac.addClass('is-invalid');
+            }
+            valid = false;
+        } else if (fechaNac > todayStr) {
+            if (typeof marcarErrorInput === 'function') {
+                marcarErrorInput($fechaNac, 'La fecha de nacimiento no puede ser futura.');
+            } else {
+                $fechaNac.addClass('is-invalid');
+            }
+            valid = false;
+        }
+
+        if (!apellidos) {
+            if (typeof marcarErrorInput === 'function') {
+                marcarErrorInput($apellidos, 'El apellido es obligatorio.');
+            } else {
+                $apellidos.addClass('is-invalid');
+            }
+            valid = false;
+        }
+
+        if (!nombres) {
+            if (typeof marcarErrorInput === 'function') {
+                marcarErrorInput($nombres, 'El nombre es obligatorio.');
+            } else {
+                $nombres.addClass('is-invalid');
+            }
+            valid = false;
+        }
+
+        if (!valid) return;
 
         const newVisitor = {
             cedula: cedula,
@@ -1883,11 +2309,14 @@ $(document).ready(function() {
                 if (response.status === 'success') {
                     showGlobalAlert(response.message, 'success');
                     $('#formRegistrarYAgregarAsistencia')[0].reset();
+                    if (typeof limpiarErroresFormulario === 'function') {
+                        limpiarErroresFormulario('#formRegistrarYAgregarAsistencia');
+                    }
                     $('#panelAgregarAsistencia').slideUp(250);
                     cargarVisitantesCita(citaId);
                     listarCitas(); // Refrescar tabla principal
                 } else {
-                    alert(response.message);
+                    showGlobalAlert(response.message, 'danger');
                 }
             },
             error: function(xhr) {
@@ -1896,7 +2325,7 @@ $(document).ready(function() {
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMsg = xhr.responseJSON.message;
                 }
-                alert(errorMsg);
+                showGlobalAlert(errorMsg, 'danger');
             }
         });
     });
@@ -1936,7 +2365,7 @@ $(document).ready(function() {
                     cargarVisitantesCita(citaId);
                     listarCitas(); // Refrescar tabla principal
                 } else {
-                    alert(response.message);
+                    showGlobalAlert(response.message, 'danger');
                 }
             },
             error: function(xhr) {
@@ -1946,7 +2375,7 @@ $(document).ready(function() {
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMsg = xhr.responseJSON.message;
                 }
-                alert(errorMsg);
+                showGlobalAlert(errorMsg, 'danger');
             }
         });
     });

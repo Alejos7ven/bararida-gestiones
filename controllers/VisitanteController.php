@@ -164,21 +164,61 @@ function crearVisitanteAction($db) {
         exit;
     }
 
-    if (strlen($nombres) > 100) {
+    if (mb_strlen($nombres) < 2 || mb_strlen($nombres) > 100) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre del visitante no es válido o supera los 100 caracteres.",
+            "message" => "El nombre del visitante debe tener entre 2 y 100 caracteres.",
             "field" => "nombres"
         ]);
         exit;
     }
 
-    if (strlen($apellidos) > 100) {
+    if (preg_match('/\d/', $nombres)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El apellido del visitante no es válido o supera los 100 caracteres.",
+            "message" => "Los nombres no pueden contener números.",
+            "field" => "nombres"
+        ]);
+        exit;
+    }
+
+    if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $nombres)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Los nombres solo deben contener letras.",
+            "field" => "nombres"
+        ]);
+        exit;
+    }
+
+    if (mb_strlen($apellidos) < 2 || mb_strlen($apellidos) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El apellido del visitante debe tener entre 2 y 100 caracteres.",
+            "field" => "apellidos"
+        ]);
+        exit;
+    }
+
+    if (preg_match('/\d/', $apellidos)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Los apellidos no pueden contener números.",
+            "field" => "apellidos"
+        ]);
+        exit;
+    }
+
+    if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $apellidos)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Los apellidos solo deben contener letras.",
             "field" => "apellidos"
         ]);
         exit;
@@ -194,31 +234,51 @@ function crearVisitanteAction($db) {
         exit;
     }
 
-    $rawCedula = preg_replace('/[^0-9]/', '', $cedula);
-    if (!empty($rawCedula)) {
-        if (strlen($rawCedula) < 6 || strlen($rawCedula) > 12) {
+    $hoy = date('Y-m-d');
+    if ($fecha_nacimiento > $hoy) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La fecha de nacimiento no puede ser una fecha futura (máximo hoy: " . date('d/m/Y') . ").",
+            "field" => "fecha_nacimiento"
+        ]);
+        exit;
+    }
+
+    if (!empty($cedula)) {
+        if (!ctype_digit($cedula)) {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
-                "message" => "La cédula debe contener entre 6 y 12 dígitos numéricos.",
+                "message" => "La cédula debe contener exclusivamente dígitos numéricos.",
                 "field" => "cedula"
             ]);
             exit;
         }
 
-        $existente = Visitante::buscarPorCedula($db, $rawCedula);
+        if (strlen($cedula) < 5 || strlen($cedula) > 12) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "La cédula debe contener entre 5 y 12 dígitos numéricos.",
+                "field" => "cedula"
+            ]);
+            exit;
+        }
+
+        $existente = Visitante::buscarPorCedula($db, $cedula);
         if ($existente) {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
-                "message" => "Ya existe un visitante registrado con la cédula " . $rawCedula . " (" . $existente['nombres'] . " " . $existente['apellidos'] . ").",
+                "message" => "Ya existe un visitante registrado con la cédula " . $cedula . " (" . $existente['nombres'] . " " . $existente['apellidos'] . ").",
                 "field" => "cedula"
             ]);
             exit;
         }
     }
 
-    $cedulaFinal = !empty($rawCedula) ? $rawCedula : null;
+    $cedulaFinal = !empty($cedula) ? $cedula : null;
 
     try {
         $visitante = new Visitante($db);
@@ -255,7 +315,7 @@ function crearVisitanteAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Error interno al crear el visitante: " . $e->getMessage()
+            "message" => "Error interno al crear visitante: " . $e->getMessage()
         ]);
     }
 }
@@ -281,21 +341,61 @@ function actualizarVisitanteAction($db) {
         exit;
     }
 
-    if (strlen($nombres) > 100) {
+    if (mb_strlen($nombres) < 2 || mb_strlen($nombres) > 100) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre del visitante no es válido o supera los 100 caracteres.",
+            "message" => "El nombre del visitante debe tener entre 2 y 100 caracteres.",
             "field" => "nombres"
         ]);
         exit;
     }
 
-    if (strlen($apellidos) > 100) {
+    if (preg_match('/\d/', $nombres)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El apellido del visitante no es válido o supera los 100 caracteres.",
+            "message" => "Los nombres no pueden contener números.",
+            "field" => "nombres"
+        ]);
+        exit;
+    }
+
+    if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $nombres)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Los nombres solo deben contener letras.",
+            "field" => "nombres"
+        ]);
+        exit;
+    }
+
+    if (mb_strlen($apellidos) < 2 || mb_strlen($apellidos) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El apellido del visitante debe tener entre 2 y 100 caracteres.",
+            "field" => "apellidos"
+        ]);
+        exit;
+    }
+
+    if (preg_match('/\d/', $apellidos)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Los apellidos no pueden contener números.",
+            "field" => "apellidos"
+        ]);
+        exit;
+    }
+
+    if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $apellidos)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Los apellidos solo deben contener letras.",
             "field" => "apellidos"
         ]);
         exit;
@@ -311,31 +411,51 @@ function actualizarVisitanteAction($db) {
         exit;
     }
 
-    $rawCedula = preg_replace('/[^0-9]/', '', $cedula);
-    if (!empty($rawCedula)) {
-        if (strlen($rawCedula) < 6 || strlen($rawCedula) > 12) {
+    $hoy = date('Y-m-d');
+    if ($fecha_nacimiento > $hoy) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La fecha de nacimiento no puede ser una fecha futura (máximo hoy: " . date('d/m/Y') . ").",
+            "field" => "fecha_nacimiento"
+        ]);
+        exit;
+    }
+
+    if (!empty($cedula)) {
+        if (!ctype_digit($cedula)) {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
-                "message" => "La cédula debe contener entre 6 y 12 dígitos numéricos.",
+                "message" => "La cédula debe contener exclusivamente dígitos numéricos.",
                 "field" => "cedula"
             ]);
             exit;
         }
 
-        $existente = Visitante::buscarPorCedula($db, $rawCedula, $id);
+        if (strlen($cedula) < 5 || strlen($cedula) > 12) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "La cédula debe contener entre 5 y 12 dígitos numéricos.",
+                "field" => "cedula"
+            ]);
+            exit;
+        }
+
+        $existente = Visitante::buscarPorCedula($db, $cedula, $id);
         if ($existente) {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
-                "message" => "La cédula " . $rawCedula . " ya pertenece a otro visitante registrado (" . $existente['nombres'] . " " . $existente['apellidos'] . ").",
+                "message" => "La cédula " . $cedula . " ya pertenece a otro visitante registrado (" . $existente['nombres'] . " " . $existente['apellidos'] . ").",
                 "field" => "cedula"
             ]);
             exit;
         }
     }
 
-    $cedulaFinal = !empty($rawCedula) ? $rawCedula : null;
+    $cedulaFinal = !empty($cedula) ? $cedula : null;
 
     try {
         $visitante = new Visitante($db);

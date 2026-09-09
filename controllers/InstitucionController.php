@@ -272,7 +272,7 @@ function crearInstitucionAction($db) {
                         echo json_encode([
                             "status" => "error",
                             "message" => "El número de teléfono '{$contVal}' es inválido. No debe contener letras y debe tener al menos 7 dígitos.",
-                            "field" => "contacto"
+                            "field" => "telefono"
                         ]);
                         return;
                     }
@@ -282,7 +282,7 @@ function crearInstitucionAction($db) {
                         echo json_encode([
                             "status" => "error",
                             "message" => "El correo electrónico '{$contVal}' no tiene un formato válido.",
-                            "field" => "contacto"
+                            "field" => "correo"
                         ]);
                         return;
                     }
@@ -470,7 +470,7 @@ function actualizarInstitucionAction($db) {
                         echo json_encode([
                             "status" => "error",
                             "message" => "El número de teléfono '{$contVal}' es inválido. No debe contener letras y debe tener al menos 7 dígitos.",
-                            "field" => "contacto"
+                            "field" => "telefono"
                         ]);
                         return;
                     }
@@ -480,7 +480,7 @@ function actualizarInstitucionAction($db) {
                         echo json_encode([
                             "status" => "error",
                             "message" => "El correo electrónico '{$contVal}' no tiene un formato válido.",
-                            "field" => "contacto"
+                            "field" => "correo"
                         ]);
                         return;
                     }

@@ -15,6 +15,10 @@ $(document).ready(function() {
     let currentPageVisitantes = 1;
     const itemsPerPage = 10;
 
+    // Configurar fecha máxima (hoy) en los campos de fecha de nacimiento
+    const todayStr = new Date().toISOString().split('T')[0];
+    $('#visitante_fecha_nacimiento, #edit_visitante_fecha_nacimiento').attr('max', todayStr);
+
     // Inicializar
     listarVisitantes();
 

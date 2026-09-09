@@ -491,10 +491,10 @@ function descargarPlantillaAction($db) {
     $writer = new ExcelWriter();
     $writer->setSheetName('Visitantes');
     $writer->setHeaders(
-        ['Cédula', 'Nombres', 'Apellidos', 'Fecha Nacimiento (AAAA-MM-DD)'],
-        [18, 28, 28, 26]
+        ['Cédula (Opcional)', 'Nombres', 'Apellidos', 'Día de Nacimiento (1-31)', 'Mes de Nacimiento (1-12)', 'Año de Nacimiento (ej. 2010)'],
+        [22, 28, 28, 28, 28, 28]
     );
-    $writer->addRow(['12345678', 'Pedro', 'Pérez', '2010-05-15']);
+    $writer->addRow(['12345678', 'Pedro', 'Pérez', '15', '5', '2010']);
 
     $filename = "plantilla_visitantes_cita_{$cita_id}.xlsx";
     $writer->download($filename);
@@ -519,8 +519,8 @@ function importarVisitantesAction($db) {
     $visitantesJson = isset($_POST['visitantes_json']) ? trim($_POST['visitantes_json']) : '';
 
     if (!empty($visitantesJson)) {
-        $visitantes = json_decode($visitantesJson, true);
-        if (!is_array($visitantes)) {
+        $rawVisitantes = json_decode($visitantesJson, true);
+        if (!is_array($rawVisitantes)) {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
@@ -528,6 +528,142 @@ function importarVisitantesAction($db) {
             ]);
             return;
         }
+
+        $validatedList = [];
+        $rowNum = 0;
+        foreach ($rawVisitantes as $v) {
+            $rowNum++;
+            $nom = trim($v['nombres'] ?? '');
+            $ape = trim($v['apellidos'] ?? '');
+            $ced = trim($v['cedula'] ?? '');
+            $fNac = trim($v['fecha_nacimiento'] ?? '');
+
+            // Validaciones estrictas en el Controller para cada visitante
+            if (empty($nom) || mb_strlen($nom) < 2) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowNum}: El nombre del visitante es obligatorio y debe tener al menos 2 caracteres."
+                ]);
+                return;
+            }
+
+            if (preg_match('/\d/', $nom)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowNum}: El nombre '{$nom}' no puede contener números."
+                ]);
+                return;
+            }
+
+            if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $nom)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowNum}: El nombre '{$nom}' contiene caracteres no permitidos (solo letras)."
+                ]);
+                return;
+            }
+
+            if (empty($ape) || mb_strlen($ape) < 2) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowNum}: El apellido del visitante es obligatorio y debe tener al menos 2 caracteres."
+                ]);
+                return;
+            }
+
+            if (preg_match('/\d/', $ape)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowNum}: El apellido '{$ape}' no puede contener números."
+                ]);
+                return;
+            }
+
+            if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $ape)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowNum}: El apellido '{$ape}' contiene caracteres no permitidos (solo letras)."
+                ]);
+                return;
+            }
+
+            if (empty($fNac)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowNum}: La fecha de nacimiento del visitante '{$nom}' es obligatoria."
+                ]);
+                return;
+            }
+
+            if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $fNac, $matches)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowNum}: La fecha de nacimiento del visitante '{$nom}' no tiene un formato de fecha válido (AAAA-MM-DD)."
+                ]);
+                return;
+            }
+
+            $y = (int)$matches[1];
+            $m = (int)$matches[2];
+            $d = (int)$matches[3];
+
+            if (!checkdate($m, $d, $y)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowNum}: La fecha de nacimiento '{$fNac}' para '{$nom}' no es una fecha válida en el calendario."
+                ]);
+                return;
+            }
+
+            $hoy = date('Y-m-d');
+            if ($fNac > $hoy) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowNum}: La fecha de nacimiento del visitante '{$nom}' ({$fNac}) no puede ser una fecha futura (máximo hoy)."
+                ]);
+                return;
+            }
+
+            if (!empty($ced)) {
+                if (!ctype_digit($ced)) {
+                    http_response_code(400);
+                    echo json_encode([
+                        "status" => "error",
+                        "message" => "Fila #{$rowNum}: La cédula '{$ced}' del visitante '{$nom}' contiene caracteres no permitidos (solo números)."
+                    ]);
+                    return;
+                }
+                if (strlen($ced) < 5 || strlen($ced) > 12) {
+                    http_response_code(400);
+                    echo json_encode([
+                        "status" => "error",
+                        "message" => "Fila #{$rowNum}: La cédula '{$ced}' del visitante '{$nom}' debe contener entre 5 y 12 dígitos numéricos."
+                    ]);
+                    return;
+                }
+                $cedulaFinal = $ced;
+            } else {
+                $cedulaFinal = null;
+            }
+
+            $validatedList[] = [
+                'cedula' => $cedulaFinal,
+                'nombres' => strip_tags($nom),
+                'apellidos' => strip_tags($ape),
+                'fecha_nacimiento' => $fNac
+            ];
+        }
+        $visitantes = $validatedList;
     } else {
         if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
             http_response_code(400);
@@ -576,7 +712,10 @@ function importarVisitantesAction($db) {
             $ced = trim($data[0] ?? '');
             $nom = trim($data[1] ?? '');
             $ape = trim($data[2] ?? '');
-            $fNac = trim($data[3] ?? '');
+
+            if (mb_strtolower($nom) === 'nombres' || mb_strtolower($nom) === 'nombre') {
+                continue;
+            }
 
             if ($ced === '12345678' && $nom === 'Pedro' && $ape === 'Pérez') {
                 continue;
@@ -586,29 +725,116 @@ function importarVisitantesAction($db) {
                 continue;
             }
 
+            $col3 = trim($data[3] ?? '');
+            $col4 = trim($data[4] ?? '');
+            $col5 = trim($data[5] ?? '');
+            $fNac = resolveBirthDatePhp($col3, $col4, $col5);
+
             // Validaciones en el Controller
-            if (empty($nom) || empty($ape) || empty($fNac)) {
+            if (empty($nom) || mb_strlen($nom) < 2) {
                 fclose($handle);
                 http_response_code(400);
                 echo json_encode([
                     "status" => "error",
-                    "message" => "Fila #{$rowIndex}: Los campos Nombres, Apellidos y Fecha de Nacimiento son obligatorios."
+                    "message" => "Fila #{$rowIndex}: El nombre del visitante es obligatorio y debe tener al menos 2 caracteres."
                 ]);
                 return;
             }
 
-            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fNac)) {
+            if (preg_match('/\d/', $nom)) {
                 fclose($handle);
                 http_response_code(400);
                 echo json_encode([
                     "status" => "error",
-                    "message" => "Fila #{$rowIndex}: La fecha de nacimiento del visitante '{$nom}' debe tener formato AAAA-MM-DD."
+                    "message" => "Fila #{$rowIndex}: El nombre '{$nom}' no puede contener números."
                 ]);
                 return;
             }
 
-            $rawCed = preg_replace('/[^0-9]/', '', $ced);
-            $cedulaFinal = !empty($rawCed) ? $rawCed : null;
+            if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $nom)) {
+                fclose($handle);
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowIndex}: El nombre '{$nom}' contiene caracteres no permitidos (solo letras)."
+                ]);
+                return;
+            }
+
+            if (empty($ape) || mb_strlen($ape) < 2) {
+                fclose($handle);
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowIndex}: El apellido del visitante es obligatorio y debe tener al menos 2 caracteres."
+                ]);
+                return;
+            }
+
+            if (preg_match('/\d/', $ape)) {
+                fclose($handle);
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowIndex}: El apellido '{$ape}' no puede contener números."
+                ]);
+                return;
+            }
+
+            if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $ape)) {
+                fclose($handle);
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowIndex}: El apellido '{$ape}' contiene caracteres no permitidos (solo letras)."
+                ]);
+                return;
+            }
+
+            if (empty($fNac)) {
+                fclose($handle);
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowIndex}: La fecha de nacimiento del visitante '{$nom}' no es válida o está incompleta."
+                ]);
+                return;
+            }
+
+            $hoy = date('Y-m-d');
+            if ($fNac > $hoy) {
+                fclose($handle);
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Fila #{$rowIndex}: La fecha de nacimiento del visitante '{$nom}' ({$fNac}) no puede ser una fecha futura (máximo hoy)."
+                ]);
+                return;
+            }
+
+            if (!empty($ced)) {
+                if (!ctype_digit($ced)) {
+                    fclose($handle);
+                    http_response_code(400);
+                    echo json_encode([
+                        "status" => "error",
+                        "message" => "Fila #{$rowIndex}: La cédula '{$ced}' del visitante '{$nom}' contiene caracteres no permitidos (solo números)."
+                    ]);
+                    return;
+                }
+                if (strlen($ced) < 5 || strlen($ced) > 12) {
+                    fclose($handle);
+                    http_response_code(400);
+                    echo json_encode([
+                        "status" => "error",
+                        "message" => "Fila #{$rowIndex}: La cédula '{$ced}' del visitante '{$nom}' debe contener entre 5 y 12 dígitos numéricos."
+                    ]);
+                    return;
+                }
+                $cedulaFinal = $ced;
+            } else {
+                $cedulaFinal = null;
+            }
 
             $visitantes[] = [
                 'cedula' => $cedulaFinal,
@@ -656,6 +882,122 @@ function importarVisitantesAction($db) {
             "message" => "Error interno al importar visitantes: " . $e->getMessage()
         ]);
     }
+}
+
+/**
+ * Utilidades para resolución y validación flexible de fechas de nacimiento en PHP
+ */
+function parseMonthValPhp($val) {
+    if ($val === null || $val === '') return 0;
+    $s = mb_strtolower(trim((string)$val));
+    $meses = [
+        'enero' => 1, 'ene' => 1, 'january' => 1, 'jan' => 1,
+        'febrero' => 2, 'feb' => 2, 'febr' => 2, 'february' => 2,
+        'marzo' => 3, 'mar' => 3, 'march' => 3,
+        'abril' => 4, 'abr' => 4, 'april' => 4, 'apr' => 4,
+        'mayo' => 5, 'may' => 5,
+        'junio' => 6, 'jun' => 6, 'june' => 6,
+        'julio' => 7, 'jul' => 7, 'july' => 7,
+        'agosto' => 8, 'ago' => 8, 'august' => 8, 'aug' => 8,
+        'septiembre' => 9, 'setiembre' => 9, 'sep' => 9, 'sept' => 9, 'september' => 9,
+        'octubre' => 10, 'oct' => 10, 'october' => 10,
+        'noviembre' => 11, 'nov' => 11, 'november' => 11,
+        'diciembre' => 12, 'dic' => 12, 'december' => 12, 'dec' => 12
+    ];
+    if (isset($meses[$s])) return $meses[$s];
+    $num = (int)preg_replace('/[^0-9]/', '', $s);
+    if ($num >= 1 && $num <= 31) return $num;
+    return 0;
+}
+
+function parseYearValPhp($val) {
+    if ($val === null || $val === '') return 0;
+    $clean = preg_replace('/[^0-9]/', '', trim((string)$val));
+    if (empty($clean)) return 0;
+    $num = (int)$clean;
+
+    if ($num < 100) {
+        $num = $num <= 30 ? 2000 + $num : 1900 + $num;
+    } elseif ($num > 2100) {
+        $str = (string)$num;
+        if (str_starts_with($str, '19') || str_starts_with($str, '20')) {
+            $num = (int)substr($str, 0, 4);
+        }
+    }
+    return ($num >= 1900 && $num <= 2100) ? $num : 0;
+}
+
+function parseDayValPhp($val) {
+    if ($val === null || $val === '') return 0;
+    $num = (int)preg_replace('/[^0-9]/', '', trim((string)$val));
+    return ($num >= 1 && $num <= 31) ? $num : 0;
+}
+
+function resolveBirthDatePhp($valCol3, $valCol4, $valCol5) {
+    $s3 = trim((string)$valCol3);
+    $s4 = trim((string)$valCol4);
+    $s5 = trim((string)$valCol5);
+
+    // 1. Columnas separadas Día, Mes, Año (cuando hay al menos 2 columnas o las 3 con datos)
+    if ($s3 !== '' && ($s4 !== '' || $s5 !== '')) {
+        $d = parseDayValPhp($s3);
+        $m = parseMonthValPhp($s4);
+        $y = parseYearValPhp($s5);
+
+        // Si día está en rango de mes (1-12) y mes está en rango de día (>12 y <=31), se detecta inversión
+        if ($m > 12 && $m <= 31 && $d >= 1 && $d <= 12) {
+            $temp = $d;
+            $d = $m;
+            $m = $temp;
+        }
+
+        if ($d >= 1 && $d <= 31 && $m >= 1 && $m <= 12 && $y >= 1900 && $y <= 2100 && checkdate($m, $d, $y)) {
+            return sprintf('%04d-%02d-%02d', $y, $m, $d);
+        }
+        return '';
+    }
+
+    // 2. Fecha combinada en una sola celda
+    $testStr = !empty($s3) ? $s3 : (!empty($s5) ? $s5 : $s4);
+    if (empty($testStr)) return '';
+
+    if (preg_match('/^(\d{4,5})-(\d{1,2})-(\d{1,2})$/', $testStr, $mIso)) {
+        $y = parseYearValPhp($mIso[1]);
+        $m = (int)$mIso[2];
+        $d = (int)$mIso[3];
+        if ($m > 12 && $m <= 31 && $d >= 1 && $d <= 12) {
+            $temp = $d; $d = $m; $m = $temp;
+        }
+        if ($y && checkdate($m, $d, $y)) {
+            return sprintf('%04d-%02d-%02d', $y, $m, $d);
+        }
+    }
+
+    if (preg_match('/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{4,5})$/', $testStr, $mSlash)) {
+        $d = parseDayValPhp($mSlash[1]);
+        $m = parseMonthValPhp($mSlash[2]);
+        $y = parseYearValPhp($mSlash[3]);
+        if ($m > 12 && $m <= 31 && $d >= 1 && $d <= 12) {
+            $temp = $d; $d = $m; $m = $temp;
+        }
+        if ($y && checkdate($m, $d, $y)) {
+            return sprintf('%04d-%02d-%02d', $y, $m, $d);
+        }
+    }
+
+    if (preg_match('/^(\d{4,5})[\/\-\.](\d{1,2})[\/\-\.](\d{1,2})$/', $testStr, $mSlashY)) {
+        $y = parseYearValPhp($mSlashY[1]);
+        $m = parseMonthValPhp($mSlashY[2]);
+        $d = parseDayValPhp($mSlashY[3]);
+        if ($m > 12 && $m <= 31 && $d >= 1 && $d <= 12) {
+            $temp = $d; $d = $m; $m = $temp;
+        }
+        if ($y && checkdate($m, $d, $y)) {
+            return sprintf('%04d-%02d-%02d', $y, $m, $d);
+        }
+    }
+
+    return '';
 }
 
 /**

@@ -81,15 +81,15 @@ if (!isset($userPermissions)) {
                         </div>
                         <div class="mb-3">
                             <label for="visitante_nombres" class="form-premium-label">Nombres *</label>
-                            <input type="text" class="form-control form-premium-control" id="visitante_nombres" name="nombres" placeholder="Nombres del visitante" required>
+                            <input type="text" class="form-control form-premium-control" id="visitante_nombres" name="nombres" placeholder="Ej. Carlos Eduardo" required>
                         </div>
                         <div class="mb-3">
                             <label for="visitante_apellidos" class="form-premium-label">Apellidos *</label>
-                            <input type="text" class="form-control form-premium-control" id="visitante_apellidos" name="apellidos" placeholder="Apellidos del visitante" required>
+                            <input type="text" class="form-control form-premium-control" id="visitante_apellidos" name="apellidos" placeholder="Ej. Pérez Gómez" required>
                         </div>
                         <div class="mb-3">
                             <label for="visitante_fecha_nacimiento" class="form-premium-label">Fecha de Nacimiento *</label>
-                            <input type="date" class="form-control form-premium-control" id="visitante_fecha_nacimiento" name="fecha_nacimiento" required>
+                            <input type="date" class="form-control form-premium-control" id="visitante_fecha_nacimiento" name="fecha_nacimiento" max="<?php echo date('Y-m-d'); ?>" required>
                         </div>
                     </div>
                     <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">
@@ -115,19 +115,19 @@ if (!isset($userPermissions)) {
                         <div id="alertEditarVisitanteFeedback" class="alert alert-toast alert-toast-danger" role="alert" style="display:none;"></div>
                         <div class="mb-3">
                             <label for="edit_visitante_cedula" class="form-premium-label">Cédula / Documento <span class="text-muted" style="font-size:0.75rem;">(Dejar vacío para menor sin cédula)</span></label>
-                            <input type="text" class="form-control form-premium-control" id="edit_visitante_cedula" name="cedula">
+                            <input type="text" class="form-control form-premium-control" id="edit_visitante_cedula" name="cedula" placeholder="Ej. 28123456">
                         </div>
                         <div class="mb-3">
                             <label for="edit_visitante_nombres" class="form-premium-label">Nombres *</label>
-                            <input type="text" class="form-control form-premium-control" id="edit_visitante_nombres" name="nombres" required>
+                            <input type="text" class="form-control form-premium-control" id="edit_visitante_nombres" name="nombres" placeholder="Ej. Carlos Eduardo" required>
                         </div>
                         <div class="mb-3">
                             <label for="edit_visitante_apellidos" class="form-premium-label">Apellidos *</label>
-                            <input type="text" class="form-control form-premium-control" id="edit_visitante_apellidos" name="apellidos" required>
+                            <input type="text" class="form-control form-premium-control" id="edit_visitante_apellidos" name="apellidos" placeholder="Ej. Pérez Gómez" required>
                         </div>
                         <div class="mb-3">
                             <label for="edit_visitante_fecha_nacimiento" class="form-premium-label">Fecha de Nacimiento *</label>
-                            <input type="date" class="form-control form-premium-control" id="edit_visitante_fecha_nacimiento" name="fecha_nacimiento" required>
+                            <input type="date" class="form-control form-premium-control" id="edit_visitante_fecha_nacimiento" name="fecha_nacimiento" max="<?php echo date('Y-m-d'); ?>" required>
                         </div>
                     </div>
                     <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">

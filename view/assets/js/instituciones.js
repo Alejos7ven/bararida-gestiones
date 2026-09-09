@@ -548,10 +548,10 @@ $(document).ready(function() {
         actualizarBotonesEliminarSedes(containerSelector);
     });
 
-    // =========================================================================
-    // 3. GESTIÓN DE CONTACTOS (TELÉFONOS Y CORREOS)
-    // =========================================================================
+    let contactCounter = 0;
     function agregarContacto(containerId, tipo, valor = '') {
+        contactCounter++;
+        const uniqueId = `contacto_${tipo}_${Date.now()}_${contactCounter}`;
         const placeholder = tipo === 'telefono' ? 'Ej. 0414-1234567' : 'Ej. contacto@colegio.com';
         const inputType = tipo === 'correo' ? 'email' : 'tel';
         const inputMode = tipo === 'telefono' ? 'inputmode="numeric"' : '';
@@ -559,7 +559,7 @@ $(document).ready(function() {
         const contactHtml = `
             <div class="input-group input-group-sm mb-1 contact-row" data-tipo="${tipo}">
                 <span class="input-group-text bg-white">${tipo === 'telefono' ? '📞' : '✉'}</span>
-                <input type="${inputType}" ${inputMode} class="form-control input-contacto-val ${extraClass}" placeholder="${placeholder}" value="${valor}">
+                <input type="${inputType}" ${inputMode} name="${uniqueId}" id="${uniqueId}" class="form-control input-contacto-val ${extraClass}" placeholder="${placeholder}" value="${valor}">
                 <button type="button" class="btn btn-outline-danger btn-remove-contact" title="Eliminar Contacto">&times;</button>
             </div>
         `;
@@ -703,35 +703,47 @@ $(document).ready(function() {
             return;
         }
 
-        // Recolectar contactos y validar formatos
+        // Recolectar contactos y validar formatos independientemente
         const contactos = [];
         let contactError = false;
         let $firstContactErr = null;
         let contactErrorMsg = '';
 
-        $('#createPhonesContainer .contact-row, #createEmailsContainer .contact-row').each(function() {
-            const tipo = $(this).data('tipo');
+        // Validar teléfonos
+        $('#createPhonesContainer .contact-row').each(function() {
             const $input = $(this).find('.input-contacto-val');
             const val = $.trim($input.val());
             if (val) {
-                if (tipo === 'telefono') {
-                    const cleanDigits = val.replace(/[^0-9]/g, '');
-                    if (/[a-zA-Z]/.test(val) || cleanDigits.length < 7 || cleanDigits.length > 15) {
+                const cleanDigits = val.replace(/[^0-9]/g, '');
+                if (/[a-zA-Z]/.test(val) || cleanDigits.length < 7 || cleanDigits.length > 15) {
+                    if (!contactError) {
                         contactError = true;
                         $firstContactErr = $input;
                         contactErrorMsg = `El número de teléfono "${val}" no es válido. No debe contener letras y debe tener entre 7 y 15 dígitos.`;
-                        return false;
                     }
-                } else if (tipo === 'correo') {
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailRegex.test(val)) {
+                    window.marcarErrorInput($input, `El número de teléfono "${val}" no es válido. No debe contener letras y debe tener entre 7 y 15 dígitos.`, false);
+                } else {
+                    contactos.push({ tipo: 'telefono', contacto: val });
+                }
+            }
+        });
+
+        // Validar correos
+        $('#createEmailsContainer .contact-row').each(function() {
+            const $input = $(this).find('.input-contacto-val');
+            const val = $.trim($input.val());
+            if (val) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(val)) {
+                    if (!contactError) {
                         contactError = true;
                         $firstContactErr = $input;
                         contactErrorMsg = `El correo electrónico "${val}" no tiene un formato válido.`;
-                        return false;
                     }
+                    window.marcarErrorInput($input, `El correo electrónico "${val}" no tiene un formato válido.`, false);
+                } else {
+                    contactos.push({ tipo: 'correo', contacto: val });
                 }
-                contactos.push({ tipo: tipo, contacto: val });
             }
         });
 
@@ -971,35 +983,47 @@ $(document).ready(function() {
             return;
         }
 
-        // Recolectar contactos y validar formatos
+        // Recolectar contactos y validar formatos independientemente
         const contactos = [];
         let contactError = false;
         let $firstContactErr = null;
         let contactErrorMsg = '';
 
-        $('#editPhonesContainer .contact-row, #editEmailsContainer .contact-row').each(function() {
-            const tipo = $(this).data('tipo');
+        // Validar teléfonos
+        $('#editPhonesContainer .contact-row').each(function() {
             const $input = $(this).find('.input-contacto-val');
             const val = $.trim($input.val());
             if (val) {
-                if (tipo === 'telefono') {
-                    const cleanDigits = val.replace(/[^0-9]/g, '');
-                    if (/[a-zA-Z]/.test(val) || cleanDigits.length < 7 || cleanDigits.length > 15) {
+                const cleanDigits = val.replace(/[^0-9]/g, '');
+                if (/[a-zA-Z]/.test(val) || cleanDigits.length < 7 || cleanDigits.length > 15) {
+                    if (!contactError) {
                         contactError = true;
                         $firstContactErr = $input;
                         contactErrorMsg = `El número de teléfono "${val}" no es válido. No debe contener letras y debe tener entre 7 y 15 dígitos.`;
-                        return false;
                     }
-                } else if (tipo === 'correo') {
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailRegex.test(val)) {
+                    window.marcarErrorInput($input, `El número de teléfono "${val}" no es válido. No debe contener letras y debe tener entre 7 y 15 dígitos.`, false);
+                } else {
+                    contactos.push({ tipo: 'telefono', contacto: val });
+                }
+            }
+        });
+
+        // Validar correos
+        $('#editEmailsContainer .contact-row').each(function() {
+            const $input = $(this).find('.input-contacto-val');
+            const val = $.trim($input.val());
+            if (val) {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailRegex.test(val)) {
+                    if (!contactError) {
                         contactError = true;
                         $firstContactErr = $input;
                         contactErrorMsg = `El correo electrónico "${val}" no tiene un formato válido.`;
-                        return false;
                     }
+                    window.marcarErrorInput($input, `El correo electrónico "${val}" no tiene un formato válido.`, false);
+                } else {
+                    contactos.push({ tipo: 'correo', contacto: val });
                 }
-                contactos.push({ tipo: tipo, contacto: val });
             }
         });
 
