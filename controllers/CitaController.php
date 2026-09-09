@@ -1426,6 +1426,15 @@ function desvincularVisitanteAction($db) {
  */
 function listarGuiasAction($db) {
     try {
+        $citaId = isset($_GET['cita_id']) ? filter_var($_GET['cita_id'], FILTER_VALIDATE_INT) : null;
+        $fechaVisita = null;
+        if ($citaId) {
+            $stmtC = $db->prepare("SELECT fecha_visita FROM citas WHERE id = :id LIMIT 1");
+            $stmtC->bindParam(':id', $citaId, PDO::PARAM_INT);
+            $stmtC->execute();
+            $fechaVisita = $stmtC->fetchColumn();
+        }
+
         $query = "SELECT p.id, e.nombre_completo, e.nombre_completo AS nombre, '' AS apellido 
                   FROM personal p
                   INNER JOIN entidades e ON p.entidad_id = e.id
@@ -1435,6 +1444,17 @@ function listarGuiasAction($db) {
         $stmt = $db->prepare($query);
         $stmt->execute();
         $guias = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Si se especificó cita, calcular disponibilidad para esa fecha
+        foreach ($guias as &$g) {
+            if ($fechaVisita) {
+                $tieneActiva = Cita::guiaTieneCitaActivaEnFecha($db, (int)$g['id'], (string)$fechaVisita, (int)$citaId);
+                $g['disponible'] = !$tieneActiva;
+            } else {
+                $g['disponible'] = true;
+            }
+        }
+        unset($g);
 
         http_response_code(200);
         echo json_encode([
@@ -1465,6 +1485,24 @@ function asignarGuiaAction($db) {
             "message" => "El ID de cita y el ID de personal son obligatorios."
         ]);
         return;
+    }
+
+    // Regla de Negocio: No permitir asignar a un guía dos veces en el mismo día si tiene una cita ya asignada;
+    // sólo se podrá reasignar cuando ya termine la cita que le fue otorgada (estatus 'completado').
+    $stmtCita = $db->prepare("SELECT fecha_visita FROM citas WHERE id = :id LIMIT 1");
+    $stmtCita->bindParam(':id', $cita_id, PDO::PARAM_INT);
+    $stmtCita->execute();
+    $fechaVisita = $stmtCita->fetchColumn();
+
+    if ($fechaVisita) {
+        if (Cita::guiaTieneCitaActivaEnFecha($db, $personal_id, $fechaVisita, $cita_id)) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "No se puede asignar este guía: ya tiene una visita guiada asignada para este mismo día que aún no ha finalizado. Solo podrá reasignarse una vez que complete la cita otorgada."
+            ]);
+            return;
+        }
     }
 
     $success = Cita::asignarGuia($db, $cita_id, $personal_id, $rol_guia);

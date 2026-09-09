@@ -82,7 +82,7 @@ if (!isset($userRol)) {
 <!-- WIDGET PREMIUM: MAPA INTERACTIVO Y CALENDARIO -->
 <div class="row mt-4 g-4">
     <!-- Columna Izquierda: Mapa con Recorridos -->
-    <div class="col-12 col-lg-6">
+    <div class="col-12 <?php echo ($userRol === 'guia') ? 'col-12' : 'col-lg-6'; ?>">
         <div class="dashboard-map-card shadow-sm">
             <div class="dashboard-map-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h3 style="font-size: 1.15rem; font-family: 'Outfit'; font-weight: 700; color: var(--park-dark);">
@@ -116,6 +116,7 @@ if (!isset($userRol)) {
         </div>
     </div>
     
+    <?php if ($userRol !== 'guia'): ?>
     <!-- Columna Derecha: Calendario Premium de Citas Próximas (FullCalendar) -->
     <div class="col-12 col-lg-6">
         <div class="dashboard-map-card shadow-sm d-flex flex-column">
@@ -135,6 +136,7 @@ if (!isset($userRol)) {
             </div>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
 <!-- PANEL DE ESTADÍSTICAS (VISITANTES POR DÍA CON GRÁFICA) -->

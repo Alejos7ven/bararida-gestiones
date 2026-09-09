@@ -421,6 +421,37 @@ class Cita {
         }
     }
 
+    /**
+     * Verifica si un guía ya tiene una cita activa (no completada ni cancelada) en una fecha determinada.
+     * Si ya tiene una cita ese día en estatus 'pendiente', 'aprobado' o 'en_recorrido', no puede ser asignado.
+     * Solo podrá reasignarse cuando la cita otorgada sea 'completado'.
+     */
+    public static function guiaTieneCitaActivaEnFecha(PDO $db, int $personalId, string $fechaVisita, ?int $citaIdExcluir = null): bool {
+        try {
+            $sql = "SELECT c.id 
+                    FROM guia_asignado ga
+                    INNER JOIN citas c ON ga.cita_id = c.id
+                    WHERE ga.personal_id = :personal_id
+                      AND c.fecha_visita = :fecha_visita
+                      AND c.estatus IN ('pendiente', 'aprobado', 'en_recorrido')";
+            if ($citaIdExcluir !== null) {
+                $sql .= " AND c.id != :cita_id_excluir";
+            }
+            $sql .= " LIMIT 1";
+            $stmt = $db->prepare($sql);
+            $stmt->bindParam(':personal_id', $personalId, PDO::PARAM_INT);
+            $stmt->bindParam(':fecha_visita', $fechaVisita, PDO::PARAM_STR);
+            if ($citaIdExcluir !== null) {
+                $stmt->bindParam(':cita_id_excluir', $citaIdExcluir, PDO::PARAM_INT);
+            }
+            $stmt->execute();
+            return (bool)$stmt->fetchColumn();
+        } catch (PDOException $e) {
+            error_log("Error en Cita::guiaTieneCitaActivaEnFecha(): " . $e->getMessage());
+            return false;
+        }
+    }
+
     public static function asignarGuia($db, $citaId, $personalId, $rolGuia = 'principal') {
         try {
             $delQuery = "DELETE FROM guia_asignado WHERE cita_id = :cita_id AND personal_id = :personal_id";

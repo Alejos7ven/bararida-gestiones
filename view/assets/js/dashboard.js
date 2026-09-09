@@ -70,50 +70,46 @@
     let fullCalendarInstance = null;
 
     function cargarDatosDashboard() {
-        if ($('#dashboardFullCalendar').length === 0) return;
-
-        // 1. Cargar estadísticas para la gráfica de visitantes
-        $.ajax({
-            url: 'controllers/CitaController.php?action=obtener_datos_dashboard',
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    cacheEstadisticas = response.estadisticas || [];
-                    
-                    // Renderizar Gráfica
-                    renderizarGraficaEstadisticas();
-                } else {
-                    console.error('Error al cargar estadísticas:', response.message);
+        // 1. Cargar estadísticas para la gráfica de visitantes (si existe el canvas)
+        if ($('#chartVisitantes').length > 0) {
+            $.ajax({
+                url: 'controllers/CitaController.php?action=obtener_datos_dashboard',
+                method: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        cacheEstadisticas = response.estadisticas || [];
+                        renderizarGraficaEstadisticas();
+                    } else {
+                        console.error('Error al cargar estadísticas:', response.message);
+                    }
+                },
+                error: function(err) {
+                    console.error('Error de red al cargar estadísticas del dashboard.', err);
                 }
-            },
-            error: function(err) {
-                console.error('Error de red al cargar estadísticas del dashboard.', err);
-            }
-        });
+            });
+        }
 
-        // 2. Cargar citas completas para FullCalendar
-        $.ajax({
-            url: 'controllers/CitaController.php?action=listar',
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    cacheCitas = response.data || [];
-                    
-                    // Inicializar FullCalendar
-                    inicializarFullCalendar(cacheCitas);
-                    
-                    // Mostrar alertas de capacidad
-                    procesarAlertasCapacidad(cacheCitas);
-                } else {
-                    console.error('Error al obtener citas para calendario:', response.message);
+        // 2. Cargar citas completas para FullCalendar (solo si el calendario está en el DOM, no para guías)
+        if ($('#dashboardFullCalendar').length > 0) {
+            $.ajax({
+                url: 'controllers/CitaController.php?action=listar',
+                method: 'GET',
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        cacheCitas = response.data || [];
+                        inicializarFullCalendar(cacheCitas);
+                        procesarAlertasCapacidad(cacheCitas);
+                    } else {
+                        console.error('Error al obtener citas para calendario:', response.message);
+                    }
+                },
+                error: function(err) {
+                    console.error('Error de red al cargar citas del calendario.', err);
                 }
-            },
-            error: function(err) {
-                console.error('Error de red al cargar citas del calendario.', err);
-            }
-        });
+            });
+        }
     }
 
     function calcularHoraFin(fechaStr, horaInicioStr) {
@@ -656,21 +652,22 @@
 
                     citas.forEach(function(c) {
                         const hora = formatTime(c.hora_inicio);
-                        const userRol = $('#quickAccessCard').data('user-rol') || '';
+                        const userRol = ($('#quickAccessCard').data('user-rol') || '').toString().toLowerCase().trim();
                         const esAdmin = userRol === 'superadmin' || userRol === 'admin';
                         const esMiAsignacion = parseInt(c.es_mi_asignacion, 10) === 1;
                         const tieneGuia = !!c.guias_asignados;
                         const puedeGestionarRecorrido = esAdmin || esMiAsignacion;
 
-                        // 1. Columna Guía(s)
+                        // 1. Columna Guía(s) - Solo píldoras con los nombres de los guías
                         let guiasHtml = '';
                         if (c.guias_asignados) {
-                            guiasHtml = `<span class="badge bg-success" style="font-size:0.75rem; font-weight:600;">${c.guias_asignados}</span>`;
+                            const listado = c.guias_asignados.split(',').map(g => g.trim());
+                            guiasHtml = listado.map(nombre => `<span class="badge bg-success mb-1 d-inline-block text-truncate shadow-xs" style="max-width: 140px; font-size:0.75rem; font-weight:600;" title="${nombre}">${nombre}</span>`).join('<br>');
                         } else {
                             guiasHtml = `<span class="badge bg-light text-muted border" style="font-size:0.75rem;">Sin asignar</span>`;
                         }
 
-                        // 2. Columna Estado
+                        // 2. Columna Estado - Badges descriptivos y timer dinámico si está en recorrido
                         let estadoHtml = '';
                         if (c.estatus === 'en_recorrido') {
                             const segRestantes = parseInt(c.segundos_restantes, 10) || 0;
@@ -683,11 +680,11 @@
 
                             estadoHtml = `
                                 <div>
-                                    <span class="badge bg-primary d-inline-flex align-items-center gap-1" style="font-size:0.75rem; padding: 0.35em 0.65em;">
+                                    <span class="badge bg-primary d-inline-flex align-items-center gap-1 shadow-sm" style="font-size:0.75rem; padding: 0.35em 0.65em;">
                                         <span class="spinner-grow spinner-grow-sm text-light" style="width:0.4rem;height:0.4rem;" role="status"></span>
                                         En Recorrido
                                     </span>
-                                    <div class="mt-1 font-monospace text-primary fw-bold timer-recorrido" data-restantes="${segRestantes}" style="font-size:0.75rem;">
+                                    <div class="mt-1 font-monospace text-primary fw-bold timer-recorrido" data-restantes="${segRestantes}" style="font-size:0.72rem;">
                                         Restante: <span class="tiempo-display">${formatInit}</span>
                                     </div>
                                 </div>
@@ -699,51 +696,62 @@
                                 </span>
                             `;
                         } else if (c.estatus === 'cancelado') {
-                            estadoHtml = `<span class="badge bg-danger" style="font-size:0.75rem;">Cancelado</span>`;
+                            estadoHtml = `<span class="badge bg-danger" style="font-size:0.75rem; padding: 0.35em 0.65em;">Cancelado</span>`;
                         } else if (c.estatus === 'aprobado') {
-                            estadoHtml = `<span class="badge bg-success" style="font-size:0.75rem;">Aprobada</span>`;
+                            estadoHtml = `<span class="badge bg-success" style="font-size:0.75rem; padding: 0.35em 0.65em;">Aprobada</span>`;
                         } else {
-                            estadoHtml = `<span class="badge bg-warning text-dark" style="font-size:0.75rem;">Pendiente</span>`;
+                            estadoHtml = `<span class="badge bg-warning text-dark" style="font-size:0.75rem; padding: 0.35em 0.65em;">Pendiente</span>`;
                         }
 
-                        // 3. Columna Acciones (Aquí se agrupan ordenadamente todos los botones de acción)
+                        // 3. Columna Acciones - Botones claros, estilizados y ubicados exclusivamente aquí
                         let accionesBtns = [];
 
-                        // Botón Gestionar / Asignar Guía (Solo Administradores)
+                        // Botón Asignar / Gestionar Guía (Solo Administradores / SuperAdmin)
                         if (esAdmin) {
                             const asigTitle = tieneGuia ? 'Gestionar guías asignados' : 'Asignar guía a esta cita';
                             const asigIcon = tieneGuia
-                                ? '<svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>'
-                                : '<svg viewBox="0 0 24 24"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+                                ? '<svg viewBox="0 0 24 24" style="width:15px;height:15px;fill:currentColor;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>'
+                                : '<svg viewBox="0 0 24 24" style="width:15px;height:15px;fill:currentColor;"><path d="M15 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm-9-2V7H4v3H1v2h3v3h2v-3h3v-2H6zm9 4c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
                             
                             accionesBtns.push(`
-                                <button class="btn-action btn-action-edit btn-gestionar-guia-dash" data-id="${c.id}" title="${asigTitle}">
+                                <button class="btn btn-sm btn-outline-secondary btn-gestionar-guia-dash d-inline-flex align-items-center justify-content-center" data-id="${c.id}" title="${asigTitle}" style="border-radius: 8px; width: 32px; height: 32px; padding: 0;">
                                     ${asigIcon}
                                 </button>
                             `);
                         }
 
-                        // Botón Iniciar Recorrido
+                        // Botón Iniciar Recorrido / Aceptar Visita (Para el Guía Asignado o Admin)
                         if (tieneGuia && puedeGestionarRecorrido && c.estatus !== 'en_recorrido' && c.estatus !== 'completado' && c.estatus !== 'cancelado') {
+                            const btnTexto = esAdmin ? 'Iniciar' : 'Iniciar Recorrido';
                             accionesBtns.push(`
-                                <button class="btn-action btn-action-edit btn-empezar-recorrido" data-id="${c.id}" title="Iniciar recorrido guiado" style="color: #0D9039;">
-                                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;fill:#0D9039;"><path d="M8 5v14l11-7z"/></svg>
+                                <button class="btn btn-sm btn-success btn-empezar-recorrido d-inline-flex align-items-center gap-1.5 py-1 px-2.5 shadow-sm fw-bold" data-id="${c.id}" title="Iniciar / Aceptar recorrido guiado" style="border-radius: 8px; font-size: 0.78rem; white-space: nowrap;">
+                                    <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;"><path d="M8 5v14l11-7z"/></svg>
+                                    ${btnTexto}
                                 </button>
                             `);
                         }
 
-                        // Botón Finalizar Recorrido
+                        // Botón Finalizar Recorrido (Para el Guía Asignado o Admin)
                         if (c.estatus === 'en_recorrido' && puedeGestionarRecorrido) {
+                            const btnTexto = esAdmin ? 'Finalizar' : 'Finalizar Recorrido';
                             accionesBtns.push(`
-                                <button class="btn-action btn-action-delete btn-terminar-recorrido" data-id="${c.id}" title="Finalizar recorrido anticipadamente">
-                                    <svg viewBox="0 0 24 24" style="width:18px;height:18px;"><path d="M6 6h12v12H6z"/></svg>
+                                <button class="btn btn-sm btn-danger btn-terminar-recorrido d-inline-flex align-items-center gap-1.5 py-1 px-2.5 shadow-sm fw-bold" data-id="${c.id}" title="Finalizar recorrido guiado" style="border-radius: 8px; font-size: 0.78rem; white-space: nowrap;">
+                                    <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;"><path d="M6 6h12v12H6z"/></svg>
+                                    ${btnTexto}
                                 </button>
+                            `);
+                        }
+
+                        // Si ya está completado
+                        if (c.estatus === 'completado') {
+                            accionesBtns.push(`
+                                <span class="badge bg-light text-secondary border px-2 py-1" style="font-size:0.75rem;">Visita Finalizada</span>
                             `);
                         }
 
                         let accionesHtml = '';
                         if (accionesBtns.length > 0) {
-                            accionesHtml = `<div class="table-actions justify-content-center flex-wrap gap-1">${accionesBtns.join('')}</div>`;
+                            accionesHtml = `<div class="d-flex align-items-center justify-content-center flex-wrap gap-1">${accionesBtns.join('')}</div>`;
                         } else {
                             accionesHtml = `<span class="text-muted" style="font-size:0.8rem;">—</span>`;
                         }
@@ -778,33 +786,35 @@
                 $body.append('<tr><td colspan="8" class="text-center text-danger py-4">Error al cargar la agenda de hoy.</td></tr>');
                 $wrapper.fadeIn(300);
             }
-                $wrapper.fadeIn(300);
-            }
-        });
-    }
         });
     }
 
-    // Cargar guías disponibles en el sistema (roles 'guia')
-    function cargarGuiasDisponibles(callback) {
-        if (allGuias.length > 0) {
-            if (callback) callback(allGuias);
-            return;
-        }
+    // Cargar guías disponibles en el sistema con validación de disponibilidad por fecha
+    function cargarGuiasDisponibles(callback, citaId) {
+        const url = citaId 
+            ? `controllers/CitaController.php?action=listar_guias&cita_id=${citaId}` 
+            : 'controllers/CitaController.php?action=listar_guias';
+
+        const $select = $('#selectGuiaDashboard');
+        $select.empty().append('<option value="">Cargando guías...</option>');
 
         $.ajax({
-            url: 'controllers/CitaController.php?action=listar_guias',
+            url: url,
             method: 'GET',
             dataType: 'json',
             success: function(response) {
                 if (response.status === 'success') {
                     allGuias = response.data || [];
                     
-                    const $select = $('#selectGuiaDashboard');
                     $select.empty().append('<option value="">Seleccione un guía...</option>');
                     allGuias.forEach(function(g) {
                         const nombreMostrar = g.nombre_completo || `${g.nombre || ''} ${g.apellido || ''}`.trim();
-                        $select.append(`<option value="${g.id}">${nombreMostrar}</option>`);
+                        const estaDisponible = g.disponible !== false;
+                        if (estaDisponible) {
+                            $select.append(`<option value="${g.id}">${nombreMostrar}</option>`);
+                        } else {
+                            $select.append(`<option value="${g.id}" disabled style="color:#94a3b8; background-color:#f1f5f9;">${nombreMostrar} (Ocupado - Cita activa hoy)</option>`);
+                        }
                     });
 
                     if (callback) callback(allGuias);
@@ -835,7 +845,7 @@
                         const badgeClass = g.rol_guia === 'principal' ? 'bg-success' : 'bg-secondary';
                         const nombreMostrar = g.nombre_completo || `${g.nombre || ''} ${g.apellido || ''}`.trim();
                         const itemHtml = `
-                            <div class="d-flex justify-content-between align-items-center p-2 rounded border bg-white mb-2">
+                            <div class="d-flex justify-content-between align-items-center p-2 rounded border bg-white mb-2 shadow-xs">
                                 <div>
                                     <strong>${nombreMostrar}</strong> 
                                     <span class="badge ${badgeClass} ms-1" style="font-size: 0.65rem;">${rolText}</span>
@@ -861,7 +871,7 @@
         const citaId = $(this).data('id');
         $('#assign_guia_cita_id').val(citaId);
         
-        cargarGuiasDisponibles();
+        cargarGuiasDisponibles(null, citaId);
         cargarGuiasAsignadosCita(citaId);
         
         $('#modalAsignarGuiaDashboard').modal('show');
@@ -885,6 +895,8 @@
                 if (response.status === 'success') {
                     // Limpiar select
                     $('#selectGuiaDashboard').val('');
+                    // Recargar guías disponibles con disponibilidad actualizada
+                    cargarGuiasDisponibles(null, citaId);
                     // Recargar guías asignados en el modal
                     cargarGuiasAsignadosCita(citaId);
                     // Recargar tabla de citas de hoy
@@ -893,9 +905,10 @@
                     alert(response.message);
                 }
             },
-            error: function() {
+            error: function(xhr) {
                 $submitBtn.prop('disabled', false).text('Asignar Guía');
-                alert('Error al realizar la asignación de guía.');
+                const msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : 'Error al realizar la asignación de guía.';
+                alert(msg);
             }
         });
     });
@@ -919,6 +932,7 @@
             dataType: 'json',
             success: function(response) {
                 if (response.status === 'success') {
+                    cargarGuiasDisponibles(null, citaId);
                     cargarGuiasAsignadosCita(citaId);
                     cargarCitasHoy();
                 } else {

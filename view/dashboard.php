@@ -173,6 +173,6 @@ $viewPath      = resolverRutaVista($currentView);
     <?php endforeach; ?>
 
     <!-- Lógica del Dashboard (sidebar responsivo y utilidades) -->
-    <script src="view/assets/js/dashboard.js"></script>
+    <script src="view/assets/js/dashboard.js?v=<?php echo time(); ?>"></script>
 </body>
 </html>
