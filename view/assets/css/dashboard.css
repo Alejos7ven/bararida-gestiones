@@ -1205,3 +1205,43 @@ body {
 .btn-abrir-asignar-recorrido:hover {
     transform: scale(1.04);
 }
+
+/* =========================================================================
+   SISTEMA DE FEEDBACK GLOBAL (TOAST NOTIFICATIONS)
+   ========================================================================= */
+.alert-toast {
+    border-radius: 12px !important;
+    padding: 14px 24px !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    margin-bottom: 20px !important;
+    display: none;
+    border: 1px solid transparent !important;
+    font-family: 'Outfit', sans-serif !important;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+    z-index: 99999 !important;
+}
+
+.alert-toast-success {
+    background-color: #e6f4ea !important;
+    color: #0D9039 !important;
+    border-color: rgba(13, 144, 57, 0.2) !important;
+}
+
+.alert-toast-danger {
+    background-color: #fff5f5 !important;
+    color: #ef4444 !important;
+    border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.alert-toast-warning {
+    background-color: #fffaf0 !important;
+    color: #f59e0b !important;
+    border-color: rgba(245, 158, 11, 0.2) !important;
+}
+
+.alert-toast-info {
+    background-color: #eff6ff !important;
+    color: #3b82f6 !important;
+    border-color: rgba(59, 130, 246, 0.2) !important;
+}

@@ -106,9 +106,9 @@ class Recorrido {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        // Obtener todos los recorridos que tengan al menos una parada asignada en la ruta
+        // Obtener todos los recorridos activos que tengan al menos una parada asignada en la ruta
         $query = "SELECT r.id, r.nombre FROM " . $this->table_name . " r 
-                  WHERE EXISTS (SELECT 1 FROM rutas ru WHERE ru.recorrido_id = r.id)
+                  WHERE r.activo = 1 AND EXISTS (SELECT 1 FROM rutas ru WHERE ru.recorrido_id = r.id)
                   ORDER BY r.id DESC";
         $stmt = $this->db->prepare($query);
         $stmt->execute();
@@ -136,7 +136,7 @@ class Recorrido {
             return null;
         }
 
-        $query = "SELECT id, nombre FROM recorrido WHERE id = :id LIMIT 1";
+        $query = "SELECT id, nombre FROM recorrido WHERE id = :id AND activo = 1 LIMIT 1";
         $stmt = $db->prepare($query);
         $stmt->bindParam(":id", $id, PDO::PARAM_INT);
         $stmt->execute();
@@ -153,9 +153,8 @@ class Recorrido {
     }
 
     /**
-     * Elimina un recorrido y sus paradas asociadas por ID.
-     * (El borrado en cascada configurado en las llaves foráneas de la base de datos
-     * eliminará automáticamente los registros en la tabla 'rutas').
+     * Elimina un recorrido por ID de forma lógica (Soft Delete).
+     * Preserva las paradas en 'rutas' para no corromper citas históricas.
      * 
      * @param int $id ID del recorrido a eliminar
      * @return bool True si se eliminó correctamente
@@ -166,26 +165,12 @@ class Recorrido {
         }
 
         try {
-            $this->db->beginTransaction();
-
-            // 1. Eliminar las paradas asociadas en la tabla 'rutas' primero
-            require_once __DIR__ . "/Ruta.php";
-            $ruta = new Ruta($this->db);
-            $ruta->eliminarPorRecorrido($id);
-
-            // 2. Eliminar el recorrido principal
-            $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+            $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(":id", $id, PDO::PARAM_INT);
-            $stmt->execute();
-
-            $this->db->commit();
-            return true;
+            return $stmt->execute();
         } catch (Exception $e) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
-            error_log("Error en Recorrido::eliminar(): " . $e->getMessage());
+            error_log("Error en Recorrido::eliminar() lógico: " . $e->getMessage());
             throw $e;
         }
     }
@@ -296,7 +281,7 @@ class Recorrido {
     public static function obtenerListadoSimple($db) {
         if (!$db) return [];
         $query = "SELECT r.id, r.nombre FROM recorrido r 
-                  WHERE EXISTS (SELECT 1 FROM rutas ru WHERE ru.recorrido_id = r.id)
+                  WHERE r.activo = 1 AND EXISTS (SELECT 1 FROM rutas ru WHERE ru.recorrido_id = r.id)
                   ORDER BY r.nombre ASC";
         $stmt = $db->prepare($query);
         $stmt->execute();

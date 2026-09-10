@@ -1,9 +1,4 @@
-<?php
-// Evitar acceso directo
-if (!isset($userRol)) {
-    exit;
-}
-?>
+
 <div class="row g-4 mb-4">
     <!-- Fila Inicial: Accesos Directos y Citas del Día -->
     <div class="col-12">
@@ -18,7 +13,10 @@ if (!isset($userRol)) {
                     </p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
-                    <?php if ($userRol === 'superadmin' || $userRol === 'admin'): ?>
+                    <?php 
+                    $tienePermisoCitas = !empty($userPermissions['citas']); 
+                    if ($tienePermisoCitas): 
+                    ?>
                         <button class="btn-premium-primary" onclick="window.location.href='index.php?view=citas&agendar=1'">
                             <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
                             Agendar Cita
@@ -82,7 +80,7 @@ if (!isset($userRol)) {
 <!-- WIDGET PREMIUM: MAPA INTERACTIVO Y CALENDARIO -->
 <div class="row mt-4 g-4">
     <!-- Columna Izquierda: Mapa con Recorridos -->
-    <div class="col-12 <?php echo ($userRol === 'guia') ? 'col-12' : 'col-lg-6'; ?>">
+    <div class="col-12 <?php echo $tienePermisoCitas ? 'col-lg-6' : 'col-12'; ?>">
         <div class="dashboard-map-card shadow-sm">
             <div class="dashboard-map-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                 <h3 style="font-size: 1.15rem; font-family: 'Outfit'; font-weight: 700; color: var(--park-dark);">
@@ -116,7 +114,7 @@ if (!isset($userRol)) {
         </div>
     </div>
     
-    <?php if ($userRol !== 'guia'): ?>
+    <?php if ($tienePermisoCitas): ?>
     <!-- Columna Derecha: Calendario Premium de Citas Próximas (FullCalendar) -->
     <div class="col-12 col-lg-6">
         <div class="dashboard-map-card shadow-sm d-flex flex-column">

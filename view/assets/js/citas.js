@@ -3,6 +3,13 @@
  * Parque Zoológico y Botánico Bararida
  */
 
+// Compatibilidad global defensiva
+window.cargarEstados = window.cargarEstados || function() {
+    if (typeof window.precargarEstadosCita === 'function') {
+        window.precargarEstadosCita();
+    }
+};
+
 $(document).ready(function() {
     // Referencias DOM principales
     const $tablaCitas = $('#tablaCitasBody');
@@ -14,6 +21,10 @@ $(document).ready(function() {
     let selectedInstitutionId = null; // null si no está registrada, entero si existe
     let cacheCitas = [];
     let bookingCalendar = null;
+    let cacheEstadosCita = [];
+    let sedeCitaCounter = 0;
+    let contactCitaCounter = 0;
+    let searchTimeout = null;
 
     // Variables de paginación de citas
     let filteredCitas = [];
@@ -28,7 +39,7 @@ $(document).ready(function() {
 
     // Cargar citas al iniciar
     listarCitas();
-    cargarEstados();
+    precargarEstadosCita();
     cargarRecorridosDropdown();
 
     // Abrir modal de agendar si viene del dashboard
@@ -279,102 +290,392 @@ $(document).ready(function() {
     }
 
     // =========================================================================
-    // 2. CARGA DE UBICACIONES EN CASCADA
+    // 2. GESTIÓN MULTI-SEDE Y DIRECTORIO DE CONTACTOS PARA INSTITUCIONES EN CITAS
     // =========================================================================
+
+    function precargarEstadosCita() {
+        if (cacheEstadosCita.length === 0) {
+            $.ajax({
+                url: 'controllers/LocationController.php?action=estados',
+                method: 'GET',
+                dataType: 'json',
+                success: function(resp) {
+                    if (resp.status === 'success') {
+                        cacheEstadosCita = resp.data || [];
+                    }
+                }
+            });
+        }
+    }
+    window.precargarEstadosCita = precargarEstadosCita;
+
     function cargarEstados() {
-        const $selectEstado = $('#estado_id');
+        precargarEstadosCita();
+    }
+    window.cargarEstados = cargarEstados;
+
+    function poblarEstadosSelectCita($select) {
+        $select.empty().append('<option value="">Seleccione Estado</option>');
+        cacheEstadosCita.forEach(function(est) {
+            $select.append(`<option value="${est.id_estado}">${est.estado}</option>`);
+        });
+    }
+
+    function cargarCascadaSedeCita($card, estadoId, selectedMunId, selectedCiuId, selectedParId, isReadOnly = false) {
+        const $selectMun = $card.find('.select-municipio');
+        const $selectCiu = $card.find('.select-ciudad');
+        const $selectPar = $card.find('.select-parroquia');
+
+        // Ciudades
         $.ajax({
-            url: 'controllers/LocationController.php?action=estados',
+            url: `controllers/LocationController.php?action=ciudades&estado_id=${estadoId}`,
             method: 'GET',
             dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    $selectEstado.empty().append('<option value="">Seleccione Estado</option>');
-                    response.data.forEach(function(est) {
-                        $selectEstado.append(`<option value="${est.id_estado}">${est.estado}</option>`);
+            success: function(resp) {
+                if (resp.status === 'success') {
+                    $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>');
+                    resp.data.forEach(function(c) {
+                        const sel = (selectedCiuId && c.id_ciudad == selectedCiuId) ? 'selected' : '';
+                        $selectCiu.append(`<option value="${c.id_ciudad}" ${sel}>${c.ciudad}</option>`);
                     });
+                    $selectCiu.prop('disabled', isReadOnly);
+                }
+            }
+        });
+
+        // Municipios y Parroquias
+        $.ajax({
+            url: `controllers/LocationController.php?action=municipios&estado_id=${estadoId}`,
+            method: 'GET',
+            dataType: 'json',
+            success: function(resp) {
+                if (resp.status === 'success') {
+                    $selectMun.empty().append('<option value="">Seleccione Municipio</option>');
+                    resp.data.forEach(function(m) {
+                        const sel = (selectedMunId && m.id_municipio == selectedMunId) ? 'selected' : '';
+                        $selectMun.append(`<option value="${m.id_municipio}" ${sel}>${m.municipio}</option>`);
+                    });
+                    $selectMun.prop('disabled', isReadOnly);
+
+                    if (selectedMunId) {
+                        $.ajax({
+                            url: `controllers/LocationController.php?action=parroquias&municipio_id=${selectedMunId}`,
+                            method: 'GET',
+                            dataType: 'json',
+                            success: function(pResp) {
+                                if (pResp.status === 'success') {
+                                    $selectPar.empty().append('<option value="">Seleccione Parroquia</option>');
+                                    pResp.data.forEach(function(p) {
+                                        const selP = (selectedParId && p.id_parroquia == selectedParId) ? 'selected' : '';
+                                        $selectPar.append(`<option value="${p.id_parroquia}" ${selP}>${p.parroquia}</option>`);
+                                    });
+                                    $selectPar.prop('disabled', isReadOnly);
+                                }
+                            }
+                        });
+                    }
                 }
             }
         });
     }
 
-    $('#estado_id').on('change', function() {
-        const estadoId = $(this).val();
-        const $selectMun = $('#municipio_id');
-        const $selectCiu = $('#ciudad_id');
-        const $selectPar = $('#parroquia_id');
-
-        $selectMun.empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
-        $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>').prop('disabled', true);
-        $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
-
-        if (!estadoId) return;
-
-        // Cargar Ciudades al seleccionar Estado
-        $.ajax({
-            url: `controllers/LocationController.php?action=ciudades&estado_id=${estadoId}`,
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    $selectCiu.prop('disabled', false);
-                    response.data.forEach(function(c) {
-                        $selectCiu.append(`<option value="${c.id_ciudad}">${c.ciudad}</option>`);
-                    });
-                }
+    function actualizarBotonesEliminarSedesCita(containerSelector = '#citaSedesContainer') {
+        const $container = $(containerSelector);
+        const cards = $container.children('.sede-card');
+        cards.each(function(idx) {
+            const num = idx + 1;
+            $(this).find('.sede-title').html(`
+                <span class="badge bg-success me-1">Sede #${num}</span>
+                ${num === 1 ? '<span class="text-muted" style="font-size:0.8rem;">(Principal)</span>' : ''}
+            `);
+            if (cards.length === 1) {
+                $(this).find('.btn-remove-sede').hide();
+            } else {
+                $(this).find('.btn-remove-sede').show();
             }
         });
+    }
+
+    function agregarSedeCardCita(containerSelector = '#citaSedesContainer', sedeData = null, isReadOnly = false) {
+        sedeCitaCounter++;
+        const uniqueId = `cita_sede_card_${Date.now()}_${sedeCitaCounter}`;
+        const $container = $(containerSelector);
+        const sedeNum = $container.children('.sede-card').length + 1;
+        const sId = (sedeData && sedeData.id) ? sedeData.id : '';
+        const detallesVal = (sedeData && (sedeData.detalles || sedeData.detalles_direccion)) ? (sedeData.detalles || sedeData.detalles_direccion) : '';
+        const disabledAttr = isReadOnly ? 'disabled' : '';
+
+        const deleteBtnHtml = isReadOnly ? '' : `
+            <button type="button" class="btn btn-sm btn-outline-danger btn-remove-sede px-2 py-0" title="Eliminar Sede" style="font-size: 0.75rem; border-radius: 6px;">
+                &times; Eliminar
+            </button>
+        `;
+
+        let headerSedeHtml;
+        if (sedeData && sedeData.is_nueva) {
+            headerSedeHtml = `
+                <span class="badge bg-warning text-dark me-2" style="font-size: 0.85rem;"><i class="bi bi-plus-circle"></i> Nueva Sede a Registrar</span>
+                <span class="text-muted" style="font-size: 0.8rem;">(Se creará y asignará para esta cita)</span>
+            `;
+        } else if (isReadOnly && selectedInstitutionId) {
+            const sedeNumLabel = (sedeData && (sedeData.num || sedeData.numero)) ? `Sede #${sedeData.num || sedeData.numero}` : `Sede Seleccionada`;
+            headerSedeHtml = `
+                <span class="badge bg-success me-2" style="font-size: 0.85rem;">✓ ${sedeNumLabel}</span>
+                <span class="text-muted" style="font-size: 0.8rem;">(Sede asignada para la visita)</span>
+            `;
+        } else {
+            headerSedeHtml = `
+                <span class="badge bg-success me-1">Sede #${sedeNum}</span>
+                ${sedeNum === 1 ? '<span class="text-muted" style="font-size:0.8rem;">(Principal)</span>' : ''}
+            `;
+        }
+
+        const cardHtml = `
+            <div class="sede-card p-3 border rounded-3 bg-light position-relative" id="${uniqueId}">
+                <input type="hidden" class="sede-id-input" value="${sId}">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="fw-bold text-success sede-title" style="font-size: 0.9rem;">
+                        ${headerSedeHtml}
+                    </span>
+                    ${deleteBtnHtml}
+                </div>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Estado</label>
+                        <select class="form-select form-select-sm select-estado" ${disabledAttr} required>
+                            <option value="">Seleccione Estado</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Municipio</label>
+                        <select class="form-select form-select-sm select-municipio" required disabled>
+                            <option value="">Seleccione Municipio</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Ciudad</label>
+                        <select class="form-select form-select-sm select-ciudad" required disabled>
+                            <option value="">Seleccione Ciudad</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Parroquia</label>
+                        <select class="form-select form-select-sm select-parroquia" required disabled>
+                            <option value="">Seleccione Parroquia</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Detalles de Dirección</label>
+                        <input type="text" class="form-control form-control-sm input-detalles" placeholder="Ej. Calle 10 con Av. Libertador, Edif. Principal" value="${detallesVal}" ${disabledAttr}>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        $container.append(cardHtml);
+        const $card = $(`#${uniqueId}`);
+
+        // Poblar Estados
+        const $selectEstado = $card.find('.select-estado');
+        if (cacheEstadosCita.length > 0) {
+            poblarEstadosSelectCita($selectEstado);
+            if (sedeData && (sedeData.id_estado || sedeData.estado_id)) {
+                const estId = sedeData.id_estado || sedeData.estado_id;
+                $selectEstado.val(estId);
+                cargarCascadaSedeCita($card, estId, sedeData.id_municipio || sedeData.municipio_id, sedeData.ciudad_id, sedeData.parroquia_id, isReadOnly);
+            }
+        } else {
+            $.ajax({
+                url: 'controllers/LocationController.php?action=estados',
+                method: 'GET',
+                dataType: 'json',
+                success: function(resp) {
+                    if (resp.status === 'success') {
+                        cacheEstadosCita = resp.data || [];
+                        poblarEstadosSelectCita($selectEstado);
+                        if (sedeData && (sedeData.id_estado || sedeData.estado_id)) {
+                            const estId = sedeData.id_estado || sedeData.estado_id;
+                            $selectEstado.val(estId);
+                            cargarCascadaSedeCita($card, estId, sedeData.id_municipio || sedeData.municipio_id, sedeData.ciudad_id, sedeData.parroquia_id, isReadOnly);
+                        }
+                    }
+                }
+            });
+        }
+
+        if (!isReadOnly) {
+            $selectEstado.on('change', function() {
+                const estadoId = $(this).val();
+                const $selectMun = $card.find('.select-municipio');
+                const $selectCiu = $card.find('.select-ciudad');
+                const $selectPar = $card.find('.select-parroquia');
+
+                $selectMun.empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
+                $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>').prop('disabled', true);
+                $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
+
+                if (!estadoId) return;
+
+                $.ajax({
+                    url: `controllers/LocationController.php?action=ciudades&estado_id=${estadoId}`,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(resp) {
+                        if (resp.status === 'success') {
+                            $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>');
+                            resp.data.forEach(function(c) {
+                                $selectCiu.append(`<option value="${c.id_ciudad}">${c.ciudad}</option>`);
+                            });
+                            $selectCiu.prop('disabled', false);
+                        }
+                    }
+                });
+
+                $.ajax({
+                    url: `controllers/LocationController.php?action=municipios&estado_id=${estadoId}`,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(resp) {
+                        if (resp.status === 'success') {
+                            $selectMun.empty().append('<option value="">Seleccione Municipio</option>');
+                            resp.data.forEach(function(m) {
+                                $selectMun.append(`<option value="${m.id_municipio}">${m.municipio}</option>`);
+                            });
+                            $selectMun.prop('disabled', false);
+                        }
+                    }
+                });
+            });
+
+            $card.find('.select-municipio').on('change', function() {
+                const munId = $(this).val();
+                const $selectPar = $card.find('.select-parroquia');
+                $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
+
+                if (!munId) return;
+
+                $.ajax({
+                    url: `controllers/LocationController.php?action=parroquias&municipio_id=${munId}`,
+                    method: 'GET',
+                    dataType: 'json',
+                    success: function(resp) {
+                        if (resp.status === 'success') {
+                            $selectPar.empty().append('<option value="">Seleccione Parroquia</option>');
+                            resp.data.forEach(function(p) {
+                                $selectPar.append(`<option value="${p.id_parroquia}">${p.parroquia}</option>`);
+                            });
+                            $selectPar.prop('disabled', false);
+                        }
+                    }
+                });
+            });
+        }
+
+        actualizarBotonesEliminarSedesCita(containerSelector);
+    }
+
+    // Sincronizar la previsualización de la sede exacta seleccionada o por crear en el Paso 2
+    function actualizarPrevisualizacionSedeEnPaso2() {
+        if (!selectedInstitutionId) return; // Si es nueva institución, se gestiona libremente en Paso 2
+
+        const $container = $('#citaSedesContainer');
+        $container.empty();
+
+        const esNuevaSede = $('#final_crear_nueva_sede').val() === '1';
+
+        if (esNuevaSede) {
+            const estId = $('#nueva_sede_cita_estado').val();
+            const munId = $('#nueva_sede_cita_municipio').val();
+            const ciuId = $('#nueva_sede_cita_ciudad').val();
+            const parId = $('#nueva_sede_cita_parroquia').val();
+            const det = $.trim($('#nueva_sede_cita_detalles').val());
+
+            const nuevaSedeData = {
+                id: '',
+                id_estado: estId,
+                id_municipio: munId,
+                ciudad_id: ciuId,
+                parroquia_id: parId,
+                detalles: det,
+                is_nueva: true
+            };
+            agregarSedeCardCita('#citaSedesContainer', nuevaSedeData, true);
+        } else {
+            const $checkedRadio = $('.radio-sede-item:checked');
+            if ($checkedRadio.length) {
+                const sData = $checkedRadio.data('sede');
+                if (sData) {
+                    agregarSedeCardCita('#citaSedesContainer', sData, true);
+                }
+            }
+        }
+    }
+
+    function agregarContactoCita(containerId, tipo, valor = '', isReadOnly = false) {
+        contactCitaCounter++;
+        const uniqueId = `cita_contacto_${tipo}_${Date.now()}_${contactCitaCounter}`;
+        const placeholder = tipo === 'telefono' ? 'Ej. 0414-1234567' : 'Ej. contacto@colegio.com';
+        const inputType = tipo === 'correo' ? 'email' : 'tel';
+        const inputMode = tipo === 'telefono' ? 'inputmode="numeric"' : '';
+        const extraClass = tipo === 'telefono' ? 'input-telefono-val' : 'input-correo-val';
+        const disabledAttr = isReadOnly ? 'disabled' : '';
+
+        const deleteBtn = isReadOnly ? '' : `
+            <button type="button" class="btn btn-outline-danger btn-remove-contact" title="Eliminar Contacto">&times;</button>
+        `;
+
+        const contactHtml = `
+            <div class="input-group input-group-sm mb-1 contact-row" data-tipo="${tipo}">
+                <span class="input-group-text bg-white">${tipo === 'telefono' ? '📞' : '✉'}</span>
+                <input type="${inputType}" ${inputMode} name="${uniqueId}" id="${uniqueId}" class="form-control input-contacto-val ${extraClass}" placeholder="${placeholder}" value="${valor}" ${disabledAttr}>
+                ${deleteBtn}
+            </div>
+        `;
+        $(`#${containerId}`).append(contactHtml);
+    }
+
+    // Eventos para multi-sedes y contactos en el Wizard de Cita
+    $(document).on('click', '#btnCitaAddSede', function(e) {
+        e.preventDefault();
+        agregarSedeCardCita('#citaSedesContainer');
     });
 
-    $('#ciudad_id').on('change', function() {
-        const ciudadId = $(this).val();
-        const estadoId = $('#estado_id').val();
-        const $selectMun = $('#municipio_id');
-        const $selectPar = $('#parroquia_id');
-
-        $selectMun.empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
-        $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
-
-        if (!ciudadId || !estadoId) return;
-
-        // Cargar Municipios al seleccionar Ciudad (usando el estadoId actual)
-        $.ajax({
-            url: `controllers/LocationController.php?action=municipios&estado_id=${estadoId}`,
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    $selectMun.prop('disabled', false);
-                    response.data.forEach(function(m) {
-                        $selectMun.append(`<option value="${m.id_municipio}">${m.municipio}</option>`);
-                    });
-                }
-            }
-        });
+    $(document).on('click', '#btnCitaAddPhone', function(e) {
+        e.preventDefault();
+        agregarContactoCita('citaPhonesContainer', 'telefono');
     });
 
-    $('#municipio_id').on('change', function() {
-        const municipioId = $(this).val();
-        const $selectPar = $('#parroquia_id');
+    $(document).on('click', '#btnCitaAddEmail', function(e) {
+        e.preventDefault();
+        agregarContactoCita('citaEmailsContainer', 'correo');
+    });
 
-        $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
+    $(document).on('click', '#citaSedesContainer .btn-remove-sede', function(e) {
+        e.preventDefault();
+        const $card = $(this).closest('.sede-card');
+        $card.remove();
+        actualizarBotonesEliminarSedesCita('#citaSedesContainer');
+    });
 
-        if (!municipioId) return;
+    $(document).on('click', '#citaPhonesContainer .btn-remove-contact, #citaEmailsContainer .btn-remove-contact', function(e) {
+        e.preventDefault();
+        $(this).closest('.contact-row').remove();
+    });
 
-        // Cargar Parroquias al seleccionar Municipio
-        $.ajax({
-            url: `controllers/LocationController.php?action=parroquias&municipio_id=${municipioId}`,
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    $selectPar.prop('disabled', false);
-                    response.data.forEach(function(p) {
-                        $selectPar.append(`<option value="${p.id_parroquia}">${p.parroquia}</option>`);
-                    });
-                }
-            }
-        });
+    $(document).on('input', '#citaPhonesContainer .input-contacto-val', function() {
+        this.value = this.value.replace(/[^0-9+\-\s()]/g, '');
+    });
+
+    $(document).on('change', '.select-tipo-organizacion-cita', function() {
+        const val = $(this).val();
+        const $customContainer = $('#cita_custom_tipo_org_container');
+        if (val === 'Otro') {
+            $customContainer.slideDown(200);
+            $('#cita_tipo_organizacion_custom').prop('required', true);
+        } else {
+            $customContainer.slideUp(200);
+            $('#cita_tipo_organizacion_custom').prop('required', false).val('');
+        }
     });
 
     // =========================================================================
@@ -422,21 +723,13 @@ $(document).ready(function() {
         // Ocultar alerta de capacidad
         $('#bookingCapacityAlert').hide().empty();
         
-        // Limpiar contenedor de contactos e insertar el campo obligatorio inicial
-        $('#contactsContainer').empty();
-        agregarFilaContacto('principal');
-
-        // Deshabilitar selectores geográficos subordinados
-        $('#municipio_id, #ciudad_id, #parroquia_id').prop('disabled', true);
-
-        // Limpiar cualquier tipo de organización no predefinido
-        $('#tipo_organizacion option').each(function() {
-            const val = $(this).val();
-            const predefined = ['', 'Colegio Privado', 'Escuela Pública', 'Liceo Público', 'Liceo Privado', 'Fundación / ONG', 'Institución Gubernamental', 'Empresa Privada', 'Comunidad Organizada', 'Otro'];
-            if (predefined.indexOf(val) === -1) {
-                $(this).remove();
-            }
-        });
+        // Limpiar contenedores de sedes y contactos
+        $('#citaSedesContainer').empty();
+        $('#citaPhonesContainer').empty();
+        $('#citaEmailsContainer').empty();
+        $('#cita_custom_tipo_org_container').hide();
+        $('#cita_tipo_organizacion_custom').val('');
+        $('#tipo_organizacion').val('');
 
         // Ocultar alerta de RIF
         $('#rifCheckStatus').hide().removeClass('alert-success alert-warning alert-danger').text('');
@@ -498,7 +791,6 @@ $(document).ready(function() {
 
     // BOTÓN: VERIFICAR RIF (PASO 1)
     // AUTOCUMPLETADO DE INSTITUCIONES (PASO 1)
-    let searchTimeout = null;
 
     // Asegurar que el contenedor de sugerencias resida directamente en el body para evitar overflow del modal
     if ($('#autocomplete_suggestions').parent().is(':not(body)')) {
@@ -654,11 +946,12 @@ $(document).ready(function() {
                 $list.empty();
                 if (resp.status === 'success' && resp.data && resp.data.length > 0) {
                     resp.data.forEach(function(s, idx) {
+                        const num = idx + 1;
+                        s.num = num;
                         const isChecked = idx === 0 ? 'checked' : '';
                         if (idx === 0) {
                             $('#final_sede_id').val(s.id);
                         }
-                        const num = idx + 1;
                         const labelDetails = s.detalles ? ` - <small class="text-muted">${s.detalles}</small>` : '';
                         const itemHtml = `
                             <div class="form-check p-2 bg-white border rounded">
@@ -672,9 +965,11 @@ $(document).ready(function() {
                         `;
                         $list.append(itemHtml);
                     });
+                    actualizarPrevisualizacionSedeEnPaso2();
                 } else {
                     $list.append('<div class="text-muted"><small>No hay sedes registradas para esta institución. Puede agregar una nueva sede a continuación.</small></div>');
                     $('#final_sede_id').val('');
+                    actualizarPrevisualizacionSedeEnPaso2();
                 }
             }
         });
@@ -683,14 +978,7 @@ $(document).ready(function() {
     $(document).on('change', '.radio-sede-item', function() {
         const sedeId = $(this).val();
         $('#final_sede_id').val(sedeId);
-        const sedeData = $(this).data('sede');
-        if (sedeData) {
-            $('#estado_id').empty().append(`<option value="${sedeData.id_estado || ''}" selected>${sedeData.estado || 'Estado Pre-cargado'}</option>`).prop('disabled', true);
-            $('#municipio_id').empty().append(`<option value="${sedeData.id_municipio || ''}" selected>${sedeData.municipio || 'Municipio Pre-cargado'}</option>`).prop('disabled', true);
-            $('#ciudad_id').empty().append(`<option value="${sedeData.ciudad_id || ''}" selected>${sedeData.ciudad || 'Ciudad Pre-cargada'}</option>`).prop('disabled', true);
-            $('#parroquia_id').empty().append(`<option value="${sedeData.parroquia_id || ''}" selected>${sedeData.parroquia || 'Parroquia Pre-cargada'}</option>`).prop('disabled', true);
-            $('#detalles_direccion').val(sedeData.detalles || sedeData.detalles_direccion || '').prop('disabled', true);
-        }
+        actualizarPrevisualizacionSedeEnPaso2();
     });
 
     // Toggle para agregar nueva sede en cita
@@ -705,12 +993,14 @@ $(document).ready(function() {
                 firstRadio.prop('checked', true);
                 $('#final_sede_id').val(firstRadio.val());
             }
+            actualizarPrevisualizacionSedeEnPaso2();
         } else {
             $form.slideDown(200);
             $('#final_crear_nueva_sede').val('1');
             $('.radio-sede-item').prop('checked', false).prop('disabled', true);
             $('#final_sede_id').val('');
             cargarEstadosNuevaSedeCita();
+            actualizarPrevisualizacionSedeEnPaso2();
         }
     });
 
@@ -799,12 +1089,21 @@ $(document).ready(function() {
 
     $('#nueva_sede_cita_ciudad').on('change', function() {
         $('#final_nueva_sede_ciudad_id').val($(this).val());
+        if ($('#final_crear_nueva_sede').val() === '1') {
+            actualizarPrevisualizacionSedeEnPaso2();
+        }
     });
     $('#nueva_sede_cita_parroquia').on('change', function() {
         $('#final_nueva_sede_parroquia_id').val($(this).val());
+        if ($('#final_crear_nueva_sede').val() === '1') {
+            actualizarPrevisualizacionSedeEnPaso2();
+        }
     });
     $('#nueva_sede_cita_detalles').on('input', function() {
         $('#final_nueva_sede_detalles').val($(this).val());
+        if ($('#final_crear_nueva_sede').val() === '1') {
+            $('#citaSedesContainer .input-detalles').val($(this).val());
+        }
     });
 
     // Función modular para iniciar el registro de una nueva institución al vuelo
@@ -884,6 +1183,7 @@ $(document).ready(function() {
             const isNuevaInst = $('#nueva_institucion_rif_row').is(':visible');
             
             if (!instId && !isNuevaInst && !query) {
+                showGlobalAlert('Por favor busque una institución existente o ingrese el nombre para registrarla.', 'warning');
                 window.marcarErrorInput('#buscar_institucion_autocomplete', 'Por favor busque una institución existente o ingrese el nombre para registrarla.', true);
                 return;
             }
@@ -898,62 +1198,186 @@ $(document).ready(function() {
                 return;
             }
 
+            // Si es institución existente seleccionada
+            if (selectedInstitutionId) {
+                if ($('#final_crear_nueva_sede').val() === '1') {
+                    const estId = $('#nueva_sede_cita_estado').val();
+                    const munId = $('#nueva_sede_cita_municipio').val();
+                    const ciuId = $('#nueva_sede_cita_ciudad').val();
+                    const parId = $('#nueva_sede_cita_parroquia').val();
+
+                    if (!estId || !munId || !ciuId || !parId) {
+                        showGlobalAlert('Por favor complete todos los datos geográficos (Estado, Municipio, Ciudad y Parroquia) para la nueva sede que desea registrar.', 'warning');
+                        if (!estId) window.marcarErrorInput('#nueva_sede_cita_estado', 'Seleccione el Estado.', true);
+                        else if (!munId) window.marcarErrorInput('#nueva_sede_cita_municipio', 'Seleccione el Municipio.', true);
+                        else if (!ciuId) window.marcarErrorInput('#nueva_sede_cita_ciudad', 'Seleccione la Ciudad.', true);
+                        else if (!parId) window.marcarErrorInput('#nueva_sede_cita_parroquia', 'Seleccione la Parroquia.', true);
+                        return;
+                    }
+                } else {
+                    if (!$('#final_sede_id').val() && !$('.radio-sede-item:checked').length) {
+                        showGlobalAlert('Debe seleccionar una de las sedes registradas para la visita o agregar una nueva.', 'warning');
+                        return;
+                    }
+                }
+
+                // Sincronizar la previsualización de la sede para el Paso 2
+                actualizarPrevisualizacionSedeEnPaso2();
+            }
+
             // Ir al paso 2
             currentStep = 2;
             showStep(currentStep);
         } else if (currentStep === 2) {
-            // Validaciones Paso 2 usando jquery-validate
-            if (!$('#formCrearCita').valid()) {
+            // Si es institución existente seleccionada, solo pasar al paso 3
+            if (selectedInstitutionId) {
+                currentStep = 3;
+                showStep(currentStep);
                 return;
             }
 
-            // Validar contactos si es nueva institución
-            if ($('#nueva_institucion_rif_row').is(':visible')) {
-                let contactError = false;
-                let $contactInputErr = null;
-                let contactErrorMsg = '';
+            // Validar si es nueva institución
+            // 1. Validar nombre
+            const nombreInst = $.trim($('#nombre_institucion').val());
+            if (!nombreInst || nombreInst.length < 3) {
+                showGlobalAlert('Debe ingresar la Razón Social o Nombre Oficial de la institución (mínimo 3 caracteres).', 'warning');
+                window.marcarErrorInput('#nombre_institucion', 'Debe ingresar la Razón Social (mínimo 3 caracteres).', true);
+                return;
+            }
 
-                const $contactRows = $('#contactsContainer .contact-row');
-                if ($contactRows.length === 0) {
-                    window.marcarErrorInput('#btnAddNewContact', 'Debe agregar al menos un número o correo de contacto.', true);
+            // 2. Validar RIF
+            const docInst = $.trim($('#documento_inst').val() || $('#final_documento').val());
+            if (!docInst || !/^\d{6,12}$/.test(docInst.replace(/[^0-9]/g, ''))) {
+                showGlobalAlert('Debe ingresar un número de RIF o cédula válido (entre 6 y 12 dígitos).', 'warning');
+                window.marcarErrorInput('#documento_inst', 'Debe ingresar un RIF válido (entre 6 y 12 dígitos).', true);
+                return;
+            }
+
+            // 3. Validar tipo de organización
+            const tipoOrg = $('#tipo_organizacion').val();
+            if (!tipoOrg) {
+                showGlobalAlert('Debe seleccionar un tipo de organización para la institución.', 'warning');
+                window.marcarErrorInput('#tipo_organizacion', 'Debe seleccionar un tipo de organización.', true);
+                return;
+            }
+            if (tipoOrg === 'Otro') {
+                const customOrg = $.trim($('#cita_tipo_organizacion_custom').val());
+                if (!customOrg) {
+                    showGlobalAlert('Especifique el tipo de organización personalizado.', 'warning');
+                    window.marcarErrorInput('#cita_tipo_organizacion_custom', 'Especifique el tipo de organización.', true);
                     return;
                 }
+            }
 
-                $contactRows.each(function() {
-                    const $input = $(this).find('.contact-input');
-                    const val = $.trim($input.val());
-                    const tipo = $(this).find('select').val();
+            // 4. Validar Sedes
+            const $sedeCards = $('#citaSedesContainer .sede-card');
+            if ($sedeCards.length === 0) {
+                showGlobalAlert('Debe registrar al menos una sede para la institución.', 'warning');
+                agregarSedeCardCita('#citaSedesContainer');
+                return;
+            }
 
-                    if (!val) {
-                        contactError = true;
-                        $contactInputErr = $input;
-                        contactErrorMsg = 'Debe ingresar el número de teléfono o correo de contacto.';
-                        return false;
-                    }
+            let sedeError = false;
+            let $firstSedeErr = null;
+            let sedeErrorMsg = '';
 
-                    if (tipo === 'correo') {
-                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                        if (!emailRegex.test(val)) {
+            $sedeCards.each(function(idx) {
+                const num = idx + 1;
+                const $est = $(this).find('.select-estado');
+                const $mun = $(this).find('.select-municipio');
+                const $ciu = $(this).find('.select-ciudad');
+                const $par = $(this).find('.select-parroquia');
+
+                if (!$est.val()) {
+                    sedeError = true;
+                    $firstSedeErr = $est;
+                    sedeErrorMsg = `Debe seleccionar el Estado en la Sede #${num}.`;
+                    return false;
+                }
+                if (!$mun.val()) {
+                    sedeError = true;
+                    $firstSedeErr = $mun;
+                    sedeErrorMsg = `Debe seleccionar el Municipio en la Sede #${num}.`;
+                    return false;
+                }
+                if (!$ciu.val()) {
+                    sedeError = true;
+                    $firstSedeErr = $ciu;
+                    sedeErrorMsg = `Debe seleccionar la Ciudad en la Sede #${num}.`;
+                    return false;
+                }
+                if (!$par.val()) {
+                    sedeError = true;
+                    $firstSedeErr = $par;
+                    sedeErrorMsg = `Debe seleccionar la Parroquia en la Sede #${num}.`;
+                    return false;
+                }
+            });
+
+            if (sedeError && $firstSedeErr) {
+                showGlobalAlert(sedeErrorMsg, 'warning');
+                window.marcarErrorInput($firstSedeErr, sedeErrorMsg, true);
+                return;
+            }
+
+            // 5. Validar Contactos (Teléfonos y Correos)
+            let contactError = false;
+            let $firstContactErr = null;
+            let contactErrorMsg = '';
+            let validContactsCount = 0;
+
+            $('#citaPhonesContainer .contact-row').each(function() {
+                const $input = $(this).find('.input-contacto-val');
+                const val = $.trim($input.val());
+                if (val) {
+                    const cleanDigits = val.replace(/[^0-9]/g, '');
+                    if (/[a-zA-Z]/.test(val) || cleanDigits.length < 7 || cleanDigits.length > 15) {
+                        if (!contactError) {
                             contactError = true;
-                            $contactInputErr = $input;
-                            contactErrorMsg = 'El correo electrónico no tiene un formato válido.';
-                            return false;
+                            $firstContactErr = $input;
+                            contactErrorMsg = `El número de teléfono "${val}" no es válido. No debe contener letras y debe tener entre 7 y 15 dígitos.`;
                         }
+                        window.marcarErrorInput($input, `El número "${val}" no es válido (7 a 15 dígitos).`, false);
                     } else {
-                        const cleanDigits = val.replace(/[^0-9]/g, '');
-                        if (/[a-zA-Z]/.test(val) || cleanDigits.length < 7 || cleanDigits.length > 15) {
-                            contactError = true;
-                            $contactInputErr = $input;
-                            contactErrorMsg = 'El teléfono debe contener entre 7 y 15 dígitos numéricos.';
-                            return false;
-                        }
+                        validContactsCount++;
                     }
-                });
-
-                if (contactError && $contactInputErr) {
-                    window.marcarErrorInput($contactInputErr, contactErrorMsg, true);
-                    return;
                 }
+            });
+
+            $('#citaEmailsContainer .contact-row').each(function() {
+                const $input = $(this).find('.input-contacto-val');
+                const val = $.trim($input.val());
+                if (val) {
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(val)) {
+                        if (!contactError) {
+                            contactError = true;
+                            $firstContactErr = $input;
+                            contactErrorMsg = `El correo "${val}" no tiene un formato válido.`;
+                        }
+                        window.marcarErrorInput($input, `El correo "${val}" no es válido.`, false);
+                    } else {
+                        validContactsCount++;
+                    }
+                }
+            });
+
+            if (contactError && $firstContactErr) {
+                showGlobalAlert(contactErrorMsg, 'warning');
+                window.marcarErrorInput($firstContactErr, contactErrorMsg, true);
+                return;
+            }
+
+            if (validContactsCount === 0) {
+                const msg = 'Debe registrar al menos un número de teléfono o correo de contacto para la institución.';
+                showGlobalAlert(msg, 'warning');
+                let $firstContact = $('#citaPhonesContainer .input-contacto-val, #citaEmailsContainer .input-contacto-val').first();
+                if (!$firstContact.length) {
+                    agregarContactoCita('citaPhonesContainer', 'telefono');
+                    $firstContact = $('#citaPhonesContainer .input-contacto-val').first();
+                }
+                window.marcarErrorInput($firstContact, msg, true);
+                return;
             }
 
             // Ir al paso 3
@@ -962,6 +1386,7 @@ $(document).ready(function() {
         } else if (currentStep === 3) {
             // Validaciones Paso 3 usando jquery-validate
             if (!$('#formCrearCita').valid()) {
+                showGlobalAlert('Por favor complete los campos obligatorios de la cita (fecha, hora y método de pago).', 'warning');
                 return;
             }
 
@@ -996,105 +1421,123 @@ $(document).ready(function() {
             $('#tipo_organizacion').append(`<option value="${data.tipo_organizacion}">${data.tipo_organizacion}</option>`);
         }
         $('#tipo_organizacion').val(data.tipo_organizacion).prop('disabled', true);
+        $('#cita_custom_tipo_org_container').hide();
         $('#tipo_gestion').val(data.tipo_gestion || 'publica').prop('disabled', true);
         
-        // Si tiene sedes, prellenar la primera sede
-        const primerSede = (data.sedes && data.sedes.length > 0) ? data.sedes[0] : data;
-        $('#estado_id').empty().append(`<option value="${primerSede.id_estado || ''}" selected>${primerSede.estado || 'Estado Pre-cargado'}</option>`).prop('disabled', true);
-        $('#municipio_id').empty().append(`<option value="${primerSede.id_municipio || ''}" selected>${primerSede.municipio || 'Municipio Pre-cargado'}</option>`).prop('disabled', true);
-        $('#ciudad_id').empty().append(`<option value="${primerSede.ciudad_id || ''}" selected>${primerSede.ciudad || 'Ciudad Pre-cargada'}</option>`).prop('disabled', true);
-        $('#parroquia_id').empty().append(`<option value="${primerSede.parroquia_id || ''}" selected>${primerSede.parroquia || 'Parroquia Pre-cargada'}</option>`).prop('disabled', true);
-        
-        $('#detalles_direccion').val(primerSede.detalles || primerSede.detalles_direccion || '').prop('disabled', true);
+        // Ocultar botones de agregar (modo solo lectura para datos existentes)
+        $('#btnCitaAddSede').hide();
+        $('#btnCitaAddPhone').hide();
+        $('#btnCitaAddEmail').hide();
 
-        // Prellenar contactos
-        $('#contactsContainer').empty();
+        // Inicializar contenedor de sede para previsualización
+        $('#citaSedesContainer').empty();
+        actualizarPrevisualizacionSedeEnPaso2();
+
+        // Prellenar contactos en las dos columnas
+        $('#citaPhonesContainer').empty();
+        $('#citaEmailsContainer').empty();
+
         if (data.contactos && data.contactos.length > 0) {
             data.contactos.forEach(function(c) {
-                let labelTipo = c.tipo === 'principal' ? 'Teléfono Principal' : (c.tipo === 'secundario' ? 'Teléfono Secundario' : 'Correo Electrónico');
-                const contactHtml = `
-                    <div class="contact-row">
-                        <input type="text" class="form-control form-premium-control" value="${c.contacto}" disabled>
-                        <span class="badge bg-secondary p-2.5" style="border-radius:10px; font-size:0.75rem;">${labelTipo}</span>
-                    </div>
-                `;
-                $('#contactsContainer').append(contactHtml);
+                if (c.tipo === 'correo' || /@/.test(c.contacto)) {
+                    agregarContactoCita('citaEmailsContainer', 'correo', c.contacto, true);
+                } else {
+                    agregarContactoCita('citaPhonesContainer', 'telefono', c.contacto, true);
+                }
             });
         }
-        $('#btnAddNewContact').hide();
     }
 
-    // Limpiar campos y habilitar edición
+    // Limpiar campos y habilitar edición para nueva institución
     function limpiarYEditarDatosInstitucion() {
         $('#nombre_institucion').val('').prop('disabled', false);
         $('#tipo_organizacion').val('').prop('disabled', false);
+        $('#cita_custom_tipo_org_container').hide();
+        $('#cita_tipo_organizacion_custom').val('').prop('disabled', false);
         $('#tipo_gestion').val('publica').prop('disabled', false);
         
-        // Recargar estados
-        cargarEstados();
-        $('#estado_id').prop('disabled', false);
-        
-        $('#municipio_id').empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
-        $('#ciudad_id').empty().append('<option value="">Seleccione Ciudad</option>').prop('disabled', true);
-        $('#parroquia_id').empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
-        
-        $('#detalles_direccion').val('').prop('disabled', false);
+        // Habilitar botones de agregar
+        $('#btnCitaAddSede').show();
+        $('#btnCitaAddPhone').show();
+        $('#btnCitaAddEmail').show();
 
-        $('#contactsContainer').empty();
-        agregarFilaContacto('principal');
-        agregarFilaContacto('correo');
-        $('#btnAddNewContact').show();
+        // Limpiar y poblar primera sede
+        $('#citaSedesContainer').empty();
+        agregarSedeCardCita('#citaSedesContainer');
+
+        // Limpiar y poblar primer teléfono y correo
+        $('#citaPhonesContainer').empty();
+        agregarContactoCita('citaPhonesContainer', 'telefono');
+
+        $('#citaEmailsContainer').empty();
+        agregarContactoCita('citaEmailsContainer', 'correo');
     }
-
-    // =========================================================================
-    // 4. DIRECCIÓN DE CONTACTOS (FILAS DINÁMICAS EN WIZARD)
-    // =========================================================================
-    let contactCount = 0;
-    
-    function agregarFilaContacto(forcedType = '') {
-        contactCount++;
-        const isPrincipal = forcedType === 'principal' || $('#contactsContainer .contact-row').length === 0;
-        const typeSelected = forcedType ? forcedType : (isPrincipal ? 'principal' : 'secundario');
-        const deleteButton = isPrincipal 
-            ? '<div style="width:28px;"></div>' 
-            : `<button type="button" class="btn-remove-contact btn-eliminar-contacto-row" title="Eliminar Contacto">✕</button>`;
-
-        const rowHtml = `
-            <div class="contact-row" id="contactRow_${contactCount}">
-                <input type="text" class="form-control form-premium-control contact-input" 
-                       name="contactos[${contactCount}][contacto]" placeholder="Número o correo..." required>
-                <select class="form-select form-premium-control" name="contactos[${contactCount}][tipo]" style="max-width:180px;">
-                    <option value="principal" ${typeSelected === 'principal' ? 'selected' : ''}>Principal</option>
-                    <option value="secundario" ${typeSelected === 'secundario' ? 'selected' : ''}>Secundario</option>
-                    <option value="correo">Correo</option>
-                </select>
-                ${deleteButton}
-            </div>
-        `;
-        $('#contactsContainer').append(rowHtml);
-    }
-
-    $('#btnAddNewContact').on('click', function() {
-        agregarFilaContacto();
-    });
-
-    $(document).on('click', '.btn-eliminar-contacto-row', function() {
-        $(this).closest('.contact-row').remove();
-    });
 
     // =========================================================================
     // 5. GUARDAR CITA (AJAX POST)
     // =========================================================================
     function guardarCita() {
         const $btn = $('#btnWizardNext');
-        
-        // Habilitar campos temporalmente para serializar RIF y Razón Social pre-cargados
-        $('#formCrearCita :disabled').prop('disabled', false);
-        const formData = $('#formCrearCita').serialize();
-        
-        // Deshabilitar de nuevo para evitar desconfiguración si falla
-        if (selectedInstitutionId !== null) {
-            $('#nombre_institucion, #tipo_organizacion, #tipo_gestion, #estado_id, #municipio_id, #ciudad_id, #parroquia_id, #detalles_direccion').prop('disabled', true);
+        let postData;
+
+        if (!selectedInstitutionId) {
+            // Nueva institución: recopilar sedes y contactos dinámicos
+            const sedes = [];
+            $('#citaSedesContainer .sede-card').each(function(idx) {
+                const ciuId = $(this).find('.select-ciudad').val();
+                const parId = $(this).find('.select-parroquia').val();
+                const det = $.trim($(this).find('.input-detalles').val());
+                if (ciuId && parId) {
+                    sedes.push({
+                        ciudad_id: ciuId,
+                        parroquia_id: parId,
+                        detalles: det,
+                        es_principal: idx === 0 ? 1 : 0
+                    });
+                }
+            });
+
+            const contactos = [];
+            $('#citaPhonesContainer .contact-row').each(function() {
+                const val = $.trim($(this).find('.input-contacto-val').val());
+                if (val) contactos.push({ tipo: 'telefono', contacto: val });
+            });
+            $('#citaEmailsContainer .contact-row').each(function() {
+                const val = $.trim($(this).find('.input-contacto-val').val());
+                if (val) contactos.push({ tipo: 'correo', contacto: val });
+            });
+
+            let tipoOrg = $('#tipo_organizacion').val();
+            if (tipoOrg === 'Otro') {
+                const customOrg = $.trim($('#cita_tipo_organizacion_custom').val());
+                if (customOrg) tipoOrg = customOrg;
+            }
+
+            postData = {
+                tipo_documento: $('#tipo_documento_inst').val() || $('#final_tipo_documento').val() || 'J',
+                documento: $('#documento_inst').val() || $('#final_documento').val() || '',
+                nombre_completo: $('#nombre_institucion').val(),
+                nombre: $('#nombre_institucion').val(),
+                tipo_organizacion: tipoOrg,
+                tipo_gestion: $('#tipo_gestion').val(),
+                sedes: sedes,
+                contactos: contactos,
+                recorrido_id: $('#recorrido_id').val() || '',
+                fecha_visita: $('#fecha_visita').val(),
+                hora_inicio: $('#hora_inicio').val(),
+                metodo_pago: $('#metodo_pago').val(),
+                pago_estado: $('#pago_estado').val()
+            };
+        } else {
+            // Institución existente
+            if ($('#final_crear_nueva_sede').val() === '1') {
+                $('#final_nueva_sede_ciudad_id').val($('#nueva_sede_cita_ciudad').val());
+                $('#final_nueva_sede_parroquia_id').val($('#nueva_sede_cita_parroquia').val());
+                $('#final_nueva_sede_detalles').val($('#nueva_sede_cita_detalles').val());
+            }
+            $('#formCrearCita :disabled').prop('disabled', false);
+            postData = $('#formCrearCita').serialize();
+            $('#nombre_institucion, #tipo_organizacion, #tipo_gestion').prop('disabled', true);
         }
 
         $btn.prop('disabled', true).text('Guardando cita...');
@@ -1102,17 +1545,19 @@ $(document).ready(function() {
         $.ajax({
             url: 'controllers/CitaController.php?action=crear',
             method: 'POST',
-            data: formData,
+            data: postData,
             dataType: 'json',
             success: function(response) {
                 $btn.prop('disabled', false).text('Agendar Cita');
                 
                 if (response.status === 'success') {
                     $('#modalCrearCita').modal('hide');
-                    showGlobalAlert(response.message, 'success');
+                    showGlobalAlert(response.message || 'Cita agendada con éxito.', 'success');
                     listarCitas();
                 } else {
-                    window.mapearErrorServidorAFormulario('#formCrearCita', response.message);
+                    const errorMsg = response.message || 'Ocurrió un error al intentar crear la cita.';
+                    showGlobalAlert(errorMsg, 'danger');
+                    window.mapearErrorServidorAFormulario('#formCrearCita', errorMsg, response.field || null);
                 }
             },
             error: function(xhr) {
@@ -1123,6 +1568,7 @@ $(document).ready(function() {
                     if (xhr.responseJSON.message) errorMsg = xhr.responseJSON.message;
                     if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                 }
+                showGlobalAlert(errorMsg, 'danger');
                 window.mapearErrorServidorAFormulario('#formCrearCita', errorMsg, field);
             }
         });
@@ -1194,6 +1640,7 @@ $(document).ready(function() {
         const $form = $(this);
 
         if (!$form.valid()) {
+            showGlobalAlert('Por favor complete los campos obligatorios del formulario de edición.', 'warning');
             return;
         }
 
@@ -1209,10 +1656,12 @@ $(document).ready(function() {
                 $btn.prop('disabled', false).text('Guardar Cambios');
                 if (response.status === 'success') {
                     $('#modalEditarCita').modal('hide');
-                    showGlobalAlert(response.message, 'success');
+                    showGlobalAlert(response.message || 'La cita ha sido modificada con éxito.', 'success');
                     listarCitas();
                 } else {
-                    window.mapearErrorServidorAFormulario('#formEditarCita', response.message);
+                    const errorMsg = response.message || 'Error al actualizar la cita.';
+                    showGlobalAlert(errorMsg, 'danger');
+                    window.mapearErrorServidorAFormulario('#formEditarCita', errorMsg, response.field || null);
                 }
             },
             error: function(xhr) {
@@ -1223,6 +1672,7 @@ $(document).ready(function() {
                     if (xhr.responseJSON.message) errorMsg = xhr.responseJSON.message;
                     if (xhr.responseJSON.field) field = xhr.responseJSON.field;
                 }
+                showGlobalAlert(errorMsg, 'danger');
                 window.mapearErrorServidorAFormulario('#formEditarCita', errorMsg, field);
             }
         });
@@ -2442,15 +2892,22 @@ $(document).ready(function() {
 
     function showGlobalAlert(message, type) {
         const $alert = $('#alertFeedbackGlobal');
-        $alert.removeClass('alert-toast-success alert-toast-danger')
-              .addClass(type === 'success' ? 'alert-toast-success' : 'alert-toast-danger')
-              .html(`<strong>${type === 'success' ? 'Éxito: ' : 'Error: '}</strong> ${message}`)
-              .slideDown(250);
+        if (!$alert.length) return;
         
-        setTimeout(function() {
+        const toastType = type || 'info';
+        const prefix = toastType === 'success' ? 'Éxito: ' : (toastType === 'warning' ? 'Atención: ' : (toastType === 'info' ? 'Información: ' : 'Error: '));
+        
+        $alert.removeClass('alert-toast-success alert-toast-danger alert-toast-warning alert-toast-info')
+              .addClass('alert-toast-' + toastType)
+              .html(`<strong>${prefix}</strong> ${message}`)
+              .stop(true, true).slideDown(250);
+        
+        clearTimeout(window.globalAlertTimer);
+        window.globalAlertTimer = setTimeout(function() {
             $alert.slideUp(250);
         }, 5000);
     }
+    window.showGlobalAlert = showGlobalAlert;
 
     function formatDate(dateString) {
         if (!dateString) return '';

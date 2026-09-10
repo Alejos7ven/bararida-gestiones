@@ -82,7 +82,7 @@ class Personal {
                       FROM " . $this->table_name . " p
                       INNER JOIN entidades e ON p.entidad_id = e.id
                       INNER JOIN roles r ON p.rol_id = r.id
-                      WHERE UPPER(e.tipo_documento) = UPPER(:tipo_documento) AND e.documento = :cedula LIMIT 1";
+                      WHERE UPPER(e.tipo_documento) = UPPER(:tipo_documento) AND e.documento = :cedula AND p.activo = 1 LIMIT 1";
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(":tipo_documento", $tipo_documento, PDO::PARAM_STR);
             $stmt->bindParam(":cedula", $cedula, PDO::PARAM_STR);
@@ -129,6 +129,7 @@ class Personal {
                   FROM " . $this->table_name . " p
                   INNER JOIN entidades e ON p.entidad_id = e.id
                   INNER JOIN roles r ON p.rol_id = r.id
+                  WHERE p.activo = 1
                   ORDER BY p.id DESC";
         $stmt = $this->db->prepare($query);
         $stmt->execute();
@@ -146,7 +147,7 @@ class Personal {
                   FROM personal p
                   INNER JOIN entidades e ON p.entidad_id = e.id
                   INNER JOIN roles r ON p.rol_id = r.id
-                  WHERE p.id = :id LIMIT 1";
+                  WHERE p.id = :id AND p.activo = 1 LIMIT 1";
         $stmt = $db->prepare($query);
         $cleanId = (int)$id;
         $stmt->bindParam(":id", $cleanId, PDO::PARAM_INT);
@@ -165,7 +166,7 @@ class Personal {
         $query = "SELECT COUNT(*) 
                   FROM personal p
                   INNER JOIN entidades e ON p.entidad_id = e.id
-                  WHERE UPPER(e.tipo_documento) = UPPER(:tipo_documento) AND e.documento = :cedula";
+                  WHERE UPPER(e.tipo_documento) = UPPER(:tipo_documento) AND e.documento = :cedula AND p.activo = 1";
         if ($excluirId !== null) {
             $query .= " AND p.id != :excluirId";
         }
@@ -312,7 +313,7 @@ class Personal {
     }
 
     /**
-     * Elimina un personal por ID.
+     * Elimina un personal por ID de forma lógica (Soft Delete).
      */
     public function eliminar($id) {
         if (!$this->db) {
@@ -320,7 +321,13 @@ class Personal {
         }
 
         $cleanId = (int)$id;
-        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+
+        // Proteger usuario superadmin
+        if ($cleanId === 0) {
+            throw new Exception("No es posible eliminar al Super Administrador principal.");
+        }
+
+        $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $cleanId, PDO::PARAM_INT);
         return $stmt->execute();

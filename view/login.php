@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Iniciar Sesión - Zoológico y Botánico Bararida</title>
+    <!-- Favicon Oficial: Huella de Oso Bararida -->
+    <link rel="icon" type="image/png" href="view/assets/img/bear-feet.png">
+    <link rel="shortcut icon" href="view/assets/img/bear-feet.png">
+    <link rel="apple-touch-icon" href="view/assets/img/bear-feet.png">
     <!-- Bootstrap Local -->
     <link rel="stylesheet" href="view/assets/css/bootstrap.min.css">
     <!-- Google Fonts - Outfit -->

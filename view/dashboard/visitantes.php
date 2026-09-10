@@ -1,10 +1,4 @@
-<?php
-// Evitar acceso directo
-if (!isset($userPermissions)) {
-    exit;
-}
-?>
-<?php if ($userPermissions['visitantes']): ?>
+
     <div class="panel-container animate__animated animate__fadeIn">
         <div class="panel-header-section">
             <div class="panel-header-title">
@@ -159,15 +153,3 @@ if (!isset($userPermissions)) {
             </div>
         </div>
     </div>
-<?php else: ?>
-    <div class="restricted-access-container">
-        <div class="restricted-card">
-            <div class="restricted-shield-wrapper">
-                <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
-            </div>
-            <h4>Acceso Restringido</h4>
-            <p>Su rol actual no cuenta con permisos autorizados para interactuar con este módulo. Si requiere visualizar esta sección, solicítelo al Super Administrador.</p>
-            <a href="index.php?view=dashboard" class="btn-premium-danger">Volver al Dashboard</a>
-        </div>
-    </div>
-<?php endif; ?>

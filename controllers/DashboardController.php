@@ -62,7 +62,7 @@ function cargarPermisosUsuario($userRol, &$userRolId) {
         $fallback = [
             'superadmin' => array_fill_keys($modulosRegistrados, true),
             'admin'      => ['dashboard'=>true,'citas'=>true,'instituciones'=>true,'recorridos'=>true,'visitantes'=>true,'personal'=>false,'app'=>false,'reportes'=>true],
-            'guia'       => ['dashboard'=>true,'citas'=>false,'instituciones'=>false,'recorridos'=>false,'visitantes'=>false,'personal'=>false,'app'=>false,'reportes'=>false],
+            'guia'       => ['dashboard'=>true,'citas'=>true,'instituciones'=>false,'recorridos'=>false,'visitantes'=>false,'personal'=>false,'app'=>false,'reportes'=>false],
         ];
         $userPermissions = isset($fallback[$userRol])
             ? $fallback[$userRol]
@@ -107,17 +107,17 @@ function resolverVistaPermitida($vistaSolicitada, $userRol, array $userPermissio
 
     // 1. Validar que el módulo solicitado exista en la BD
     if (!in_array($vista, $modulosBD, true)) {
-        return 'dashboard';
+        return 'acceso_denegado';
     }
 
     // 2. Control específico para el módulo de configuración 'app' (solo superadmin)
     if ($vista === 'app' && $userRol !== 'superadmin') {
-        return 'dashboard';
+        return 'acceso_denegado';
     }
 
     // 3. Validar permisos RBAC asignados al usuario para este módulo
     if ($vista !== 'app' && empty($userPermissions[$vista])) {
-        return 'dashboard';
+        return 'acceso_denegado';
     }
 
     // 4. Validar existencia física del archivo de vista para evitar inclusión errónea
@@ -126,7 +126,7 @@ function resolverVistaPermitida($vistaSolicitada, $userRol, array $userPermissio
         : __DIR__ . '/../view/dashboard/' . $vista . '.php';
 
     if (!file_exists($viewFile)) {
-        return 'dashboard';
+        return 'acceso_denegado';
     }
 
     return $vista;
@@ -142,7 +142,55 @@ function resolverRutaVista($vista) {
     if ($vista === 'dashboard') {
         return __DIR__ . '/../view/dashboard/dashboard_main.php';
     }
+    if ($vista === 'acceso_denegado') {
+        return __DIR__ . '/../view/dashboard/acceso_denegado.php';
+    }
     return __DIR__ . '/../view/dashboard/' . $vista . '.php';
+}
+
+/**
+ * Despacha y prepara todo el contexto del Dashboard (control de sesión,
+ * permisos RBAC, ruteo de vistas y assets) antes de renderizar la vista.
+ * Centraliza las validaciones de acceso y sesión en el Controlador.
+ *
+ * @return array Contexto con variables del dashboard
+ */
+function despacharDashboard() {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    if (!isset($_SESSION['personal'])) {
+        header("Location: index.php");
+        exit;
+    }
+
+    $currentUser = $_SESSION['personal'];
+    $userRol     = $currentUser['rol'] ?? 'guia';
+    $userRolId   = isset($currentUser['rol_id']) ? (int)$currentUser['rol_id'] : 0;
+    $userName    = htmlspecialchars($currentUser['nombre_completo'] ?? ($currentUser['nombre'] ?? 'Usuario'));
+    $userCedula  = htmlspecialchars(($currentUser['tipo_documento'] ?? 'V') . '-' . ($currentUser['cedula'] ?? ''));
+
+    $userPermissions   = cargarPermisosUsuario($userRol, $userRolId);
+    $requestedView     = $_GET['view'] ?? 'dashboard';
+    $currentView       = resolverVistaPermitida($requestedView, $userRol, $userPermissions);
+    $viewAssets        = obtenerAssetsVista($currentView, $userPermissions, $userRol);
+    $menuItems         = obtenerMenuUsuario($currentView, $userRol, $userPermissions);
+    $viewPath          = resolverRutaVista($currentView);
+    $tienePermisoCitas = !empty($userPermissions['citas']);
+
+    return compact(
+        'currentUser',
+        'userRol',
+        'userRolId',
+        'userName',
+        'userCedula',
+        'userPermissions',
+        'currentView',
+        'viewAssets',
+        'menuItems',
+        'viewPath',
+        'tienePermisoCitas'
+    );
 }
 
 /**

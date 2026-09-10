@@ -148,6 +148,9 @@
         // 3. Aplicar error en el input encontrado con focus
         if ($targetInput && $targetInput.length) {
             window.marcarErrorInput($targetInput, errorMessage, true);
+        } else if (typeof window.showGlobalAlert === 'function') {
+            // Si ningún campo específico coincidió, asegurar feedback visible en el Toast
+            window.showGlobalAlert(errorMessage, 'danger');
         }
 
         // 4. Si se proporcionó un banner de alerta, mostrarlo también para redundancia visual

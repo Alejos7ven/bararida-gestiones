@@ -32,7 +32,7 @@ class Reporte {
                             SUM(CASE WHEN estatus = 'pendiente' THEN 1 ELSE 0 END) AS citas_pendientes,
                             SUM(CASE WHEN estatus = 'cancelado' THEN 1 ELSE 0 END) AS citas_canceladas
                          FROM citas 
-                         WHERE fecha_visita BETWEEN :inicio AND :fin";
+                         WHERE fecha_visita BETWEEN :inicio AND :fin AND activo = 1";
             $stmtCitas = $this->db->prepare($sqlCitas);
             $stmtCitas->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
             $stmtCitas->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
@@ -46,7 +46,7 @@ class Reporte {
             $sqlVisitantes = "SELECT COUNT(ac.id) AS total_visitantes
                               FROM asistencia_cita ac
                               INNER JOIN citas c ON ac.cita_id = c.id
-                              WHERE c.fecha_visita BETWEEN :inicio AND :fin";
+                              WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
             $stmtVisitantes = $this->db->prepare($sqlVisitantes);
             $stmtVisitantes->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
             $stmtVisitantes->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
@@ -56,7 +56,7 @@ class Reporte {
             // 3. Instituciones atendidas únicas
             $sqlInst = "SELECT COUNT(DISTINCT c.institucion_id) AS total_instituciones
                         FROM citas c
-                        WHERE c.fecha_visita BETWEEN :inicio AND :fin";
+                        WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
             $stmtInst = $this->db->prepare($sqlInst);
             $stmtInst->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
             $stmtInst->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
@@ -70,7 +70,7 @@ class Reporte {
                          FROM citas c
                          INNER JOIN recorrido r ON c.recorrido_id = r.id
                          INNER JOIN rutas ru ON r.id = ru.recorrido_id
-                         WHERE c.fecha_visita BETWEEN :inicio AND :fin";
+                         WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
             $stmtZonas = $this->db->prepare($sqlZonas);
             $stmtZonas->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
             $stmtZonas->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
@@ -86,6 +86,7 @@ class Reporte {
                         INNER JOIN instituciones i ON c.institucion_id = i.id
                         LEFT JOIN asistencia_cita ac ON c.id = ac.cita_id
                         WHERE c.fecha_visita BETWEEN :inicio AND :fin
+                          AND c.activo = 1
                           AND (c.pago_estado = 'exonerado' 
                                OR LOWER(c.metodo_pago) LIKE '%exonera%' 
                                OR LOWER(c.metodo_pago) LIKE '%exen%')";
@@ -174,7 +175,7 @@ class Reporte {
                       LEFT JOIN parroquias par ON s.parroquia_id = par.id_parroquia
                       LEFT JOIN recorrido r ON c.recorrido_id = r.id
                       LEFT JOIN asistencia_cita ac ON c.id = ac.cita_id
-                      WHERE c.fecha_visita BETWEEN :inicio AND :fin";
+                      WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
 
             if (!empty($estatus) && $estatus !== 'todos') {
                 $query .= " AND c.estatus = :estatus";
@@ -251,7 +252,7 @@ class Reporte {
                           FROM asistencia_cita
                           GROUP BY cita_id
                       ) asistentes ON c.id = asistentes.cita_id
-                      WHERE c.fecha_visita BETWEEN :inicio AND :fin
+                      WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1
                       GROUP BY z.id, z.nombre
                       ORDER BY total_visitas DESC, total_visitantes_zona DESC";
 
@@ -264,11 +265,11 @@ class Reporte {
             // Zonas no visitadas en el período para reporte completo
             $queryNoVisitadas = "SELECT z.id AS zona_id, z.nombre AS zona_nombre, 0 AS total_visitas, 0 AS total_visitantes_zona
                                  FROM zonas z
-                                 WHERE z.id NOT IN (
+                                 WHERE z.activo = 1 AND z.id NOT IN (
                                      SELECT DISTINCT ru2.zona_id 
                                      FROM citas c2 
                                      INNER JOIN rutas ru2 ON c2.recorrido_id = ru2.recorrido_id 
-                                     WHERE c2.fecha_visita BETWEEN :inicio AND :fin
+                                     WHERE c2.fecha_visita BETWEEN :inicio AND :fin AND c2.activo = 1
                                  )
                                  ORDER BY z.nombre ASC";
             $stmtNo = $this->db->prepare($queryNoVisitadas);
@@ -339,6 +340,7 @@ class Reporte {
                       INNER JOIN entidades e ON i.entidad_id = e.id
                       LEFT JOIN asistencia_cita ac ON c.id = ac.cita_id
                       WHERE c.fecha_visita BETWEEN :inicio AND :fin
+                        AND c.activo = 1
                         AND (c.pago_estado = 'exonerado' 
                              OR LOWER(c.metodo_pago) LIKE '%exonera%' 
                              OR LOWER(c.metodo_pago) LIKE '%exen%')
@@ -429,7 +431,7 @@ class Reporte {
                       INNER JOIN visitantes v ON ac.visitante_id = v.id
                       INNER JOIN instituciones i ON c.institucion_id = i.id
                       INNER JOIN entidades e ON i.entidad_id = e.id
-                      WHERE c.fecha_visita BETWEEN :inicio AND :fin
+                      WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1
                       ORDER BY c.fecha_visita ASC, v.apellidos ASC, v.nombres ASC";
 
             $stmt = $this->db->prepare($query);
@@ -507,7 +509,7 @@ class Reporte {
                       INNER JOIN entidades e ON i.entidad_id = e.id
                       INNER JOIN citas c ON i.id = c.institucion_id
                       LEFT JOIN asistencia_cita ac ON c.id = ac.cita_id
-                      WHERE c.fecha_visita BETWEEN :inicio AND :fin
+                      WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1
                       GROUP BY i.id, e.tipo_documento, e.documento, e.nombre_completo, i.tipo_organizacion, i.tipo_gestion
                       ORDER BY total_visitantes_atendidos DESC, total_citas DESC, e.nombre_completo ASC";
 

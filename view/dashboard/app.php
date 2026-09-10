@@ -1,15 +1,3 @@
-<?php
-// Evitar acceso directo sin el contexto del dashboard
-if (!isset($userPermissions) || !isset($userRol)) {
-    exit;
-}
-// Guard de seguridad: solo superadmin puede acceder a este módulo
-if ($userRol !== 'superadmin') {
-    echo '<div class="panel-container"><div class="alert alert-danger mt-4">No tienes permiso para acceder a este módulo.</div></div>';
-    exit;
-}
-?>
-
 <div class="panel-container">
 
     <!-- Encabezado del módulo -->

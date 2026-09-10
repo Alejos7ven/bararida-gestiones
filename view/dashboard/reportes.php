@@ -1,10 +1,4 @@
-<?php
-// Evitar acceso directo
-if (!isset($userPermissions)) {
-    exit;
-}
-?>
-<?php if (!empty($userPermissions['reportes'])): ?>
+
 <div class="panel-container animate__animated animate__fadeIn">
     <!-- Encabezado del Módulo -->
     <div class="panel-header-section mb-4">
@@ -429,9 +423,3 @@ if (!isset($userPermissions)) {
         </div>
     </div>
 </div>
-<?php else: ?>
-    <div class="alert alert-danger shadow-sm mt-4 p-4 text-center" style="border-radius: 16px;">
-        <h4 class="fw-bold">Acceso Denegado</h4>
-        <p class="m-0">No dispone de permisos para consultar el módulo de estadísticas y reportes.</p>
-    </div>
-<?php endif; ?>

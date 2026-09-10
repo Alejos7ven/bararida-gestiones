@@ -61,9 +61,22 @@ class Visitante {
 
                 // 1. Buscar registro previo para evitar redundancias de datos
                 if ($cedula !== null) {
+                    $stmtBuscarCedula = $db->prepare("SELECT id, activo FROM visitantes WHERE cedula = :cedula LIMIT 1");
                     $stmtBuscarCedula->bindParam(":cedula", $cedula, PDO::PARAM_STR);
                     $stmtBuscarCedula->execute();
-                    $visitanteId = $stmtBuscarCedula->fetchColumn();
+                    $prevRow = $stmtBuscarCedula->fetch(PDO::FETCH_ASSOC);
+                    if ($prevRow) {
+                        $visitanteId = $prevRow['id'];
+                        if ($prevRow['activo'] == 0) {
+                            // Reactivar visitante si había sido borrado lógicamente
+                            $stmtReactivar = $db->prepare("UPDATE visitantes SET activo = 1, nombres = :nombres, apellidos = :apellidos, fecha_nacimiento = :fecha_nacimiento WHERE id = :id");
+                            $stmtReactivar->bindParam(":nombres", $nombres, PDO::PARAM_STR);
+                            $stmtReactivar->bindParam(":apellidos", $apellidos, PDO::PARAM_STR);
+                            $stmtReactivar->bindParam(":fecha_nacimiento", $fechaNac, PDO::PARAM_STR);
+                            $stmtReactivar->bindParam(":id", $visitanteId, PDO::PARAM_INT);
+                            $stmtReactivar->execute();
+                        }
+                    }
                 } else {
                     $stmtBuscarDatos->bindParam(":nombres", $nombres, PDO::PARAM_STR);
                     $stmtBuscarDatos->bindParam(":apellidos", $apellidos, PDO::PARAM_STR);
@@ -112,7 +125,7 @@ class Visitante {
      */
     public static function listarTodos($db) {
         if (!$db) return [];
-        $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM visitantes ORDER BY id DESC";
+        $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM visitantes WHERE activo = 1 ORDER BY id DESC";
         $stmt = $db->prepare($query);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -123,7 +136,7 @@ class Visitante {
      */
     public static function obtenerPorId($db, $id) {
         if (!$db) return null;
-        $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM visitantes WHERE id = :id LIMIT 1";
+        $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM visitantes WHERE id = :id AND activo = 1 LIMIT 1";
         $stmt = $db->prepare($query);
         $stmt->bindParam(":id", $id, PDO::PARAM_INT);
         $stmt->execute();
@@ -138,7 +151,7 @@ class Visitante {
         $query = "SELECT v.id, v.cedula, v.nombres, v.apellidos, v.fecha_nacimiento 
                   FROM visitantes v
                   INNER JOIN asistencia_cita ac ON v.id = ac.visitante_id
-                  WHERE ac.cita_id = :cita_id
+                  WHERE ac.cita_id = :cita_id AND v.activo = 1
                   ORDER BY v.id ASC";
         $stmt = $db->prepare($query);
         $stmt->bindParam(":cita_id", $citaId, PDO::PARAM_INT);
@@ -152,7 +165,7 @@ class Visitante {
     public static function buscarPorCedula($db, $cedula, $excludeId = null) {
         if (!$db) return null;
 
-        $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM visitantes WHERE cedula = :cedula";
+        $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM visitantes WHERE cedula = :cedula AND activo = 1";
         if ($excludeId) {
             $query .= " AND id != :exclude_id";
         }
@@ -173,6 +186,27 @@ class Visitante {
     public function registrar($db) {
         if (!$db) return false;
         
+        if (!empty($this->cedula)) {
+            $stmtCheck = $db->prepare("SELECT id, activo FROM visitantes WHERE cedula = :cedula LIMIT 1");
+            $stmtCheck->bindParam(":cedula", $this->cedula, PDO::PARAM_STR);
+            $stmtCheck->execute();
+            $existente = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+            if ($existente) {
+                if ((int)$existente['activo'] === 0) {
+                    $this->id = (int)$existente['id'];
+                    $query = "UPDATE visitantes SET activo = 1, nombres = :nombres, apellidos = :apellidos, fecha_nacimiento = :fecha_nacimiento WHERE id = :id";
+                    $stmt = $db->prepare($query);
+                    $stmt->bindParam(":nombres", $this->nombres, PDO::PARAM_STR);
+                    $stmt->bindParam(":apellidos", $this->apellidos, PDO::PARAM_STR);
+                    $stmt->bindParam(":fecha_nacimiento", $this->fecha_nacimiento, PDO::PARAM_STR);
+                    $stmt->bindParam(":id", $this->id, PDO::PARAM_INT);
+                    return $stmt->execute();
+                } else {
+                    return false;
+                }
+            }
+        }
+
         $query = "INSERT INTO visitantes (cedula, nombres, apellidos, fecha_nacimiento) 
                   VALUES (:cedula, :nombres, :apellidos, :fecha_nacimiento)";
         $stmt = $db->prepare($query);
@@ -207,32 +241,19 @@ class Visitante {
     }
 
     /**
-     * Elimina un visitante y sus vínculos de forma segura
+     * Elimina un visitante por ID de forma lógica (Soft Delete).
+     * Preserva los registros históricos en asistencia_cita para mantener la integridad.
      */
     public static function eliminar($db, $id) {
         if (!$db) return false;
         try {
-            $db->beginTransaction();
-            
-            // Eliminar vínculos en asistencia_cita
-            $queryLink = "DELETE FROM asistencia_cita WHERE visitante_id = :id";
-            $stmtLink = $db->prepare($queryLink);
-            $stmtLink->bindParam(":id", $id, PDO::PARAM_INT);
-            $stmtLink->execute();
-            
-            // Eliminar visitante
-            $queryVis = "DELETE FROM visitantes WHERE id = :id";
+            $cleanId = (int)$id;
+            $queryVis = "UPDATE visitantes SET activo = 0 WHERE id = :id";
             $stmtVis = $db->prepare($queryVis);
-            $stmtVis->bindParam(":id", $id, PDO::PARAM_INT);
-            $stmtVis->execute();
-            
-            $db->commit();
-            return true;
+            $stmtVis->bindParam(":id", $cleanId, PDO::PARAM_INT);
+            return $stmtVis->execute();
         } catch (Exception $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
-            error_log("Error al eliminar visitante ID {$id}: " . $e->getMessage());
+            error_log("Error al eliminar lógicamente visitante ID {$id}: " . $e->getMessage());
             return false;
         }
     }

@@ -84,13 +84,13 @@ class Sede {
     }
 
     /**
-     * Elimina una sede por su ID
+     * Elimina una sede por su ID (Borrado Lógico)
      */
     public static function eliminar($db, $id) {
         if (!$db) return false;
         $cleanId = (int)$id;
 
-        $query = "DELETE FROM sedes WHERE id = :id";
+        $query = "UPDATE sedes SET activo = 0 WHERE id = :id";
         $stmt = $db->prepare($query);
         $stmt->bindParam(":id", $cleanId, PDO::PARAM_INT);
         return $stmt->execute();
@@ -111,7 +111,7 @@ class Sede {
                       INNER JOIN parroquias p ON s.parroquia_id = p.id_parroquia
                       INNER JOIN municipios m ON p.id_municipio = m.id_municipio
                       INNER JOIN estados est ON m.id_estado = est.id_estado
-                      WHERE s.id = :id LIMIT 1";
+                      WHERE s.id = :id AND s.activo = 1 LIMIT 1";
             $stmt = $db->prepare($query);
             $stmt->bindParam(":id", $cleanId, PDO::PARAM_INT);
             $stmt->execute();
@@ -138,7 +138,7 @@ class Sede {
                       LEFT JOIN parroquias p ON s.parroquia_id = p.id_parroquia
                       LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
                       LEFT JOIN estados est ON m.id_estado = est.id_estado
-                      WHERE s.institucion_id = :institucion_id
+                      WHERE s.institucion_id = :institucion_id AND s.activo = 1
                       ORDER BY s.id ASC";
             $stmt = $db->prepare($query);
             $stmt->bindParam(":institucion_id", $cleanInstId, PDO::PARAM_INT);

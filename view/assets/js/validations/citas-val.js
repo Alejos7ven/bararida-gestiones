@@ -1,4 +1,30 @@
 $(document).ready(function() {
+    // Registrar métodos de validación de teléfono y correo si no existen
+    if (!$.validator.methods.formatoTelefono) {
+        $.validator.addMethod("formatoTelefono", function(value, element) {
+            if (this.optional(element)) return true;
+            const clean = value.replace(/[^0-9]/g, '');
+            return !/[a-zA-Z]/.test(value) && clean.length >= 7 && clean.length <= 15;
+        }, "El teléfono debe contener solo números (entre 7 y 15 dígitos).");
+    }
+
+    if (!$.validator.methods.formatoCorreo) {
+        $.validator.addMethod("formatoCorreo", function(value, element) {
+            if (this.optional(element)) return true;
+            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        }, "El correo electrónico no tiene un formato válido (ej. contacto@ejemplo.com).");
+    }
+
+    $.validator.addClassRules("input-telefono-val", {
+        required: false,
+        formatoTelefono: true
+    });
+
+    $.validator.addClassRules("input-correo-val", {
+        required: false,
+        formatoCorreo: true
+    });
+
     // Formulario de Creación de Cita (Wizard Multi-paso)
     if ($('#formCrearCita').length) {
         $('#formCrearCita').validate({
@@ -13,6 +39,9 @@ $(document).ready(function() {
                     digits: true,
                     minlength: 6,
                     maxlength: 12
+                },
+                tipo_documento_inst: {
+                    required: true
                 },
                 documento_inst: {
                     required: true,
@@ -32,12 +61,6 @@ $(document).ready(function() {
                     required: true
                 },
                 tipo_gestion: {
-                    required: true
-                },
-                parroquia_id: {
-                    required: true
-                },
-                ciudad_id: {
                     required: true
                 },
                 

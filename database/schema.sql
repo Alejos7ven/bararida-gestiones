@@ -18,13 +18,15 @@ CREATE TABLE IF NOT EXISTS roles (
 
 CREATE TABLE IF NOT EXISTS recorrido (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `nombre` varchar(100) NOT NULL
+  `nombre` varchar(100) NOT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1'
 );
 
 CREATE TABLE IF NOT EXISTS zonas (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `nombre` varchar(100) NOT NULL,
-  `coordenadas` varchar(255) NOT NULL
+  `coordenadas` varchar(255) NOT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1'
 );
 
 CREATE TABLE IF NOT EXISTS visitantes (
@@ -33,6 +35,7 @@ CREATE TABLE IF NOT EXISTS visitantes (
   `nombres` varchar(100) NOT NULL,
   `apellidos` varchar(100) NOT NULL,
   `fecha_nacimiento` date NOT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
   UNIQUE KEY `idx_visitantes_cedula` (`cedula`)
 );
 
@@ -54,6 +57,7 @@ CREATE TABLE IF NOT EXISTS personal (
   `entidad_id` int NOT NULL,
   `rol_id` int NOT NULL,
   `password` varchar(255) NOT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, 
   CONSTRAINT fk_entidad_personal 
@@ -78,6 +82,7 @@ CREATE TABLE IF NOT EXISTS instituciones (
   `entidad_id` int NOT NULL,
   `tipo_organizacion` varchar(50) NOT NULL,
   `tipo_gestion` varchar(50) NOT NULL DEFAULT 'publica',
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
   CONSTRAINT fk_entidad_institucion 
     FOREIGN KEY (`entidad_id`) REFERENCES `entidades` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ); 
@@ -134,6 +139,7 @@ CREATE TABLE IF NOT EXISTS sedes (
   `ciudad_id` int NOT NULL,
   `parroquia_id` int NOT NULL,
   `detalles` varchar(150) DEFAULT NULL,
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
   CONSTRAINT fk_institucion_dir 
     FOREIGN KEY (`institucion_id`) REFERENCES `instituciones` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT fk_ciudad 
@@ -155,6 +161,7 @@ CREATE TABLE IF NOT EXISTS citas (
   `estatus` varchar(20) NOT NULL DEFAULT 'pendiente',
   `metodo_pago` varchar(50) NOT NULL,
   `pago_estado` varchar(20) NOT NULL DEFAULT 'pendiente',
+  `activo` tinyint(1) NOT NULL DEFAULT '1',
   CONSTRAINT fk_instituciones_citas
     FOREIGN KEY (`institucion_id`) REFERENCES `instituciones` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT fk_sedes_citas

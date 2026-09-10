@@ -1,36 +1,14 @@
 <?php
 /**
  * Vista de Dashboard - dashboard.php
- * Panel de administración con barra lateral adaptativa y control de roles (RBAC) dinámico.
- * Actúa como contenedor de vistas SPA internas con ruteo y permisos validados desde la base de datos.
+ * Plantilla de interfaz (Layout View) para el panel de administración.
+ * Todas las variables ($currentUser, $userRol, $menuItems, $viewPath, etc.)
+ * son resueltas, validadas y provistas exclusivamente por DashboardController.
  */
-
-// Seguridad básica: Si no hay sesión activa de personal, redirigir al Front Controller
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
+if (!isset($viewPath)) {
+    require_once __DIR__ . "/../controllers/DashboardController.php";
+    extract(despacharDashboard());
 }
-if (!isset($_SESSION['personal'])) {
-    header("Location: index.php");
-    exit;
-}
-
-// Datos del personal logueado
-$currentUser = $_SESSION['personal'];
-$userRol     = $currentUser['rol'];
-$userRolId   = isset($currentUser['rol_id']) ? (int)$currentUser['rol_id'] : 0;
-$userName    = htmlspecialchars($currentUser['nombre_completo'] ?? ($currentUser['nombre'] ?? 'Usuario'));
-$userCedula  = htmlspecialchars(($currentUser['tipo_documento'] ?? 'V') . '-' . $currentUser['cedula']);
-
-// Cargar Controlador del Dashboard para RBAC y Enrutador dinámico
-require_once __DIR__ . "/../controllers/DashboardController.php";
-$userPermissions = cargarPermisosUsuario($userRol, $userRolId);
-
-// Enrutador y resolución dinámica de la vista según BD y permisos
-$requestedView = $_GET['view'] ?? 'dashboard';
-$currentView   = resolverVistaPermitida($requestedView, $userRol, $userPermissions);
-$viewAssets    = obtenerAssetsVista($currentView, $userPermissions, $userRol);
-$menuItems     = obtenerMenuUsuario($currentView, $userRol, $userPermissions);
-$viewPath      = resolverRutaVista($currentView);
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -38,6 +16,10 @@ $viewPath      = resolverRutaVista($currentView);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Panel de Administración - Zoológico y Botánico Bararida</title>
+    <!-- Favicon Oficial: Huella de Oso Bararida -->
+    <link rel="icon" type="image/png" href="view/assets/img/bear-feet.png">
+    <link rel="shortcut icon" href="view/assets/img/bear-feet.png">
+    <link rel="apple-touch-icon" href="view/assets/img/bear-feet.png">
     <!-- Bootstrap Local -->
     <link rel="stylesheet" href="view/assets/css/bootstrap.min.css">
     <!-- Google Fonts - Outfit -->

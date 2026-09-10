@@ -38,6 +38,53 @@ require_once __DIR__ . "/../models/Institucion.php";
 require_once __DIR__ . "/../models/Sede.php";
 require_once __DIR__ . "/../models/Cita.php";
 require_once __DIR__ . "/../models/Visitante.php";
+require_once __DIR__ . "/../models/Permiso.php";
+
+/**
+ * Verifica si el usuario autenticado tiene permiso para acceder al módulo de citas según el RBAC
+ */
+function usuarioTienePermisoCitas($db) {
+    $personal = $_SESSION['personal'] ?? null;
+    if (!$personal) {
+        return false;
+    }
+
+    $rol = strtolower(trim((string)($personal['rol'] ?? '')));
+    if ($rol === 'superadmin') {
+        return true;
+    }
+
+    $rolId = isset($personal['rol_id']) ? (int)$personal['rol_id'] : 0;
+    if ($rolId <= 0 && $rol !== '') {
+        try {
+            $stmtRol = $db->prepare("SELECT id FROM roles WHERE LOWER(nombre) = LOWER(:nombre) LIMIT 1");
+            $stmtRol->bindParam(":nombre", $rol, PDO::PARAM_STR);
+            $stmtRol->execute();
+            $rolRow = $stmtRol->fetch(PDO::FETCH_ASSOC);
+            if ($rolRow) {
+                $rolId = (int)$rolRow['id'];
+                $_SESSION['personal']['rol_id'] = $rolId;
+            }
+        } catch (Exception $e) {
+            error_log("Error al consultar rol_id en usuarioTienePermisoCitas: " . $e->getMessage());
+        }
+    }
+
+    if ($rolId > 0) {
+        try {
+            $permisoModel = new Permiso($db);
+            $permisos = $permisoModel->getPermisosPorRol($rolId);
+            if (isset($permisos['citas'])) {
+                return (bool)$permisos['citas'];
+            }
+        } catch (Exception $e) {
+            error_log("Error al consultar permisos en usuarioTienePermisoCitas: " . $e->getMessage());
+        }
+    }
+
+    // Fallback estándar según rol
+    return ($rol === 'admin' || $rol === 'guia' || $rol === 'guía');
+}
 
 // Inicializar base de datos
 $database = new Database();
@@ -186,13 +233,11 @@ function comprobarInstitucionAction($db) {
  * Lista todas las citas
  */
 function listarCitasAction($db) {
-    $personal = $_SESSION['personal'] ?? null;
-    $rolNorm = strtolower(trim((string)($personal['rol'] ?? '')));
-    if ($rolNorm === 'guia' || $rolNorm === 'guía') {
+    if (!usuarioTienePermisoCitas($db)) {
         http_response_code(403);
         echo json_encode([
             "status" => "error",
-            "message" => "Acceso restringido. Los guías gestionan sus visitas asignadas desde el Dashboard."
+            "message" => "Acceso no autorizado para consultar citas."
         ]);
         return;
     }
@@ -219,9 +264,7 @@ function listarCitasAction($db) {
  * Registra institución (si aplica) y la cita
  */
 function crearCitaAction($db) {
-    $personal = $_SESSION['personal'] ?? null;
-    $rolNorm = strtolower(trim((string)($personal['rol'] ?? '')));
-    if ($rolNorm === 'guia' || $rolNorm === 'guía') {
+    if (!usuarioTienePermisoCitas($db)) {
         http_response_code(403);
         echo json_encode([
             "status" => "error",
@@ -230,11 +273,11 @@ function crearCitaAction($db) {
         return;
     }
 
-    $institucion_id = isset($_POST['institucion_id']) ? filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT) : null;
-    $sede_id = isset($_POST['sede_id']) ? filter_var($_POST['sede_id'], FILTER_VALIDATE_INT) : null;
+    $institucion_id = (!empty($_POST['institucion_id']) && filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['institucion_id'] : null;
+    $sede_id = (!empty($_POST['sede_id']) && filter_var($_POST['sede_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['sede_id'] : null;
     
     // Datos de la Cita
-    $recorrido_id = isset($_POST['recorrido_id']) ? $_POST['recorrido_id'] : '';
+    $recorrido_id = (isset($_POST['recorrido_id']) && trim($_POST['recorrido_id']) !== '') ? trim($_POST['recorrido_id']) : null;
     $fecha_visita = isset($_POST['fecha_visita']) ? trim($_POST['fecha_visita']) : '';
     $hora_inicio = isset($_POST['hora_inicio']) ? trim($_POST['hora_inicio']) : '';
     $metodo_pago = isset($_POST['metodo_pago']) ? trim($_POST['metodo_pago']) : '';
@@ -290,14 +333,17 @@ function crearCitaAction($db) {
         return;
     }
 
-    if (!empty($recorrido_id) && !filter_var($recorrido_id, FILTER_VALIDATE_INT)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El recorrido seleccionado no es válido.",
-            "field" => "recorrido_id"
-        ]);
-        return;
+    if ($recorrido_id !== null) {
+        if (!filter_var($recorrido_id, FILTER_VALIDATE_INT)) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "El recorrido seleccionado no es válido.",
+                "field" => "recorrido_id"
+            ]);
+            return;
+        }
+        $recorrido_id = (int)$recorrido_id;
     }
 
     try {
@@ -469,9 +515,7 @@ function crearCitaAction($db) {
  * Elimina una cita
  */
 function eliminarCitaAction($db) {
-    $personal = $_SESSION['personal'] ?? null;
-    $rolNorm = strtolower(trim((string)($personal['rol'] ?? '')));
-    if ($rolNorm === 'guia' || $rolNorm === 'guía') {
+    if (!usuarioTienePermisoCitas($db)) {
         http_response_code(403);
         echo json_encode([
             "status" => "error",
@@ -1103,8 +1147,9 @@ function citasHoyAction($db) {
         $personal = $_SESSION['personal'];
         $rol = $personal['rol'];
         $personalId = (int)$personal['id'];
+        $tienePermisoCitas = usuarioTienePermisoCitas($db);
 
-        $citas = Cita::obtenerCitasHoy($db, $rol, $personalId);
+        $citas = Cita::obtenerCitasHoy($db, $rol, $personalId, $tienePermisoCitas);
 
         http_response_code(200);
         echo json_encode([
@@ -1156,9 +1201,7 @@ function obtenerCitaAction($db) {
  * Modifica una cita existente
  */
 function editarCitaAction($db) {
-    $personal = $_SESSION['personal'] ?? null;
-    $rolNorm = strtolower(trim((string)($personal['rol'] ?? '')));
-    if ($rolNorm === 'guia' || $rolNorm === 'guía') {
+    if (!usuarioTienePermisoCitas($db)) {
         http_response_code(403);
         echo json_encode([
             "status" => "error",
@@ -1178,9 +1221,9 @@ function editarCitaAction($db) {
         return;
     }
 
-    $institucion_id = isset($_POST['institucion_id']) ? filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT) : null;
-    $sede_id = isset($_POST['sede_id']) ? filter_var($_POST['sede_id'], FILTER_VALIDATE_INT) : null;
-    $recorrido_id = isset($_POST['recorrido_id']) ? $_POST['recorrido_id'] : '';
+    $institucion_id = (!empty($_POST['institucion_id']) && filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['institucion_id'] : null;
+    $sede_id = (!empty($_POST['sede_id']) && filter_var($_POST['sede_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['sede_id'] : null;
+    $recorrido_id = (isset($_POST['recorrido_id']) && trim($_POST['recorrido_id']) !== '') ? trim($_POST['recorrido_id']) : null;
     $fecha_visita = isset($_POST['fecha_visita']) ? trim($_POST['fecha_visita']) : '';
     $hora_inicio = isset($_POST['hora_inicio']) ? trim($_POST['hora_inicio']) : '';
     $metodo_pago = isset($_POST['metodo_pago']) ? trim($_POST['metodo_pago']) : '';
@@ -1238,14 +1281,17 @@ function editarCitaAction($db) {
         return;
     }
 
-    if (!empty($recorrido_id) && !filter_var($recorrido_id, FILTER_VALIDATE_INT)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El recorrido seleccionado no es válido.",
-            "field" => "recorrido_id"
-        ]);
-        return;
+    if ($recorrido_id !== null) {
+        if (!filter_var($recorrido_id, FILTER_VALIDATE_INT)) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "El recorrido seleccionado no es válido.",
+                "field" => "recorrido_id"
+            ]);
+            return;
+        }
+        $recorrido_id = (int)$recorrido_id;
     }
 
     if (!in_array($estatus, ['pendiente', 'aprobado', 'completado', 'cancelado'], true)) {

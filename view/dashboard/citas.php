@@ -1,11 +1,4 @@
-<?php
-// Evitar acceso directo
-if (!isset($userPermissions)) {
-    exit;
-}
-?>
-<?php if ($userPermissions['citas']): ?>
-    <div class="panel-container animate__animated animate__fadeIn">
+<div class="panel-container animate__animated animate__fadeIn">
         <div class="panel-header-section">
             <div class="panel-header-title">
                 <h3>Gestión de Citas y Visitas Guiadas</h3>
@@ -160,19 +153,19 @@ if (!isset($userPermissions)) {
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Ciudad</label>
-                                            <select class="form-select form-select-sm" id="nueva_sede_cita_ciudad" disabled>
+                                            <select class="form-select form-select-sm" id="nueva_sede_cita_ciudad" name="nueva_sede_ciudad_id" disabled>
                                                 <option value="">Seleccione Ciudad</option>
                                             </select>
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Parroquia</label>
-                                            <select class="form-select form-select-sm" id="nueva_sede_cita_parroquia" disabled>
+                                            <select class="form-select form-select-sm" id="nueva_sede_cita_parroquia" name="nueva_sede_parroquia_id" disabled>
                                                 <option value="">Seleccione Parroquia</option>
                                             </select>
                                         </div>
                                         <div class="col-12">
                                             <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Detalles de la Dirección</label>
-                                            <input type="text" class="form-control form-control-sm" id="nueva_sede_cita_detalles" placeholder="Ej. Calle 5, Edif. Este">
+                                            <input type="text" class="form-control form-control-sm" id="nueva_sede_cita_detalles" name="nueva_sede_detalles" placeholder="Ej. Calle 5, Edif. Este">
                                         </div>
                                     </div>
                                 </div>
@@ -209,18 +202,19 @@ if (!isset($userPermissions)) {
                                 </div>
                                 <div class="col-md-4">
                                     <label for="tipo_organizacion" class="form-premium-label">Tipo de Organización</label>
-                                    <select class="form-select form-premium-control" id="tipo_organizacion" name="tipo_organizacion" required>
+                                    <select class="form-select form-premium-control select-tipo-organizacion-cita" id="tipo_organizacion" name="tipo_organizacion" required>
                                         <option value="">Seleccione Tipo</option>
-                                        <option value="Colegio Privado">Colegio Privado</option>
-                                        <option value="Escuela Pública">Escuela Pública</option>
-                                        <option value="Liceo Público">Liceo Público</option>
-                                        <option value="Liceo Privado">Liceo Privado</option>
+                                        <option value="Educativa">Educativa</option>
+                                        <option value="Empresarial">Empresarial</option>
+                                        <option value="Gubernamental">Gubernamental</option>
                                         <option value="Fundación / ONG">Fundación / ONG</option>
-                                        <option value="Institución Gubernamental">Institución Gubernamental</option>
-                                        <option value="Empresa Privada">Empresa Privada</option>
-                                        <option value="Comunidad Organizada">Comunidad Organizada</option>
-                                        <option value="Otro">Otro</option>
+                                        <option value="Comunitaria">Comunitaria</option>
+                                        <option value="Religiosa">Religiosa</option>
+                                        <option value="Otro">Otro (Especificar)</option>
                                     </select>
+                                    <div class="mt-2 custom-tipo-organizacion-container" id="cita_custom_tipo_org_container" style="display: none;">
+                                        <input type="text" class="form-control form-premium-control" id="cita_tipo_organizacion_custom" placeholder="Escriba el tipo de organización personalizado...">
+                                    </div>
                                 </div>
                                 <div class="col-md-3">
                                     <label for="tipo_gestion" class="form-premium-label">Tipo de Gestión</label>
@@ -231,48 +225,45 @@ if (!isset($userPermissions)) {
                                 </div>
                             </div>
 
-                            <div class="row g-3 mt-2">
-                                <div class="col-md-3">
-                                    <label for="estado_id" class="form-premium-label">Estado</label>
-                                    <select class="form-select form-premium-control" id="estado_id" required>
-                                        <option value="">Cargando estados...</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="municipio_id" class="form-premium-label">Municipio</label>
-                                    <select class="form-select form-premium-control" id="municipio_id" required disabled>
-                                        <option value="">Seleccione Municipio</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="parroquia_id" class="form-premium-label">Parroquia</label>
-                                    <select class="form-select form-premium-control" id="parroquia_id" name="parroquia_id" required disabled>
-                                        <option value="">Seleccione Parroquia</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-3">
-                                    <label for="ciudad_id" class="form-premium-label">Ciudad</label>
-                                    <select class="form-select form-premium-control" id="ciudad_id" name="ciudad_id" required disabled>
-                                        <option value="">Seleccione Ciudad</option>
-                                    </select>
-                                </div>
+                            <!-- Sección 2: Sedes de la Institución (Multi-Sede) -->
+                            <div class="d-flex justify-content-between align-items-center mb-3 mt-4">
+                                <h5 class="mb-0" style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);">2. Sedes de la Institución</h5>
+                                <button type="button" class="btn btn-sm btn-outline-success" id="btnCitaAddSede" style="border-radius: 8px; font-weight: 600;">
+                                    + Agregar Otra Sede
+                                </button>
+                            </div>
+                            <p class="text-muted" style="font-size:0.85rem; margin-top:-5px; margin-bottom:15px;">
+                                Registre una o más sedes (localidades) donde opera la institución.
+                            </p>
+
+                            <div id="citaSedesContainer" class="d-flex flex-column gap-3 mb-4">
+                                <!-- Filas de sedes dinámicas inyectadas por JS -->
                             </div>
 
-                            <div class="mb-3 mt-3">
-                                <label for="detalles_direccion" class="form-premium-label">Detalles de la Dirección (Calle, Av, Sector)</label>
-                                <input type="text" class="form-control form-premium-control" id="detalles_direccion" name="detalles_direccion" placeholder="Ej. Calle 12 entre carreras 3 y 4, Galpón Nro 20">
-                            </div>
-
-                            <!-- Contactos del Directorio -->
-                            <div class="mt-4">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <label class="form-premium-label mb-0" style="font-weight:700;">Directorio de Contactos</label>
-                                    <button type="button" class="btn-add-contact" id="btnAddNewContact">
-                                        <span>+</span> Agregar Otro Contacto
-                                    </button>
+                            <!-- Sección 3: Directorio de Contactos -->
+                            <h5 style="font-family:'Outfit'; font-weight:700; color:var(--park-dark);" class="mb-3">3. Directorio de Contactos</h5>
+                            
+                            <div class="row g-3 mb-4">
+                                <!-- Columna Teléfonos -->
+                                <div class="col-md-6">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <label class="form-premium-label mb-0" style="font-weight: 700;">Teléfonos</label>
+                                        <button type="button" class="btn btn-sm btn-outline-success p-1 py-0.5" id="btnCitaAddPhone" style="font-size: 0.75rem; border-radius: 6px;">+ Teléfono</button>
+                                    </div>
+                                    <div id="citaPhonesContainer" class="d-flex flex-column gap-2">
+                                        <!-- Teléfonos dinámicos -->
+                                    </div>
                                 </div>
-                                <div id="contactsContainer">
-                                    <!-- Filas dinámicas vía JS -->
+                                
+                                <!-- Columna Correos -->
+                                <div class="col-md-6">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <label class="form-premium-label mb-0" style="font-weight: 700;">Correos Electrónicos</label>
+                                        <button type="button" class="btn btn-sm btn-outline-success p-1 py-0.5" id="btnCitaAddEmail" style="font-size: 0.75rem; border-radius: 6px;">+ Correo</button>
+                                    </div>
+                                    <div id="citaEmailsContainer" class="d-flex flex-column gap-2">
+                                        <!-- Correos dinámicos -->
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -664,16 +655,3 @@ if (!isset($userPermissions)) {
             </div>
         </div>
     </div>
-<?php else: ?>
-    <!-- Escudo de acceso denegado premium -->
-    <div class="restricted-access-container">
-        <div class="restricted-card">
-            <div class="restricted-shield-wrapper">
-                <svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
-            </div>
-            <h4>Acceso Restringido</h4>
-            <p>Su rol actual no cuenta con permisos autorizados para interactuar con este módulo. Si requiere visualizar esta sección, solicítelo al Super Administrador.</p>
-            <a href="index.php?view=dashboard" class="btn-premium-danger">Volver al Dashboard</a>
-        </div>
-    </div>
-<?php endif; ?>

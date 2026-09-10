@@ -83,7 +83,7 @@ class Zona {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        $query = "SELECT id, nombre, coordenadas FROM " . $this->table_name . " ORDER BY id DESC";
+        $query = "SELECT id, nombre, coordenadas FROM " . $this->table_name . " WHERE activo = 1 ORDER BY id DESC";
         $stmt = $this->db->prepare($query);
         $stmt->execute();
 
@@ -101,7 +101,7 @@ class Zona {
             return null;
         }
 
-        $query = "SELECT id, nombre, coordenadas FROM zonas WHERE id = :id LIMIT 1";
+        $query = "SELECT id, nombre, coordenadas FROM zonas WHERE id = :id AND activo = 1 LIMIT 1";
         $stmt = $db->prepare($query);
         $stmt->bindParam(":id", $id, PDO::PARAM_INT);
         $stmt->execute();
@@ -111,16 +111,16 @@ class Zona {
     }
 
     /**
-     * Elimina una zona por su ID.
+     * Elimina lógicamente una zona por su ID (soft delete).
      * @param int $id ID de la zona a eliminar
-     * @return bool True si se eliminó con éxito, False de lo contrario
+     * @return bool True si se desactivó con éxito, False de lo contrario
      */
     public function eliminar($id) {
         if (!$this->db) {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
-        $query = "DELETE FROM " . $this->table_name . " WHERE id = :id";
+        $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $id, PDO::PARAM_INT);
 

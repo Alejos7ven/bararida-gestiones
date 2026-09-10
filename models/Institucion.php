@@ -75,7 +75,7 @@ class Institucion {
                              i.tipo_organizacion, i.tipo_gestion
                       FROM entidades e
                       INNER JOIN instituciones i ON i.entidad_id = e.id
-                      WHERE UPPER(e.tipo_documento) = UPPER(:tipo_documento) AND e.documento = :documento 
+                      WHERE UPPER(e.tipo_documento) = UPPER(:tipo_documento) AND e.documento = :documento AND i.activo = 1
                       LIMIT 1";
             
             $stmt = $db->prepare($query);
@@ -95,9 +95,9 @@ class Institucion {
                                LEFT JOIN ciudades c ON s.ciudad_id = c.id_ciudad
                                LEFT JOIN parroquias p ON s.parroquia_id = p.id_parroquia
                                LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
-                               LEFT JOIN estados est ON m.id_estado = est.id_estado
-                               WHERE s.institucion_id = :institucion_id
-                               ORDER BY s.id ASC";
+                                LEFT JOIN estados est ON m.id_estado = est.id_estado
+                                WHERE s.institucion_id = :institucion_id AND s.activo = 1
+                                ORDER BY s.id ASC";
                 $stmtSedes = $db->prepare($querySedes);
                 $stmtSedes->bindParam(":institucion_id", $row['institucion_id'], PDO::PARAM_INT);
                 $stmtSedes->execute();
@@ -225,6 +225,7 @@ class Institucion {
                              (SELECT COUNT(*) FROM citas c WHERE c.institucion_id = i.id) AS total_citas
                       FROM instituciones i
                       INNER JOIN entidades e ON i.entidad_id = e.id
+                      WHERE i.activo = 1
                       ORDER BY i.id DESC";
             $stmt = $db->prepare($query);
             $stmt->execute();
@@ -241,8 +242,9 @@ class Institucion {
                            LEFT JOIN ciudades c ON s.ciudad_id = c.id_ciudad
                            LEFT JOIN parroquias p ON s.parroquia_id = p.id_parroquia
                            LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
-                           LEFT JOIN estados est ON m.id_estado = est.id_estado
-                           ORDER BY s.id ASC";
+                            LEFT JOIN estados est ON m.id_estado = est.id_estado
+                            WHERE s.activo = 1
+                            ORDER BY s.id ASC";
             $stmtSedes = $db->prepare($querySedes);
             $stmtSedes->execute();
             $allSedes = $stmtSedes->fetchAll(PDO::FETCH_ASSOC);
@@ -311,9 +313,11 @@ class Institucion {
                              (SELECT COUNT(*) FROM citas c WHERE c.institucion_id = i.id) AS total_citas
                       FROM instituciones i
                       INNER JOIN entidades e ON i.entidad_id = e.id
-                      WHERE e.nombre_completo LIKE :term1 
+                      WHERE i.activo = 1 AND (
+                            e.nombre_completo LIKE :term1 
                          OR e.documento LIKE :term2 
                          OR CONCAT(e.tipo_documento, '-', e.documento) LIKE :term3
+                      )
                       ORDER BY e.nombre_completo ASC
                       LIMIT 10";
             $stmt = $db->prepare($query);
@@ -339,9 +343,9 @@ class Institucion {
                            LEFT JOIN ciudades c ON s.ciudad_id = c.id_ciudad
                            LEFT JOIN parroquias p ON s.parroquia_id = p.id_parroquia
                            LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
-                           LEFT JOIN estados est ON m.id_estado = est.id_estado
-                           WHERE s.institucion_id IN ($placeholdersInst)
-                           ORDER BY s.id ASC";
+                            LEFT JOIN estados est ON m.id_estado = est.id_estado
+                            WHERE s.institucion_id IN ($placeholdersInst) AND s.activo = 1
+                            ORDER BY s.id ASC";
             $stmtSedes = $db->prepare($querySedes);
             $stmtSedes->execute($instIds);
             $allSedes = $stmtSedes->fetchAll(PDO::FETCH_ASSOC);
@@ -403,7 +407,7 @@ class Institucion {
                              (SELECT COUNT(*) FROM citas c WHERE c.institucion_id = i.id) AS total_citas
                       FROM entidades e
                       INNER JOIN instituciones i ON i.entidad_id = e.id
-                      WHERE i.id = :id 
+                      WHERE i.id = :id AND i.activo = 1
                       LIMIT 1";
             
             $stmt = $db->prepare($query);
@@ -505,16 +509,16 @@ class Institucion {
                 }
             }
 
-            // Eliminar sedes que ya no existen (excepto si están asociadas a citas, o si no están en incoming)
+            // Desactivar sedes que ya no se mantengan en la edición (borrado lógico de sedes)
             if (!empty($incomingSedeIds)) {
                 $placeholders = implode(',', array_fill(0, count($incomingSedeIds), '?'));
-                $queryDeleteSedes = "DELETE FROM sedes WHERE institucion_id = ? AND id NOT IN ($placeholders)";
+                $queryDeleteSedes = "UPDATE sedes SET activo = 0 WHERE institucion_id = ? AND id NOT IN ($placeholders)";
                 $params = array_merge([$this->id], $incomingSedeIds);
                 $stmtDelSedes = $this->db->prepare($queryDeleteSedes);
                 $stmtDelSedes->execute($params);
             } else {
-                // Si no se pasaron IDs existentes, borrar las que no estén en citas
-                $queryDeleteSedes = "DELETE FROM sedes WHERE institucion_id = :id";
+                // Si no se pasaron IDs existentes, desactivar lógicamente las sedes previas
+                $queryDeleteSedes = "UPDATE sedes SET activo = 0 WHERE institucion_id = :id";
                 $stmtDelSedes = $this->db->prepare($queryDeleteSedes);
                 $stmtDelSedes->bindValue(":id", $this->id, PDO::PARAM_INT);
                 $stmtDelSedes->execute();
@@ -594,7 +598,7 @@ class Institucion {
         $cleanId = (int)$id;
         if ($cleanId <= 0) return 0;
         try {
-            $query = "SELECT COUNT(*) FROM citas WHERE institucion_id = :id";
+            $query = "SELECT COUNT(*) FROM citas WHERE institucion_id = :id AND activo = 1";
             $stmt = $db->prepare($query);
             $stmt->bindValue(":id", $cleanId, PDO::PARAM_INT);
             $stmt->execute();
@@ -614,42 +618,19 @@ class Institucion {
         }
 
         try {
-            // Obtener el entidad_id de la institución a eliminar
-            $queryEntidad = "SELECT entidad_id FROM instituciones WHERE id = :id LIMIT 1";
-            $stmtEntidad = $this->db->prepare($queryEntidad);
-            $stmtEntidad->bindValue(":id", $id, PDO::PARAM_INT);
-            $stmtEntidad->execute();
-            $entidadId = $stmtEntidad->fetchColumn();
-
-            if (!$entidadId) {
-                return false;
-            }
-
             $this->db->beginTransaction();
 
-            // 1. Eliminar sedes
-            $queryDeleteSedes = "DELETE FROM sedes WHERE institucion_id = :id";
-            $stmtDeleteSedes = $this->db->prepare($queryDeleteSedes);
-            $stmtDeleteSedes->bindValue(":id", $id, PDO::PARAM_INT);
-            $stmtDeleteSedes->execute();
+            // Borrado lógico: desactivar institución y sus sedes asociadas
+            // Preservando entidades, directorio y citas para mantener la integridad histórica
+            $queryInst = "UPDATE instituciones SET activo = 0 WHERE id = :id";
+            $stmtInst = $this->db->prepare($queryInst);
+            $stmtInst->bindValue(":id", $id, PDO::PARAM_INT);
+            $stmtInst->execute();
 
-            // 3. Eliminar directorio de contactos
-            $queryDeleteDirContacts = "DELETE FROM directorio WHERE entidad_id = :entidad_id";
-            $stmtDeleteDirContacts = $this->db->prepare($queryDeleteDirContacts);
-            $stmtDeleteDirContacts->bindValue(":entidad_id", $entidadId, PDO::PARAM_INT);
-            $stmtDeleteDirContacts->execute();
-
-            // 3. Eliminar institución
-            $queryDeleteInst = "DELETE FROM instituciones WHERE id = :id";
-            $stmtDeleteInst = $this->db->prepare($queryDeleteInst);
-            $stmtDeleteInst->bindValue(":id", $id, PDO::PARAM_INT);
-            $stmtDeleteInst->execute();
-
-            // 5. Eliminar entidad
-            $queryDeleteEntidad = "DELETE FROM entidades WHERE id = :entidad_id";
-            $stmtDeleteEntidad = $this->db->prepare($queryDeleteEntidad);
-            $stmtDeleteEntidad->bindValue(":entidad_id", $entidadId, PDO::PARAM_INT);
-            $stmtDeleteEntidad->execute();
+            $querySedes = "UPDATE sedes SET activo = 0 WHERE institucion_id = :id";
+            $stmtSedes = $this->db->prepare($querySedes);
+            $stmtSedes->bindValue(":id", $id, PDO::PARAM_INT);
+            $stmtSedes->execute();
 
             $this->db->commit();
             return true;
@@ -657,6 +638,7 @@ class Institucion {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
+            error_log("Error al eliminar lógicamente la institución: " . $e->getMessage());
             throw $e;
         }
     }
