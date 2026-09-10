@@ -79,6 +79,10 @@
     box-shadow: 0 0 12px rgba(13, 144, 57, 0.3);
 }
 
+.step-wizard-item.completed {
+    cursor: pointer;
+}
+
 .step-wizard-item.completed .step-wizard-circle {
     border-color: var(--park-primary);
     background-color: #FFFFFF;
@@ -276,6 +280,12 @@
 .btn-step-next:hover {
     opacity: 0.9;
     box-shadow: 0 4px 10px rgba(13, 144, 57, 0.2);
+}
+
+.btn-step-next:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none !important;
 }
 
 /* Badge de Estado del Pago */
