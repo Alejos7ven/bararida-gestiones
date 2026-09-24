@@ -85,7 +85,7 @@ $(document).ready(function() {
                             const name = (inst.nombre_completo || inst.nombre || '').toLowerCase();
                             const doc = `${(inst.tipo_documento || '').toLowerCase()}-${(inst.documento || '').toLowerCase()}`;
                             const tipo = (inst.tipo_organizacion || '').toLowerCase();
-                            const sedesText = (inst.sedes || []).map(s => `${s.estado || ''} ${s.ciudad || ''} ${s.parroquia || ''} ${s.detalles || ''}`).join(' ').toLowerCase();
+                            const sedesText = (inst.sedes || []).map(s => `${s.estado || ''} ${s.municipio || ''} ${s.parroquia || ''} ${s.detalles || ''}`).join(' ').toLowerCase();
                             const searchStr = `${name} ${doc} ${tipo} ${inst.tipo_gestion || ''} ${sedesText}`;
                             return searchStr.indexOf(query) > -1;
                         });
@@ -162,13 +162,13 @@ $(document).ready(function() {
                 sedesList.forEach(function(s, idx) {
                     const sedeNum = idx + 1;
                     const estado = s.estado || '';
-                    const ciudad = s.ciudad || '';
+                    const municipio = s.municipio || '';
                     const parroquia = s.parroquia || '';
                     const detalles = s.detalles ? `<br><small class="text-muted">${s.detalles}</small>` : '';
                     
                     sedesHtml += `<div class="mb-1 pb-1 ${idx < sedesList.length - 1 ? 'border-bottom border-light' : ''}">
                         <span class="badge bg-light text-dark border me-1" style="font-size:0.7rem;">Sede #${sedeNum}</span>
-                        <strong>${estado}</strong>${ciudad ? `, ${ciudad}` : ''}${parroquia ? ` (${parroquia})` : ''}
+                        <strong>${estado}</strong>${municipio ? `, ${municipio}` : ''}${parroquia ? ` (${parroquia})` : ''}
                         ${detalles}
                     </div>`;
                 });
@@ -273,7 +273,7 @@ $(document).ready(function() {
                 const name = (inst.nombre_completo || inst.nombre || '').toLowerCase();
                 const doc = `${(inst.tipo_documento || '').toLowerCase()}-${(inst.documento || '').toLowerCase()}`;
                 const tipo = (inst.tipo_organizacion || '').toLowerCase();
-                const sedesText = (inst.sedes || []).map(s => `${s.estado || ''} ${s.ciudad || ''} ${s.parroquia || ''} ${s.detalles || ''}`).join(' ').toLowerCase();
+                const sedesText = (inst.sedes || []).map(s => `${s.estado || ''} ${s.municipio || ''} ${s.parroquia || ''} ${s.detalles || ''}`).join(' ').toLowerCase();
                 const searchStr = `${name} ${doc} ${tipo} ${inst.tipo_gestion || ''} ${sedesText}`;
                 return searchStr.indexOf(query) > -1;
             });
@@ -311,25 +311,19 @@ $(document).ready(function() {
                     </button>
                 </div>
                 <div class="row g-2">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Estado</label>
                         <select class="form-select form-select-sm select-estado" required>
                             <option value="">Seleccione Estado</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Municipio</label>
                         <select class="form-select form-select-sm select-municipio" required disabled>
                             <option value="">Seleccione Municipio</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Ciudad</label>
-                        <select class="form-select form-select-sm select-ciudad" required disabled>
-                            <option value="">Seleccione Ciudad</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Parroquia</label>
                         <select class="form-select form-select-sm select-parroquia" required disabled>
                             <option value="">Seleccione Parroquia</option>
@@ -352,7 +346,7 @@ $(document).ready(function() {
             poblarEstadosSelect($selectEstado);
             if (sedeData && sedeData.id_estado) {
                 $selectEstado.val(sedeData.id_estado);
-                cargarCascadaSede($card, sedeData.id_estado, sedeData.id_municipio, sedeData.ciudad_id, sedeData.parroquia_id);
+                cargarCascadaSede($card, sedeData.id_estado, sedeData.id_municipio, sedeData.parroquia_id);
             }
         } else {
             $.ajax({
@@ -365,7 +359,7 @@ $(document).ready(function() {
                         poblarEstadosSelect($selectEstado);
                         if (sedeData && sedeData.id_estado) {
                             $selectEstado.val(sedeData.id_estado);
-                            cargarCascadaSede($card, sedeData.id_estado, sedeData.id_municipio, sedeData.ciudad_id, sedeData.parroquia_id);
+                            cargarCascadaSede($card, sedeData.id_estado, sedeData.id_municipio, sedeData.parroquia_id);
                         }
                     }
                 }
@@ -376,30 +370,12 @@ $(document).ready(function() {
         $selectEstado.on('change', function() {
             const estadoId = $(this).val();
             const $selectMun = $card.find('.select-municipio');
-            const $selectCiu = $card.find('.select-ciudad');
             const $selectPar = $card.find('.select-parroquia');
 
             $selectMun.empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
-            $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>').prop('disabled', true);
             $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
 
             if (!estadoId) return;
-
-            // Cargar ciudades
-            $.ajax({
-                url: `controllers/LocationController.php?action=ciudades&estado_id=${estadoId}`,
-                method: 'GET',
-                dataType: 'json',
-                success: function(resp) {
-                    if (resp.status === 'success') {
-                        $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>');
-                        resp.data.forEach(function(c) {
-                            $selectCiu.append(`<option value="${c.id_ciudad}">${c.ciudad}</option>`);
-                        });
-                        $selectCiu.prop('disabled', false);
-                    }
-                }
-            });
 
             // Cargar municipios
             $.ajax({
@@ -452,32 +428,45 @@ $(document).ready(function() {
         });
     }
 
-    function cargarCascadaSede($card, estadoId, selectedMunId, selectedCiuId, selectedParId) {
+    function cargarCascadaSede($card, estadoId, selectedMunId, selectedParId) {
         const $selectMun = $card.find('.select-municipio');
-        const $selectCiu = $card.find('.select-ciudad');
         const $selectPar = $card.find('.select-parroquia');
-
-        // Ciudades
-        $.ajax({
-            url: `controllers/LocationController.php?action=ciudades&estado_id=${estadoId}`,
-            method: 'GET',
-            dataType: 'json',
-            success: function(resp) {
-                if (resp.status === 'success') {
-                    $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>');
-                    resp.data.forEach(function(c) {
-                        const sel = (selectedCiuId && c.id_ciudad == selectedCiuId) ? 'selected' : '';
-                        $selectCiu.append(`<option value="${c.id_ciudad}" ${sel}>${c.ciudad}</option>`);
-                    });
-                    $selectCiu.prop('disabled', false);
-                }
-            }
-        });
 
         // Municipios y Parroquias
         $.ajax({
             url: `controllers/LocationController.php?action=municipios&estado_id=${estadoId}`,
             method: 'GET',
+            dataType: 'json',
+            success: function(resp) {
+                if (resp.status === 'success') {
+                    $selectMun.empty().append('<option value="">Seleccione Municipio</option>');
+                    resp.data.forEach(function(m) {
+                        const sel = (selectedMunId && m.id_municipio == selectedMunId) ? 'selected' : '';
+                        $selectMun.append(`<option value="${m.id_municipio}" ${sel}>${m.municipio}</option>`);
+                    });
+                    $selectMun.prop('disabled', false);
+
+                    if (selectedMunId) {
+                        $.ajax({
+                            url: `controllers/LocationController.php?action=parroquias&municipio_id=${selectedMunId}`,
+                            method: 'GET',
+                            dataType: 'json',
+                            success: function(pResp) {
+                                if (pResp.status === 'success') {
+                                    $selectPar.empty().append('<option value="">Seleccione Parroquia</option>');
+                                    pResp.data.forEach(function(p) {
+                                        const selP = (selectedParId && p.id_parroquia == selectedParId) ? 'selected' : '';
+                                        $selectPar.append(`<option value="${p.id_parroquia}" ${selP}>${p.parroquia}</option>`);
+                                    });
+                                    $selectPar.prop('disabled', false);
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+        });
+    }
             dataType: 'json',
             success: function(resp) {
                 if (resp.status === 'success') {
@@ -659,7 +648,6 @@ $(document).ready(function() {
         }
 
         $('#createSedesContainer .sede-card').each(function() {
-            const $ciudad = $(this).find('.select-ciudad');
             const $parroquia = $(this).find('.select-parroquia');
             const $municipio = $(this).find('.select-municipio');
             const $estado = $(this).find('.select-estado');
@@ -683,15 +671,8 @@ $(document).ready(function() {
                 sedeErrorMsg = 'Debe seleccionar la parroquia para esta sede.';
                 return false;
             }
-            if (!$ciudad.val()) {
-                sedeError = true;
-                $firstSedeErr = $ciudad;
-                sedeErrorMsg = 'Debe seleccionar la ciudad para esta sede.';
-                return false;
-            }
 
             sedes.push({
-                ciudad_id: $ciudad.val(),
                 parroquia_id: $parroquia.val(),
                 detalles: detalles
             });
@@ -938,7 +919,6 @@ $(document).ready(function() {
 
         $('#editSedesContainer .sede-card').each(function() {
             const sId = $(this).find('.sede-id-input').val();
-            const $ciudad = $(this).find('.select-ciudad');
             const $parroquia = $(this).find('.select-parroquia');
             const $municipio = $(this).find('.select-municipio');
             const $estado = $(this).find('.select-estado');
@@ -962,16 +942,9 @@ $(document).ready(function() {
                 sedeErrorMsg = 'Debe seleccionar la parroquia para esta sede.';
                 return false;
             }
-            if (!$ciudad.val()) {
-                sedeError = true;
-                $firstSedeErr = $ciudad;
-                sedeErrorMsg = 'Debe seleccionar la ciudad para esta sede.';
-                return false;
-            }
 
             sedes.push({
                 id: sId || null,
-                ciudad_id: $ciudad.val(),
                 parroquia_id: $parroquia.val(),
                 detalles: detalles
             });

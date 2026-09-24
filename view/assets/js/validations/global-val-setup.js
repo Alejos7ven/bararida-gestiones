@@ -138,8 +138,8 @@
                 $targetInput = $form.find('[name="tipo_organizacion"], .select-tipo-organizacion').first();
             } else if (msgLower.includes('gestión') || msgLower.includes('gestion')) {
                 $targetInput = $form.find('[name="tipo_gestion"]').first();
-            } else if (msgLower.includes('sede') || msgLower.includes('parroquia') || msgLower.includes('ciudad') || msgLower.includes('estado') || msgLower.includes('municipio')) {
-                $targetInput = $form.find('.select-ciudad, .select-parroquia, #parroquia_id, #ciudad_id').filter(':visible').first();
+            } else if (msgLower.includes('sede') || msgLower.includes('parroquia') || msgLower.includes('estado') || msgLower.includes('municipio')) {
+                $targetInput = $form.find('.select-parroquia, .select-municipio, .select-estado, #parroquia_id').filter(':visible').first();
             } else if (msgLower.includes('rol')) {
                 $targetInput = $form.find('[name="rol"], #create_rol, #edit_rol').first();
             }

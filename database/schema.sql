@@ -136,14 +136,11 @@ CREATE TABLE IF NOT EXISTS parroquias (
 CREATE TABLE IF NOT EXISTS sedes (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `institucion_id` int NOT NULL,
-  `ciudad_id` int NOT NULL,
   `parroquia_id` int NOT NULL,
   `detalles` varchar(150) DEFAULT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT '1',
   CONSTRAINT fk_institucion_dir 
     FOREIGN KEY (`institucion_id`) REFERENCES `instituciones` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT fk_ciudad 
-    FOREIGN KEY (`ciudad_id`) REFERENCES `ciudades` (`id_ciudad`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT fk_parroquia 
     FOREIGN KEY (`parroquia_id`) REFERENCES `parroquias` (`id_parroquia`) ON DELETE RESTRICT ON UPDATE CASCADE
 );

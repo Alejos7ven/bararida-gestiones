@@ -4,6 +4,7 @@
  * Procesa de forma segura las operaciones de gestión de mapas, zonas y rutas.
  * Responde con estados HTTP óptimos y formato JSON estándar.
  * Acceso de lectura permitido a todo el personal; escritura restringida a 'superadmin' y 'admin'.
+ * Respeta el patrón MVC operando mediante los modelos Zona y Recorrido con setters/getters.
  */
 
 // Asegurar que la sesión esté activa
@@ -15,7 +16,6 @@ if (session_status() === PHP_SESSION_NONE) {
 header("Content-Type: application/json; charset=UTF-8");
 
 // Incluir dependencias necesarias
-require_once __DIR__ . "/../config/Database.php";
 require_once __DIR__ . "/../models/Zona.php";
 require_once __DIR__ . "/../models/Recorrido.php";
 require_once __DIR__ . "/../models/Ruta.php";
@@ -35,20 +35,7 @@ if (!isset($_SESSION['personal'])) {
 }
 
 $currentUser = $_SESSION['personal'];
-$userRol = $currentUser['rol'];
-
-// Inicializar conexión a la base de datos
-$database = new Database();
-$db = $database->getConnection();
-
-if ($db === null) {
-    http_response_code(500);
-    echo json_encode([
-        "status" => "error",
-        "message" => "No se pudo establecer conexión con la base de datos."
-    ]);
-    exit;
-}
+$userRol = $currentUser['rol'] ?? '';
 
 // Capturar la acción solicitada
 $action = isset($_GET['action']) ? trim($_GET['action']) : '';
@@ -70,22 +57,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     switch ($action) {
         case 'crear_zona':
-            crearZonaAction($db);
+            crearZonaAction();
             break;
         case 'eliminar_zona':
-            eliminarZonaAction($db);
+            eliminarZonaAction();
             break;
         case 'actualizar_zona_coords':
-            actualizarZonaCoordsAction($db);
+            actualizarZonaCoordsAction();
             break;
         case 'crear_recorrido':
-            crearRecorridoAction($db);
+            crearRecorridoAction();
             break;
         case 'eliminar_recorrido':
-            eliminarRecorridoAction($db);
+            eliminarRecorridoAction();
             break;
         case 'actualizar_recorrido_orden':
-            actualizarRecorridoOrdenAction($db);
+            actualizarRecorridoOrdenAction();
             break;
         default:
             http_response_code(400);
@@ -99,16 +86,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Todo el personal autenticado (incluidos guías) puede leer la información
     switch ($action) {
         case 'listar_zonas':
-            listarZonasAction($db);
+            listarZonasAction();
             break;
         case 'listar_recorridos':
-            listarRecorridosAction($db);
+            listarRecorridosAction();
             break;
         case 'listar_recorridos_simple':
-            listarRecorridosSimpleAction($db);
+            listarRecorridosSimpleAction();
             break;
         case 'obtener_recorrido':
-            obtenerRecorridoAction($db);
+            obtenerRecorridoAction();
             break;
         default:
             http_response_code(400);
@@ -133,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 /**
  * Crea una nueva zona en el mapa
  */
-function crearZonaAction($db) {
+function crearZonaAction() {
     $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
     $coordenadas = isset($_POST['coordenadas']) ? trim($_POST['coordenadas']) : '';
 
@@ -168,7 +155,7 @@ function crearZonaAction($db) {
     }
 
     try {
-        $zona = new Zona($db);
+        $zona = new Zona();
         $zona->setNombre($nombre);
         $zona->setCoordenadas($coordenadas);
 
@@ -200,7 +187,7 @@ function crearZonaAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Error inesperado al crear la zona."
+            "message" => "Error inesperado al crear la zona: " . $e->getMessage()
         ]);
     }
 }
@@ -208,7 +195,7 @@ function crearZonaAction($db) {
 /**
  * Elimina una zona del mapa
  */
-function eliminarZonaAction($db) {
+function eliminarZonaAction() {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
 
     if (!$id) {
@@ -221,8 +208,9 @@ function eliminarZonaAction($db) {
     }
 
     try {
-        $zona = new Zona($db);
-        if ($zona->eliminar($id)) {
+        $zona = new Zona();
+        $zona->setId($id);
+        if ($zona->eliminar()) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
@@ -247,7 +235,7 @@ function eliminarZonaAction($db) {
 /**
  * Registra un recorrido y sus paradas en orden usando transacciones seguras
  */
-function crearRecorridoAction($db) {
+function crearRecorridoAction() {
     $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
     $zonas = isset($_POST['zonas']) ? $_POST['zonas'] : null;
 
@@ -281,7 +269,7 @@ function crearRecorridoAction($db) {
         return;
     }
 
-    // Sanitizar y validar los IDs de las zonas recibidas
+    // Sanitizar y validar los IDs de las zonas recibidas en el controlador
     $cleanZonas = [];
     foreach ($zonas as $zId) {
         $cleanId = filter_var($zId, FILTER_VALIDATE_INT);
@@ -301,10 +289,11 @@ function crearRecorridoAction($db) {
     }
 
     try {
-        $recorrido = new Recorrido($db);
+        $recorrido = new Recorrido();
         $recorrido->setNombre($nombre);
+        $recorrido->setZonas($cleanZonas);
 
-        if ($recorrido->crear($cleanZonas)) {
+        if ($recorrido->crear()) {
             http_response_code(201);
             echo json_encode([
                 "status" => "success",
@@ -339,7 +328,7 @@ function crearRecorridoAction($db) {
 /**
  * Elimina un recorrido y sus paradas en cascada
  */
-function eliminarRecorridoAction($db) {
+function eliminarRecorridoAction() {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
 
     if (!$id) {
@@ -352,8 +341,9 @@ function eliminarRecorridoAction($db) {
     }
 
     try {
-        $recorrido = new Recorrido($db);
-        if ($recorrido->eliminar($id)) {
+        $recorrido = new Recorrido();
+        $recorrido->setId($id);
+        if ($recorrido->eliminar()) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
@@ -378,7 +368,7 @@ function eliminarRecorridoAction($db) {
 /**
  * Actualiza las coordenadas y/o nombre de una zona
  */
-function actualizarZonaCoordsAction($db) {
+function actualizarZonaCoordsAction() {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
     $coordenadas = isset($_POST['coordenadas']) ? trim($_POST['coordenadas']) : '';
     $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
@@ -411,12 +401,16 @@ function actualizarZonaCoordsAction($db) {
     }
 
     try {
-        $zona = new Zona($db);
+        $zona = new Zona();
+        $zona->setId($id);
+        $zona->setCoordenadas($coordenadas);
+
         $result = false;
         if (!empty($nombre)) {
-            $result = $zona->actualizarNombreYCoordenadas($id, $nombre, $coordenadas);
+            $zona->setNombre($nombre);
+            $result = $zona->actualizarNombreYCoordenadas();
         } else {
-            $result = $zona->actualizarCoordenadas($id, $coordenadas);
+            $result = $zona->actualizarCoordenadas();
         }
 
         if ($result) {
@@ -450,7 +444,7 @@ function actualizarZonaCoordsAction($db) {
 /**
  * Actualiza el orden secuencial de paradas y/o el nombre de un recorrido
  */
-function actualizarRecorridoOrdenAction($db) {
+function actualizarRecorridoOrdenAction() {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
     $zonas = isset($_POST['zonas']) ? $_POST['zonas'] : null;
     $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
@@ -500,12 +494,16 @@ function actualizarRecorridoOrdenAction($db) {
     }
 
     try {
-        $recorrido = new Recorrido($db);
+        $recorrido = new Recorrido();
+        $recorrido->setId($id);
+        $recorrido->setZonas($cleanZonas);
+
         $result = false;
         if (!empty($nombre)) {
-            $result = $recorrido->actualizarNombreYListadoZonas($id, $nombre, $cleanZonas);
+            $recorrido->setNombre($nombre);
+            $result = $recorrido->actualizarNombreYListadoZonas();
         } else {
-            $result = $recorrido->actualizarRuta($id, $cleanZonas);
+            $result = $recorrido->actualizarRuta();
         }
 
         if ($result) {
@@ -543,9 +541,9 @@ function actualizarRecorridoOrdenAction($db) {
 /**
  * Obtiene el listado completo de zonas
  */
-function listarZonasAction($db) {
+function listarZonasAction() {
     try {
-        $zona = new Zona($db);
+        $zona = new Zona();
         $listado = $zona->listarTodas();
         
         http_response_code(200);
@@ -565,9 +563,9 @@ function listarZonasAction($db) {
 /**
  * Obtiene el listado completo de recorridos con sus rutas de zonas ordenadas
  */
-function listarRecorridosAction($db) {
+function listarRecorridosAction() {
     try {
-        $recorrido = new Recorrido($db);
+        $recorrido = new Recorrido();
         $listado = $recorrido->listarTodos();
         
         http_response_code(200);
@@ -587,7 +585,7 @@ function listarRecorridosAction($db) {
 /**
  * Obtiene los detalles de un recorrido y sus paradas
  */
-function obtenerRecorridoAction($db) {
+function obtenerRecorridoAction() {
     $id = isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : null;
 
     if (!$id) {
@@ -600,7 +598,9 @@ function obtenerRecorridoAction($db) {
     }
 
     try {
-        $data = Recorrido::obtenerPorId($db, $id);
+        $recorridoModel = new Recorrido();
+        $recorridoModel->setId($id);
+        $data = $recorridoModel->obtenerPorId();
         if ($data) {
             http_response_code(200);
             echo json_encode([
@@ -618,7 +618,7 @@ function obtenerRecorridoAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error al consultar los detalles del recorrido."
+            "message" => "Ocurrió un error al consultar los detalles del recorrido: " . $e->getMessage()
         ]);
     }
 }
@@ -626,9 +626,10 @@ function obtenerRecorridoAction($db) {
 /**
  * Obtiene el listado simple (id y nombre) de todos los recorridos
  */
-function listarRecorridosSimpleAction($db) {
+function listarRecorridosSimpleAction() {
     try {
-        $listado = Recorrido::obtenerListadoSimple($db);
+        $recorridoModel = new Recorrido();
+        $listado = $recorridoModel->obtenerListadoSimple();
         http_response_code(200);
         echo json_encode([
             "status" => "success",
@@ -642,4 +643,3 @@ function listarRecorridosSimpleAction($db) {
         ]);
     }
 }
-

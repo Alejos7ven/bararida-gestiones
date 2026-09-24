@@ -3,6 +3,7 @@
  * PermisoController
  * Gestiona las acciones AJAX del módulo App (Configuración de permisos por rol).
  * Solo accesible por el superadmin.
+ * Respeta el patrón MVC operando mediante el modelo Permiso con setters/getters.
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -23,22 +24,9 @@ if (!$isSuperAdmin) {
     exit;
 }
 
-require_once __DIR__ . "/../config/Database.php";
 require_once __DIR__ . "/../models/Permiso.php";
 
 $action = isset($_GET['action']) ? trim($_GET['action']) : '';
-
-// Inicializar conexión a la BD
-$database = new Database();
-$db       = $database->getConnection();
-
-if ($db === null) {
-    http_response_code(500);
-    echo json_encode(["status" => "error", "message" => "No se pudo establecer conexión con la base de datos."]);
-    exit;
-}
-
-$permisoModel = new Permiso($db);
 
 // =========================================================================
 // Enrutador de Acciones
@@ -46,14 +34,14 @@ $permisoModel = new Permiso($db);
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if ($action === 'listar') {
-        listarMatriz($permisoModel);
+        listarMatriz();
     } else {
         http_response_code(400);
         echo json_encode(["status" => "error", "message" => "Acción GET no reconocida."]);
     }
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'actualizar') {
-        actualizarPermiso($permisoModel);
+        actualizarPermiso();
     } else {
         http_response_code(400);
         echo json_encode(["status" => "error", "message" => "Acción POST no reconocida."]);
@@ -71,8 +59,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
  * Retorna la matriz completa de roles × módulos para poblar la tabla de la vista App.
  * Los módulos 'app' y 'dashboard' se excluyen de la lista editable.
  */
-function listarMatriz($permisoModel) {
+function listarMatriz() {
     try {
+        $permisoModel = new Permiso();
         $matriz = $permisoModel->getMatrizCompleta(['app', 'dashboard']);
         http_response_code(200);
         echo json_encode([
@@ -81,7 +70,7 @@ function listarMatriz($permisoModel) {
         ]);
     } catch (Exception $e) {
         http_response_code(500);
-        echo json_encode(["status" => "error", "message" => "Error al obtener la matriz de permisos."]);
+        echo json_encode(["status" => "error", "message" => "Error al obtener la matriz de permisos: " . $e->getMessage()]);
     }
 }
 
@@ -89,8 +78,8 @@ function listarMatriz($permisoModel) {
  * Actualiza un permiso individual (rol_id + modulo_id + puede_acceder).
  * Todas las validaciones se realizan aquí en el controlador.
  */
-function actualizarPermiso($permisoModel) {
-    // Leer y validar parámetros del body POST
+function actualizarPermiso() {
+    // Leer y validar parámetros del body POST en el controlador
     $rol_id        = isset($_POST['rol_id'])        ? filter_var($_POST['rol_id'],    FILTER_VALIDATE_INT) : false;
     $modulo_id     = isset($_POST['modulo_id'])     ? filter_var($_POST['modulo_id'], FILTER_VALIDATE_INT) : false;
     $puede_acceder = isset($_POST['puede_acceder']) ? $_POST['puede_acceder'] : null;
@@ -113,10 +102,13 @@ function actualizarPermiso($permisoModel) {
         return;
     }
 
-    $puede_acceder_int = (int)$puede_acceder;
-
     try {
-        $permisoModel->actualizarPermiso((int)$rol_id, (int)$modulo_id, $puede_acceder_int);
+        $permisoModel = new Permiso();
+        $permisoModel->setRolId((int)$rol_id);
+        $permisoModel->setModuloId((int)$modulo_id);
+        $permisoModel->setPuedeAcceder((int)$puede_acceder);
+        $permisoModel->actualizarPermiso();
+
         http_response_code(200);
         echo json_encode([
             "status"  => "success",

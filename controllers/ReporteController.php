@@ -4,6 +4,7 @@
  * Gestiona la extracción, procesamiento y validación de reportes analíticos y estadísticos.
  * Responde siempre en formato JSON estándar a solicitudes AJAX.
  * Acceso restringido exclusivamente a personal autorizado.
+ * Respeta el patrón MVC operando mediante el modelo Reporte con setters/getters.
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -25,31 +26,19 @@ if (!isset($_SESSION['personal'])) {
 }
 
 // 2. Incluir dependencias
-require_once __DIR__ . "/../config/Database.php";
 require_once __DIR__ . "/../models/Permiso.php";
 require_once __DIR__ . "/../models/Reporte.php";
-
-$database = new Database();
-$db = $database->getConnection();
-
-if ($db === null) {
-    http_response_code(500);
-    echo json_encode([
-        "status" => "error",
-        "message" => "No se pudo conectar a la base de datos."
-    ]);
-    exit;
-}
 
 // 3. Verificar permisos de módulo RBAC
 $currentUser = $_SESSION['personal'];
 $userRolId   = isset($currentUser['rol_id']) ? (int)$currentUser['rol_id'] : 0;
 $userRol     = $currentUser['rol'] ?? '';
 
-$permisoModel = new Permiso($db);
+$permisoModel = new Permiso();
 $permisos = [];
 if ($userRolId > 0) {
-    $permisos = $permisoModel->getPermisosPorRol($userRolId);
+    $permisoModel->setRolId($userRolId);
+    $permisos = $permisoModel->getPermisosPorRol();
 }
 // Si el rol es guía o no tiene permiso explícito para 'reportes'
 if ($userRol === 'guia' && empty($permisos['reportes'])) {
@@ -174,37 +163,42 @@ if (!function_exists('procesarConsultaReporte')) {
             $etiquetaPeriodo = "Año $anio";
         }
 
+        // Asignar parámetros mediante setters en el modelo Reporte
+        $reporteModel->setFechaInicio($fechaInicio);
+        $reporteModel->setFechaFin($fechaFin);
+        $reporteModel->setEstatus($estatus);
+
         // Ejecutar consulta según sección solicitada
         $resultado = [];
-        $estadisticasGenerales = $reporteModel->obtenerEstadisticasGenerales($fechaInicio, $fechaFin);
+        $estadisticasGenerales = $reporteModel->obtenerEstadisticasGenerales();
 
         switch ($seccion) {
             case 'general':
                 $resultado = [
                     'resumen' => $estadisticasGenerales,
-                    'citas_recientes' => $reporteModel->obtenerReporteCitas($fechaInicio, $fechaFin)['datos'] ?? [],
-                    'zonas_destacadas' => $reporteModel->obtenerReporteZonas($fechaInicio, $fechaFin)['datos'] ?? []
+                    'citas_recientes' => $reporteModel->obtenerReporteCitas()['datos'] ?? [],
+                    'zonas_destacadas' => $reporteModel->obtenerReporteZonas()['datos'] ?? []
                 ];
                 break;
 
             case 'citas':
-                $resultado = $reporteModel->obtenerReporteCitas($fechaInicio, $fechaFin, $estatus);
+                $resultado = $reporteModel->obtenerReporteCitas();
                 break;
 
             case 'zonas':
-                $resultado = $reporteModel->obtenerReporteZonas($fechaInicio, $fechaFin);
+                $resultado = $reporteModel->obtenerReporteZonas();
                 break;
 
             case 'exoneraciones':
-                $resultado = $reporteModel->obtenerReporteExoneraciones($fechaInicio, $fechaFin);
+                $resultado = $reporteModel->obtenerReporteExoneraciones();
                 break;
 
             case 'visitantes':
-                $resultado = $reporteModel->obtenerReporteVisitantes($fechaInicio, $fechaFin);
+                $resultado = $reporteModel->obtenerReporteVisitantes();
                 break;
 
             case 'instituciones':
-                $resultado = $reporteModel->obtenerReporteInstituciones($fechaInicio, $fechaFin);
+                $resultado = $reporteModel->obtenerReporteInstituciones();
                 break;
         }
 
@@ -228,7 +222,7 @@ if (!function_exists('procesarConsultaReporte')) {
 $action = isset($_GET['action']) ? trim($_GET['action']) : 'consultar';
 
 try {
-    $reporteModel = new Reporte($db);
+    $reporteModel = new Reporte();
 
     switch ($action) {
         case 'consultar':

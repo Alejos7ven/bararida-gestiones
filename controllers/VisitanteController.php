@@ -3,6 +3,7 @@
  * Controlador de Visitantes (VisitanteController)
  * Gestiona operaciones CRUD individuales e independientes para visitantes.
  * Acceso restringido exclusivamente a personal autenticado con los permisos adecuados.
+ * Respeta el patrón MVC operando mediante el modelo Visitante con setters/getters.
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -22,35 +23,21 @@ if (!isset($_SESSION['personal'])) {
 }
 
 // Incluir dependencias
-require_once __DIR__ . "/../config/Database.php";
 require_once __DIR__ . "/../models/Visitante.php";
 
 $action = isset($_GET['action']) ? trim($_GET['action']) : '';
-
-// Inicializar base de datos
-$database = new Database();
-$db = $database->getConnection();
-
-if ($db === null) {
-    http_response_code(500);
-    echo json_encode([
-        "status" => "error",
-        "message" => "No se pudo establecer conexión con la base de datos."
-    ]);
-    exit;
-}
 
 // Procesar peticiones según método HTTP y acción
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($action) {
         case 'crear':
-            crearVisitanteAction($db);
+            crearVisitanteAction();
             break;
         case 'actualizar':
-            actualizarVisitanteAction($db);
+            actualizarVisitanteAction();
             break;
         case 'eliminar':
-            eliminarVisitanteAction($db);
+            eliminarVisitanteAction();
             break;
         default:
             http_response_code(400);
@@ -63,10 +50,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     switch ($action) {
         case 'listar':
-            listarVisitantesAction($db);
+            listarVisitantesAction();
             break;
         case 'obtener':
-            obtenerVisitanteAction($db);
+            obtenerVisitanteAction();
             break;
         default:
             http_response_code(400);
@@ -91,9 +78,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 /**
  * Lista todos los visitantes en el sistema
  */
-function listarVisitantesAction($db) {
+function listarVisitantesAction() {
     try {
-        $visitantes = Visitante::listarTodos($db);
+        $visitanteModel = new Visitante();
+        $visitantes = $visitanteModel->listarTodos();
         echo json_encode([
             "status" => "success",
             "data" => $visitantes
@@ -110,7 +98,7 @@ function listarVisitantesAction($db) {
 /**
  * Obtiene los detalles de un visitante específico
  */
-function obtenerVisitanteAction($db) {
+function obtenerVisitanteAction() {
     $id = isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : 0;
     if ($id <= 0) {
         http_response_code(400);
@@ -122,7 +110,9 @@ function obtenerVisitanteAction($db) {
     }
 
     try {
-        $visitante = Visitante::obtenerPorId($db, $id);
+        $visitanteModel = new Visitante();
+        $visitanteModel->setId($id);
+        $visitante = $visitanteModel->obtenerPorId();
         if ($visitante) {
             echo json_encode([
                 "status" => "success",
@@ -147,7 +137,7 @@ function obtenerVisitanteAction($db) {
 /**
  * Crea un nuevo visitante manualmente
  */
-function crearVisitanteAction($db) {
+function crearVisitanteAction() {
     $nombres = isset($_POST['nombres']) ? trim($_POST['nombres']) : '';
     $apellidos = isset($_POST['apellidos']) ? trim($_POST['apellidos']) : '';
     $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
@@ -266,7 +256,9 @@ function crearVisitanteAction($db) {
             exit;
         }
 
-        $existente = Visitante::buscarPorCedula($db, $cedula);
+        $visitanteCheck = new Visitante();
+        $visitanteCheck->setCedula($cedula);
+        $existente = $visitanteCheck->buscarPorCedula();
         if ($existente) {
             http_response_code(400);
             echo json_encode([
@@ -281,13 +273,13 @@ function crearVisitanteAction($db) {
     $cedulaFinal = !empty($cedula) ? $cedula : null;
 
     try {
-        $visitante = new Visitante($db);
+        $visitante = new Visitante();
         $visitante->setNombres($nombres);
         $visitante->setApellidos($apellidos);
         $visitante->setCedula($cedulaFinal);
         $visitante->setFechaNacimiento($fecha_nacimiento);
 
-        if ($visitante->registrar($db)) {
+        if ($visitante->registrar()) {
             http_response_code(201);
             echo json_encode([
                 "status" => "success",
@@ -323,7 +315,7 @@ function crearVisitanteAction($db) {
 /**
  * Actualiza los datos de un visitante existente
  */
-function actualizarVisitanteAction($db) {
+function actualizarVisitanteAction() {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : 0;
     $nombres = isset($_POST['nombres']) ? trim($_POST['nombres']) : '';
     $apellidos = isset($_POST['apellidos']) ? trim($_POST['apellidos']) : '';
@@ -443,7 +435,10 @@ function actualizarVisitanteAction($db) {
             exit;
         }
 
-        $existente = Visitante::buscarPorCedula($db, $cedula, $id);
+        $visitanteCheck = new Visitante();
+        $visitanteCheck->setCedula($cedula);
+        $visitanteCheck->setExcluirId($id);
+        $existente = $visitanteCheck->buscarPorCedula();
         if ($existente) {
             http_response_code(400);
             echo json_encode([
@@ -458,14 +453,14 @@ function actualizarVisitanteAction($db) {
     $cedulaFinal = !empty($cedula) ? $cedula : null;
 
     try {
-        $visitante = new Visitante($db);
+        $visitante = new Visitante();
         $visitante->setId($id);
         $visitante->setNombres($nombres);
         $visitante->setApellidos($apellidos);
         $visitante->setCedula($cedulaFinal);
         $visitante->setFechaNacimiento($fecha_nacimiento);
 
-        if ($visitante->actualizar($db)) {
+        if ($visitante->actualizar()) {
             echo json_encode([
                 "status" => "success",
                 "message" => "Datos del visitante actualizados correctamente."
@@ -497,7 +492,7 @@ function actualizarVisitanteAction($db) {
 /**
  * Elimina un visitante del sistema
  */
-function eliminarVisitanteAction($db) {
+function eliminarVisitanteAction() {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : 0;
     if ($id <= 0) {
         http_response_code(400);
@@ -509,7 +504,9 @@ function eliminarVisitanteAction($db) {
     }
 
     try {
-        if (Visitante::eliminar($db, $id)) {
+        $visitante = new Visitante();
+        $visitante->setId($id);
+        if ($visitante->eliminar()) {
             echo json_encode([
                 "status" => "success",
                 "message" => "Visitante eliminado correctamente del sistema."

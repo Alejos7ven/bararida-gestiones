@@ -74,7 +74,6 @@
                     <input type="hidden" name="institucion_id" id="final_institucion_id">
                     <input type="hidden" name="sede_id" id="final_sede_id">
                     <input type="hidden" name="crear_nueva_sede" id="final_crear_nueva_sede" value="0">
-                    <input type="hidden" name="nueva_sede_ciudad_id" id="final_nueva_sede_ciudad_id">
                     <input type="hidden" name="nueva_sede_parroquia_id" id="final_nueva_sede_parroquia_id">
                     <input type="hidden" name="nueva_sede_detalles" id="final_nueva_sede_detalles">
                     <input type="hidden" name="tipo_documento" id="final_tipo_documento">
@@ -139,25 +138,19 @@
                                 <div id="wizardNuevaSedeForm" class="mt-3 pt-3 border-top" style="display: none;">
                                     <span class="badge bg-success mb-2">Registrar Nueva Sede</span>
                                     <div class="row g-2">
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
                                             <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Estado</label>
                                             <select class="form-select form-select-sm" id="nueva_sede_cita_estado">
                                                 <option value="">Seleccione Estado</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
                                             <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Municipio</label>
                                             <select class="form-select form-select-sm" id="nueva_sede_cita_municipio" disabled>
                                                 <option value="">Seleccione Municipio</option>
                                             </select>
                                         </div>
-                                        <div class="col-md-6">
-                                            <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Ciudad</label>
-                                            <select class="form-select form-select-sm" id="nueva_sede_cita_ciudad" name="nueva_sede_ciudad_id" disabled>
-                                                <option value="">Seleccione Ciudad</option>
-                                            </select>
-                                        </div>
-                                        <div class="col-md-6">
+                                        <div class="col-md-4">
                                             <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Parroquia</label>
                                             <select class="form-select form-select-sm" id="nueva_sede_cita_parroquia" name="nueva_sede_parroquia_id" disabled>
                                                 <option value="">Seleccione Parroquia</option>

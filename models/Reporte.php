@@ -1,24 +1,57 @@
 <?php
+require_once __DIR__ . "/Database.php";
+
 /**
  * Modelo de Reportes (Reporte)
  * Procesa y extrae la información analítica y estadística de citas, zonas,
  * exoneraciones, visitantes e instituciones en períodos determinados.
+ * Hereda de Database para gestionar internamente la conexión.
  */
-class Reporte {
-    private $db;
+class Reporte extends Database {
+    private ?string $fechaInicio = null;
+    private ?string $fechaFin = null;
+    private ?string $estatus = null;
+    private ?string $tipoOrganizacion = null;
+    private ?string $tipoGestion = null;
+    private ?string $anio = null;
 
-    public function __construct($db = null) {
-        $this->db = $db;
+    public function __construct() {
+        parent::__construct();
     }
+
+    // =========================================================================
+    // GETTERS Y SETTERS
+    // =========================================================================
+
+    public function getFechaInicio(): ?string { return $this->fechaInicio; }
+    public function setFechaInicio(?string $inicio): void { $this->fechaInicio = $inicio ? trim($inicio) : null; }
+
+    public function getFechaFin(): ?string { return $this->fechaFin; }
+    public function setFechaFin(?string $fin): void { $this->fechaFin = $fin ? trim($fin) : null; }
+
+    public function getEstatus(): ?string { return $this->estatus; }
+    public function setEstatus(?string $estatus): void { $this->estatus = $estatus ? trim($estatus) : null; }
+
+    public function getTipoOrganizacion(): ?string { return $this->tipoOrganizacion; }
+    public function setTipoOrganizacion(?string $tipo): void { $this->tipoOrganizacion = $tipo ? trim($tipo) : null; }
+
+    public function getTipoGestion(): ?string { return $this->tipoGestion; }
+    public function setTipoGestion(?string $tipo): void { $this->tipoGestion = $tipo ? trim($tipo) : null; }
+
+    public function getAnio(): ?string { return $this->anio; }
+    public function setAnio(?string $anio): void { $this->anio = $anio ? trim($anio) : null; }
+
+    // =========================================================================
+    // MÉTODOS DE CONSULTA Y ANÁLISIS
+    // =========================================================================
 
     /**
      * Obtiene el resumen ejecutivo general para el período especificado
-     *
-     * @param string $fechaInicio YYYY-MM-DD
-     * @param string $fechaFin    YYYY-MM-DD
-     * @return array
      */
-    public function obtenerEstadisticasGenerales($fechaInicio, $fechaFin) {
+    public function obtenerEstadisticasGenerales(?string $fechaInicio = null, ?string $fechaFin = null): array {
+        if ($fechaInicio !== null) $this->fechaInicio = $fechaInicio;
+        if ($fechaFin !== null) $this->fechaFin = $fechaFin;
+
         if (!$this->db) {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
@@ -34,8 +67,8 @@ class Reporte {
                          FROM citas 
                          WHERE fecha_visita BETWEEN :inicio AND :fin AND activo = 1";
             $stmtCitas = $this->db->prepare($sqlCitas);
-            $stmtCitas->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
-            $stmtCitas->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
+            $stmtCitas->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmtCitas->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
             $stmtCitas->execute();
             $statsCitas = $stmtCitas->fetch(PDO::FETCH_ASSOC) ?: [
                 'total_citas' => 0, 'citas_aprobadas' => 0, 'citas_completadas' => 0,
@@ -48,8 +81,8 @@ class Reporte {
                               INNER JOIN citas c ON ac.cita_id = c.id
                               WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
             $stmtVisitantes = $this->db->prepare($sqlVisitantes);
-            $stmtVisitantes->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
-            $stmtVisitantes->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
+            $stmtVisitantes->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmtVisitantes->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
             $stmtVisitantes->execute();
             $totalVisitantes = (int)$stmtVisitantes->fetchColumn();
 
@@ -58,8 +91,8 @@ class Reporte {
                         FROM citas c
                         WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
             $stmtInst = $this->db->prepare($sqlInst);
-            $stmtInst->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
-            $stmtInst->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
+            $stmtInst->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmtInst->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
             $stmtInst->execute();
             $totalInstituciones = (int)$stmtInst->fetchColumn();
 
@@ -72,8 +105,8 @@ class Reporte {
                          INNER JOIN rutas ru ON r.id = ru.recorrido_id
                          WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
             $stmtZonas = $this->db->prepare($sqlZonas);
-            $stmtZonas->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
-            $stmtZonas->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
+            $stmtZonas->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmtZonas->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
             $stmtZonas->execute();
             $statsZonas = $stmtZonas->fetch(PDO::FETCH_ASSOC) ?: ['total_visitas_zonas' => 0, 'zonas_distintas_visitadas' => 0];
 
@@ -91,8 +124,8 @@ class Reporte {
                                OR LOWER(c.metodo_pago) LIKE '%exonera%' 
                                OR LOWER(c.metodo_pago) LIKE '%exen%')";
             $stmtExon = $this->db->prepare($sqlExon);
-            $stmtExon->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
-            $stmtExon->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
+            $stmtExon->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmtExon->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
             $stmtExon->execute();
             $statsExon = $stmtExon->fetch(PDO::FETCH_ASSOC) ?: [
                 'total_citas_exoneradas' => 0,
@@ -102,8 +135,8 @@ class Reporte {
 
             return [
                 'periodo' => [
-                    'inicio' => $fechaInicio,
-                    'fin' => $fechaFin
+                    'inicio' => $this->fechaInicio,
+                    'fin' => $this->fechaFin
                 ],
                 'citas' => [
                     'total' => (int)$statsCitas['total_citas'],
@@ -137,13 +170,12 @@ class Reporte {
 
     /**
      * Reporte detallado de citas realizadas en el período
-     *
-     * @param string $fechaInicio YYYY-MM-DD
-     * @param string $fechaFin    YYYY-MM-DD
-     * @param string|null $estatus Filtro opcional por estatus
-     * @return array
      */
-    public function obtenerReporteCitas($fechaInicio, $fechaFin, $estatus = null) {
+    public function obtenerReporteCitas(?string $fechaInicio = null, ?string $fechaFin = null, ?string $estatus = null): array {
+        if ($fechaInicio !== null) $this->fechaInicio = $fechaInicio;
+        if ($fechaFin !== null) $this->fechaFin = $fechaFin;
+        if ($estatus !== null) $this->estatus = $estatus;
+
         if (!$this->db) {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
@@ -164,31 +196,33 @@ class Reporte {
                         i.tipo_gestion,
                         r.nombre AS recorrido_nombre,
                         s.detalles AS sede_detalles,
-                        ciu.ciudad AS sede_ciudad,
                         par.parroquia AS sede_parroquia,
+                        mun.municipio AS sede_municipio,
+                        est.estado AS sede_estado,
                         COUNT(ac.id) AS total_visitantes
                       FROM citas c
                       INNER JOIN instituciones i ON c.institucion_id = i.id
                       INNER JOIN entidades e ON i.entidad_id = e.id
                       LEFT JOIN sedes s ON c.sede_id = s.id
-                      LEFT JOIN ciudades ciu ON s.ciudad_id = ciu.id_ciudad
                       LEFT JOIN parroquias par ON s.parroquia_id = par.id_parroquia
+                      LEFT JOIN municipios mun ON par.id_municipio = mun.id_municipio
+                      LEFT JOIN estados est ON mun.id_estado = est.id_estado
                       LEFT JOIN recorrido r ON c.recorrido_id = r.id
                       LEFT JOIN asistencia_cita ac ON c.id = ac.cita_id
                       WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
 
-            if (!empty($estatus) && $estatus !== 'todos') {
+            if (!empty($this->estatus) && $this->estatus !== 'todos') {
                 $query .= " AND c.estatus = :estatus";
             }
 
             $query .= " GROUP BY c.id ORDER BY c.fecha_visita ASC, c.hora_inicio ASC";
 
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
+            $stmt->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmt->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
 
-            if (!empty($estatus) && $estatus !== 'todos') {
-                $stmt->bindParam(":estatus", $estatus, PDO::PARAM_STR);
+            if (!empty($this->estatus) && $this->estatus !== 'todos') {
+                $stmt->bindParam(":estatus", $this->estatus, PDO::PARAM_STR);
             }
 
             $stmt->execute();
@@ -224,19 +258,16 @@ class Reporte {
 
     /**
      * Reporte de visitas por zona durante el período establecido
-     * Calcula el total de zonas visitadas, frecuencia de visita y visitantes aproximados
-     *
-     * @param string $fechaInicio YYYY-MM-DD
-     * @param string $fechaFin    YYYY-MM-DD
-     * @return array
      */
-    public function obtenerReporteZonas($fechaInicio, $fechaFin) {
+    public function obtenerReporteZonas(?string $fechaInicio = null, ?string $fechaFin = null): array {
+        if ($fechaInicio !== null) $this->fechaInicio = $fechaInicio;
+        if ($fechaFin !== null) $this->fechaFin = $fechaFin;
+
         if (!$this->db) {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
 
         try {
-            // Consulta para calcular visitas por zona a través de los recorridos asignados a citas en la fecha
             $query = "SELECT 
                         z.id AS zona_id,
                         z.nombre AS zona_nombre,
@@ -257,8 +288,8 @@ class Reporte {
                       ORDER BY total_visitas DESC, total_visitantes_zona DESC";
 
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
+            $stmt->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmt->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
             $stmt->execute();
             $zonasVisitadas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -273,12 +304,11 @@ class Reporte {
                                  )
                                  ORDER BY z.nombre ASC";
             $stmtNo = $this->db->prepare($queryNoVisitadas);
-            $stmtNo->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
-            $stmtNo->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
+            $stmtNo->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmtNo->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
             $stmtNo->execute();
             $zonasNoVisitadas = $stmtNo->fetchAll(PDO::FETCH_ASSOC);
 
-            // Totales globales requeridos
             $totalZonasVisitadasSum = 0;
             $totalVisitantesZonasSum = 0;
             foreach ($zonasVisitadas as $zv) {
@@ -305,13 +335,11 @@ class Reporte {
 
     /**
      * Reporte de exoneraciones en el período
-     * Calcula total de instituciones y visitantes que recibieron exoneraciones
-     *
-     * @param string $fechaInicio YYYY-MM-DD
-     * @param string $fechaFin    YYYY-MM-DD
-     * @return array
      */
-    public function obtenerReporteExoneraciones($fechaInicio, $fechaFin) {
+    public function obtenerReporteExoneraciones(?string $fechaInicio = null, ?string $fechaFin = null): array {
+        if ($fechaInicio !== null) $this->fechaInicio = $fechaInicio;
+        if ($fechaFin !== null) $this->fechaFin = $fechaFin;
+
         if (!$this->db) {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
@@ -348,12 +376,11 @@ class Reporte {
                       ORDER BY c.fecha_visita ASC, e.nombre_completo ASC";
 
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
+            $stmt->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmt->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
             $stmt->execute();
             $exoneraciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-            // Calcular totales
             $totalInstitucionesSet = [];
             $totalVisitantesExon = 0;
             $porTipoGestion = ['publica' => 0, 'privada' => 0];
@@ -393,13 +420,11 @@ class Reporte {
 
     /**
      * Reporte de cantidad de visitantes recibidos en el período
-     * Incluye cálculo por grupos etarios (niños, adolescentes, adultos, adulto mayor) y listado
-     *
-     * @param string $fechaInicio YYYY-MM-DD
-     * @param string $fechaFin    YYYY-MM-DD
-     * @return array
      */
-    public function obtenerReporteVisitantes($fechaInicio, $fechaFin) {
+    public function obtenerReporteVisitantes(?string $fechaInicio = null, ?string $fechaFin = null): array {
+        if ($fechaInicio !== null) $this->fechaInicio = $fechaInicio;
+        if ($fechaFin !== null) $this->fechaFin = $fechaFin;
+
         if (!$this->db) {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
@@ -435,8 +460,8 @@ class Reporte {
                       ORDER BY c.fecha_visita ASC, v.apellidos ASC, v.nombres ASC";
 
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
+            $stmt->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmt->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
             $stmt->execute();
             $visitantes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -482,13 +507,11 @@ class Reporte {
 
     /**
      * Reporte de instituciones atendidas en el período
-     * Calcula total de instituciones, desglose por tipo y gestión, y visitantes atendidos
-     *
-     * @param string $fechaInicio YYYY-MM-DD
-     * @param string $fechaFin    YYYY-MM-DD
-     * @return array
      */
-    public function obtenerReporteInstituciones($fechaInicio, $fechaFin) {
+    public function obtenerReporteInstituciones(?string $fechaInicio = null, ?string $fechaFin = null): array {
+        if ($fechaInicio !== null) $this->fechaInicio = $fechaInicio;
+        if ($fechaFin !== null) $this->fechaFin = $fechaFin;
+
         if (!$this->db) {
             throw new Exception("Conexión de base de datos no inicializada.");
         }
@@ -514,8 +537,8 @@ class Reporte {
                       ORDER BY total_visitantes_atendidos DESC, total_citas DESC, e.nombre_completo ASC";
 
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(":inicio", $fechaInicio, PDO::PARAM_STR);
-            $stmt->bindParam(":fin", $fechaFin, PDO::PARAM_STR);
+            $stmt->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmt->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
             $stmt->execute();
             $instituciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

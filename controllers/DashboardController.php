@@ -4,9 +4,9 @@
  * Controlador del Dashboard — gestiona la carga dinámica de módulos, permisos RBAC
  * desde la BD, validación segura de vistas permitidas, generación de menús y ruteo.
  * Se incluye mediante require_once desde view/dashboard.php.
+ * Respeta el patrón MVC delegando la interacción de datos a los modelos Modulo y Permiso.
  */
 
-require_once __DIR__ . "/../config/Database.php";
 require_once __DIR__ . "/../models/Modulo.php";
 require_once __DIR__ . "/../models/Permiso.php";
 
@@ -24,28 +24,26 @@ function cargarPermisosUsuario($userRol, &$userRolId) {
     $modulosRegistrados = [];
 
     try {
-        $database     = new Database();
-        $db           = $database->getConnection();
-        $moduloModel  = new Modulo($db);
-        $permisoModel = new Permiso($db);
+        $moduloModel  = new Modulo();
+        $permisoModel = new Permiso();
 
         // Obtener nombres de módulos registrados dinámicamente desde la BD
         $modulosRegistrados = $moduloModel->getNombresValidos();
 
         if ($userRolId > 0) {
             // Sesión actualizada: consultar directamente por rol_id
-            $userPermissions = $permisoModel->getPermisosPorRol($userRolId);
+            $permisoModel->setRolId($userRolId);
+            $userPermissions = $permisoModel->getPermisosPorRol();
         } else {
-            // Sesión antigua sin rol_id: resolver el id desde la BD por nombre de rol
-            $stmtRol = $db->prepare("SELECT id FROM roles WHERE nombre = :nombre LIMIT 1");
-            $stmtRol->bindParam(":nombre", $userRol, PDO::PARAM_STR);
-            $stmtRol->execute();
-            $rolRow = $stmtRol->fetch(PDO::FETCH_ASSOC);
+            // Sesión antigua sin rol_id: resolver el id desde el modelo Permiso por nombre de rol
+            $permisoModel->setRolNombre($userRol);
+            $idRolResuelto = $permisoModel->obtenerRolIdPorNombre();
 
-            if ($rolRow) {
-                $userRolId = (int)$rolRow['id'];
+            if ($idRolResuelto) {
+                $userRolId = $idRolResuelto;
                 $_SESSION['personal']['rol_id'] = $userRolId; // Actualizar sesión
-                $userPermissions = $permisoModel->getPermisosPorRol($userRolId);
+                $permisoModel->setRolId($userRolId);
+                $userPermissions = $permisoModel->getPermisosPorRol();
             }
         }
     } catch (Exception $e) {
@@ -94,11 +92,9 @@ function resolverVistaPermitida($vistaSolicitada, $userRol, array $userPermissio
         return 'dashboard';
     }
 
-    // Obtener catálogo de módulos desde la BD
+    // Obtener catálogo de módulos desde la BD mediante el modelo Modulo
     try {
-        $database    = new Database();
-        $db          = $database->getConnection();
-        $moduloModel = new Modulo($db);
+        $moduloModel = new Modulo();
         $modulosBD   = $moduloModel->getNombresValidos();
     } catch (Exception $e) {
         error_log("Error en resolverVistaPermitida(): " . $e->getMessage());
@@ -219,9 +215,7 @@ function obtenerMenuUsuario($currentView, $userRol, array $userPermissions) {
     $otrosItems    = [];
 
     try {
-        $database    = new Database();
-        $db          = $database->getConnection();
-        $moduloModel = new Modulo($db);
+        $moduloModel = new Modulo();
         $modulos     = $moduloModel->getAll();
     } catch (Exception $e) {
         error_log("Error en obtenerMenuUsuario(): " . $e->getMessage());
@@ -268,110 +262,75 @@ function obtenerMenuUsuario($currentView, $userRol, array $userPermissions) {
         }
     }
 
-    // Ordenar los demás módulos alfabéticamente por su etiqueta visible (label)
-    usort($otrosItems, function ($a, $b) {
-        return strcoll(mb_strtolower($a['label'], 'UTF-8'), mb_strtolower($b['label'], 'UTF-8'));
-    });
-
-    // Construir menú final: Dashboard fijo arriba, seguido de los demás ordenados alfabéticamente
     $menu = [];
     if ($dashboardItem !== null) {
         $menu[] = $dashboardItem;
     }
-    foreach ($otrosItems as $item) {
-        $menu[] = $item;
-    }
-
-    return $menu;
+    return array_merge($menu, $otrosItems);
 }
 
 /**
- * Retorna la lista de recursos (CSS y JS) necesarios para la vista activa.
+ * Retorna los arrays de archivos CSS y JS requeridos de forma modular según la vista activa.
  *
- * @param string $currentView     Vista actual validada
+ * @param string $vista           Nombre de la vista activa
  * @param array  $userPermissions Permisos del usuario
  * @param string $userRol         Rol del usuario
- * @return array ['css' => string[], 'js' => string[]]
+ * @return array ['css' => [...], 'js' => [...]]
  */
-function obtenerAssetsVista($currentView, array $userPermissions, $userRol) {
-    $css = [];
-    $js  = [];
+function obtenerAssetsVista($vista, array $userPermissions = [], $userRol = '') {
+    $assets = [
+        'dashboard' => [
+            'css' => ['view/css/dashboard_main.css'],
+            'js'  => ['view/js/dashboard_main.js']
+        ],
+        'citas' => [
+            'css' => [
+                'view/css/recorridos.css',
+                'view/css/citas.css'
+            ],
+            'js'  => [
+                'view/js/citas.js',
+                'view/js/citas_validation.js'
+            ]
+        ],
+        'instituciones' => [
+            'css' => ['view/css/instituciones.css'],
+            'js'  => [
+                'view/js/instituciones.js',
+                'view/js/instituciones_validation.js'
+            ]
+        ],
+        'recorridos' => [
+            'css' => ['view/css/recorridos.css'],
+            'js'  => ['view/js/recorridos.js']
+        ],
+        'visitantes' => [
+            'css' => ['view/css/visitantes.css'],
+            'js'  => [
+                'view/js/visitantes.js',
+                'view/js/visitantes_validation.js'
+            ]
+        ],
+        'personal' => [
+            'css' => ['view/css/personal.css'],
+            'js'  => [
+                'view/js/personal.js',
+                'view/js/personal_validation.js'
+            ]
+        ],
+        'app' => [
+            'css' => ['view/css/app.css'],
+            'js'  => ['view/js/app.js']
+        ],
+        'reportes' => [
+            'css' => ['view/css/reportes.css'],
+            'js'  => ['view/js/reportes.js']
+        ],
+        'acceso_denegado' => [
+            'css' => ['view/css/acceso_denegado.css'],
+            'js'  => []
+        ]
+    ];
 
-    // Estilos modulares específicos
-    if ($currentView !== 'dashboard' && $currentView !== 'recorridos') {
-        $css[] = 'view/assets/css/personal.css';
-    }
-    if (in_array($currentView, ['citas', 'instituciones', 'visitantes'], true)) {
-        $css[] = 'view/assets/css/citas.css';
-    }
-    if ($currentView === 'reportes') {
-        $css[] = 'view/assets/css/reportes.css';
-    }
-
-    // Scripts y librerías por módulo
-    if ($currentView === 'dashboard' || ($currentView === 'citas' && !empty($userPermissions['citas']))) {
-        $js[] = 'view/assets/js/fullcalendar.min.js';
-        $js[] = 'view/assets/js/fullcalendar.es.js';
-    }
-
-    if ($currentView === 'personal' && !empty($userPermissions['personal'])) {
-        $js[] = 'view/assets/js/personal.js';
-        $js[] = 'view/assets/js/validations/personal-val.js';
-    }
-
-    if ($currentView === 'dashboard' || $currentView === 'reportes') {
-        $js[] = 'view/assets/js/chart.min.js';
-    }
-
-    if ($currentView === 'dashboard' || ($currentView === 'recorridos' && !empty($userPermissions['recorridos']))) {
-        $js[] = 'view/assets/js/recorridos.js';
-        $js[] = 'view/assets/js/validations/recorridos-val.js';
-    }
-
-    if ($currentView === 'citas' && !empty($userPermissions['citas'])) {
-        $js[] = 'view/assets/js/xlsx.min.js';
-        $js[] = 'view/assets/js/citas.js';
-        $js[] = 'view/assets/js/validations/citas-val.js';
-    }
-
-    if ($currentView === 'instituciones' && !empty($userPermissions['instituciones'])) {
-        $js[] = 'view/assets/js/instituciones.js';
-        $js[] = 'view/assets/js/validations/instituciones-val.js';
-    }
-
-    if ($currentView === 'visitantes' && !empty($userPermissions['visitantes'])) {
-        $js[] = 'view/assets/js/visitantes.js';
-        $js[] = 'view/assets/js/validations/visitantes-val.js';
-    }
-
-    if ($currentView === 'reportes' && !empty($userPermissions['reportes'])) {
-        $js[] = 'view/assets/js/html2pdf.bundle.min.js';
-        $js[] = 'view/assets/js/reportes.js';
-        $js[] = 'view/assets/js/validations/reportes-val.js';
-    }
-
-    if ($currentView === 'app' && $userRol === 'superadmin') {
-        $js[] = 'view/assets/js/app.js';
-    }
-
-    return ['css' => $css, 'js' => $js];
-}
-
-/**
- * Retorna la etiqueta legible y formateada del rol de usuario.
- *
- * @param string $userRol
- * @return string
- */
-function obtenerEtiquetaRol($userRol) {
-    switch (strtolower(trim((string)$userRol))) {
-        case 'superadmin':
-            return 'Super Admin';
-        case 'admin':
-            return 'Administrador';
-        case 'guia':
-            return 'Guía de Campo';
-        default:
-            return ucfirst($userRol);
-    }
+    return $assets[$vista] ?? ['css' => [], 'js' => []];
 }

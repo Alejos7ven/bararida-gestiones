@@ -3,6 +3,8 @@
  * Controlador de Citas (CitaController)
  * Gestiona el agendamiento de citas, registro de instituciones asociadas y la importación/exportación de visitantes.
  * Acceso restringido exclusivamente a personal autenticado.
+ * Respeta estrictamente el patrón MVC operando mediante los modelos Cita, Institucion, Sede, Visitante, Recorrido y Personal.
+ * Toda la gestión de base de datos se delega a los modelos a través de getters y setters.
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -10,7 +12,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Configurar encabezados
-// Para la acción de descargar plantilla, el encabezado se cambiará a texto/csv, de lo contrario será application/json
+// Para la acción de descargar plantilla, el encabezado se cambiará a descarga binaria, de lo contrario será application/json
 $action = isset($_GET['action']) ? trim($_GET['action']) : '';
 
 if ($action !== 'descargar_plantilla') {
@@ -31,19 +33,21 @@ if (!isset($_SESSION['personal'])) {
     exit;
 }
 
-// Incluir dependencias
-require_once __DIR__ . "/../config/Database.php";
+// Incluir dependencias del modelo
 require_once __DIR__ . "/../config/ExcelHelper.php";
 require_once __DIR__ . "/../models/Institucion.php";
 require_once __DIR__ . "/../models/Sede.php";
 require_once __DIR__ . "/../models/Cita.php";
 require_once __DIR__ . "/../models/Visitante.php";
 require_once __DIR__ . "/../models/Permiso.php";
+require_once __DIR__ . "/../models/Personal.php";
+require_once __DIR__ . "/../models/Recorrido.php";
 
 /**
  * Verifica si el usuario autenticado tiene permiso para acceder al módulo de citas según el RBAC
+ * @return bool
  */
-function usuarioTienePermisoCitas($db) {
+function usuarioTienePermisoCitas(): bool {
     $personal = $_SESSION['personal'] ?? null;
     if (!$personal) {
         return false;
@@ -57,12 +61,9 @@ function usuarioTienePermisoCitas($db) {
     $rolId = isset($personal['rol_id']) ? (int)$personal['rol_id'] : 0;
     if ($rolId <= 0 && $rol !== '') {
         try {
-            $stmtRol = $db->prepare("SELECT id FROM roles WHERE LOWER(nombre) = LOWER(:nombre) LIMIT 1");
-            $stmtRol->bindParam(":nombre", $rol, PDO::PARAM_STR);
-            $stmtRol->execute();
-            $rolRow = $stmtRol->fetch(PDO::FETCH_ASSOC);
-            if ($rolRow) {
-                $rolId = (int)$rolRow['id'];
+            $permisoModel = new Permiso();
+            $rolId = $permisoModel->obtenerRolIdPorNombre($rol) ?? 0;
+            if ($rolId > 0) {
                 $_SESSION['personal']['rol_id'] = $rolId;
             }
         } catch (Exception $e) {
@@ -72,7 +73,7 @@ function usuarioTienePermisoCitas($db) {
 
     if ($rolId > 0) {
         try {
-            $permisoModel = new Permiso($db);
+            $permisoModel = new Permiso();
             $permisos = $permisoModel->getPermisosPorRol($rolId);
             if (isset($permisos['citas'])) {
                 return (bool)$permisos['citas'];
@@ -86,58 +87,41 @@ function usuarioTienePermisoCitas($db) {
     return ($rol === 'admin' || $rol === 'guia' || $rol === 'guía');
 }
 
-// Inicializar base de datos
-$database = new Database();
-$db = $database->getConnection();
-
-if ($db === null) {
-    if ($action === 'descargar_plantilla') {
-        die("Error de conexión a la base de datos.");
-    } else {
-        http_response_code(500);
-        echo json_encode([
-            "status" => "error",
-            "message" => "No se pudo establecer conexión con la base de datos."
-        ]);
-    }
-    exit;
-}
-
 // Procesar según método HTTP y acción
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($action) {
         case 'crear':
-            crearCitaAction($db);
+            crearCitaAction();
             break;
         case 'editar':
-            editarCitaAction($db);
+            editarCitaAction();
             break;
         case 'eliminar':
-            eliminarCitaAction($db);
+            eliminarCitaAction();
             break;
         case 'importar_visitantes':
-            importarVisitantesAction($db);
+            importarVisitantesAction();
             break;
         case 'vincular_visitantes':
-            vincularVisitantesAction($db);
+            vincularVisitantesAction();
             break;
         case 'desvincular_visitante':
-            desvincularVisitanteAction($db);
+            desvincularVisitanteAction();
             break;
         case 'asignar_guia':
-            asignarGuiaAction($db);
+            asignarGuiaAction();
             break;
         case 'desasignar_guia':
-            desasignarGuiaAction($db);
+            desasignarGuiaAction();
             break;
         case 'empezar_recorrido':
-            empezarRecorridoAction($db);
+            empezarRecorridoAction();
             break;
         case 'terminar_recorrido':
-            terminarRecorridoAction($db);
+            terminarRecorridoAction();
             break;
         case 'asignar_recorrido':
-            asignarRecorridoAction($db);
+            asignarRecorridoAction();
             break;
         default:
             http_response_code(400);
@@ -150,31 +134,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     switch ($action) {
         case 'listar':
-            listarCitasAction($db);
+            listarCitasAction();
             break;
         case 'obtener':
-            obtenerCitaAction($db);
+            obtenerCitaAction();
             break;
         case 'comprobar_institucion':
-            comprobarInstitucionAction($db);
+            comprobarInstitucionAction();
             break;
         case 'descargar_plantilla':
-            descargarPlantillaAction($db);
+            descargarPlantillaAction();
             break;
         case 'listar_visitantes':
-            listarVisitantesAction($db);
+            listarVisitantesAction();
             break;
         case 'obtener_datos_dashboard':
-            obtenerDatosDashboardAction($db);
+            obtenerDatosDashboardAction();
             break;
         case 'citas_hoy':
-            citasHoyAction($db);
+            citasHoyAction();
             break;
         case 'listar_guias':
-            listarGuiasAction($db);
+            listarGuiasAction();
             break;
         case 'guias_cita':
-            guiasCitaAction($db);
+            guiasCitaAction();
             break;
         default:
             http_response_code(400);
@@ -197,9 +181,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // =========================================================================
 
 /**
- * Comprueba si la institución existe por su RIF
+ * Comprueba si la institución existe por su tipo y número de documento
  */
-function comprobarInstitucionAction($db) {
+function comprobarInstitucionAction() {
     $tipo_documento = isset($_GET['tipo_documento']) ? strtoupper(trim($_GET['tipo_documento'])) : 'J';
     $documento = isset($_GET['documento']) ? trim($_GET['documento']) : '';
 
@@ -212,7 +196,10 @@ function comprobarInstitucionAction($db) {
         return;
     }
 
-    $institucionData = Institucion::buscarPorDocumento($db, $tipo_documento, $documento);
+    $instModel = new Institucion();
+    $instModel->setTipoDocumento($tipo_documento);
+    $instModel->setDocumento($documento);
+    $institucionData = $instModel->buscarPorDocumento();
 
     http_response_code(200);
     if ($institucionData) {
@@ -230,10 +217,10 @@ function comprobarInstitucionAction($db) {
 }
 
 /**
- * Lista todas las citas
+ * Lista todas las citas activas
  */
-function listarCitasAction($db) {
-    if (!usuarioTienePermisoCitas($db)) {
+function listarCitasAction() {
+    if (!usuarioTienePermisoCitas()) {
         http_response_code(403);
         echo json_encode([
             "status" => "error",
@@ -243,7 +230,7 @@ function listarCitasAction($db) {
     }
 
     try {
-        $citaModel = new Cita($db);
+        $citaModel = new Cita();
         $citas = $citaModel->listarTodas();
 
         http_response_code(200);
@@ -263,8 +250,8 @@ function listarCitasAction($db) {
 /**
  * Registra institución (si aplica) y la cita
  */
-function crearCitaAction($db) {
-    if (!usuarioTienePermisoCitas($db)) {
+function crearCitaAction() {
+    if (!usuarioTienePermisoCitas()) {
         http_response_code(403);
         echo json_encode([
             "status" => "error",
@@ -357,10 +344,9 @@ function crearCitaAction($db) {
             $sedesRaw = isset($_POST['sedes']) ? $_POST['sedes'] : [];
             $contactosRaw = isset($_POST['contactos']) ? $_POST['contactos'] : [];
 
-            // Fallback: si se enviaron ciudad_id y parroquia_id planos
-            if (empty($sedesRaw) && !empty($_POST['ciudad_id']) && !empty($_POST['parroquia_id'])) {
+            // Fallback: si se envió parroquia_id plano
+            if (empty($sedesRaw) && !empty($_POST['parroquia_id'])) {
                 $sedesRaw[] = [
-                    'ciudad_id' => $_POST['ciudad_id'],
                     'parroquia_id' => $_POST['parroquia_id'],
                     'detalles' => $_POST['detalles_direccion'] ?? ''
                 ];
@@ -388,12 +374,10 @@ function crearCitaAction($db) {
             $sedesValidadas = [];
             if (is_array($sedesRaw)) {
                 foreach ($sedesRaw as $s) {
-                    $cId = filter_var($s['ciudad_id'] ?? 0, FILTER_VALIDATE_INT);
                     $pId = filter_var($s['parroquia_id'] ?? 0, FILTER_VALIDATE_INT);
                     $det = strip_tags(trim($s['detalles'] ?? ''));
-                    if ($cId && $pId) {
+                    if ($pId) {
                         $sedesValidadas[] = [
-                            'ciudad_id' => $cId,
                             'parroquia_id' => $pId,
                             'detalles' => substr($det, 0, 150)
                         ];
@@ -433,7 +417,7 @@ function crearCitaAction($db) {
                 return;
             }
 
-            $instModel = new Institucion($db);
+            $instModel = new Institucion();
             $instModel->setTipoDocumento($tipo_documento);
             $instModel->setDocumento($documento);
             $instModel->setNombreCompleto($nombre_completo);
@@ -446,7 +430,9 @@ function crearCitaAction($db) {
             if ($instModel->crear()) {
                 $institucion_id = $instModel->getId();
                 // Obtener el ID de la primera sede creada
-                $sedesCreadas = Sede::listarPorInstitucion($db, $institucion_id);
+                $sedeModel = new Sede();
+                $sedeModel->setInstitucionId($institucion_id);
+                $sedesCreadas = $sedeModel->listarPorInstitucion();
                 if (!empty($sedesCreadas)) {
                     $sede_id = (int)$sedesCreadas[0]['id'];
                 }
@@ -456,14 +442,12 @@ function crearCitaAction($db) {
         } else {
             // Institución existente: si el usuario solicita registrar una nueva sede al vuelo
             $crearNuevaSede = isset($_POST['crear_nueva_sede']) && $_POST['crear_nueva_sede'] == '1';
-            $nuevaCiudadId = isset($_POST['nueva_sede_ciudad_id']) ? filter_var($_POST['nueva_sede_ciudad_id'], FILTER_VALIDATE_INT) : null;
             $nuevaParroquiaId = isset($_POST['nueva_sede_parroquia_id']) ? filter_var($_POST['nueva_sede_parroquia_id'], FILTER_VALIDATE_INT) : null;
             $nuevaDetalles = isset($_POST['nueva_sede_detalles']) ? strip_tags(trim($_POST['nueva_sede_detalles'])) : '';
 
-            if ($crearNuevaSede && $nuevaCiudadId && $nuevaParroquiaId) {
-                $sedeModel = new Sede($db);
+            if ($crearNuevaSede && $nuevaParroquiaId) {
+                $sedeModel = new Sede();
                 $sedeModel->setInstitucionId($institucion_id);
-                $sedeModel->setCiudadId($nuevaCiudadId);
                 $sedeModel->setParroquiaId($nuevaParroquiaId);
                 $sedeModel->setDetalles(substr($nuevaDetalles, 0, 150));
                 if ($sedeModel->crear()) {
@@ -473,7 +457,7 @@ function crearCitaAction($db) {
         }
 
         // 2. Registrar la cita
-        $citaModel = new Cita($db);
+        $citaModel = new Cita();
         $citaModel->setInstitucionId($institucion_id);
         $citaModel->setSedeId($sede_id);
         $citaModel->setRecorridoId($recorrido_id);
@@ -514,8 +498,8 @@ function crearCitaAction($db) {
 /**
  * Elimina una cita
  */
-function eliminarCitaAction($db) {
-    if (!usuarioTienePermisoCitas($db)) {
+function eliminarCitaAction() {
+    if (!usuarioTienePermisoCitas()) {
         http_response_code(403);
         echo json_encode([
             "status" => "error",
@@ -536,8 +520,9 @@ function eliminarCitaAction($db) {
     }
 
     try {
-        $citaModel = new Cita($db);
-        if ($citaModel->eliminar($id)) {
+        $citaModel = new Cita();
+        $citaModel->setId($id);
+        if ($citaModel->eliminar()) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
@@ -560,16 +545,18 @@ function eliminarCitaAction($db) {
 }
 
 /**
- * Genera y fuerza la descarga de la plantilla CSV de visitantes compatible con Excel
+ * Genera y fuerza la descarga de la plantilla Excel de visitantes
  */
-function descargarPlantillaAction($db) {
+function descargarPlantillaAction() {
     $cita_id = isset($_GET['cita_id']) ? filter_var($_GET['cita_id'], FILTER_VALIDATE_INT) : null;
 
     if (!$cita_id) {
         die("ID de cita inválido.");
     }
 
-    $cita = Cita::obtenerPorId($db, $cita_id);
+    $citaModel = new Cita();
+    $citaModel->setId($cita_id);
+    $cita = $citaModel->obtenerPorId();
     if (!$cita) {
         die("La cita no existe en el sistema.");
     }
@@ -589,7 +576,7 @@ function descargarPlantillaAction($db) {
 /**
  * Procesa la importación de visitantes de la cita
  */
-function importarVisitantesAction($db) {
+function importarVisitantesAction() {
     $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
 
     if (!$cita_id) {
@@ -601,335 +588,161 @@ function importarVisitantesAction($db) {
         return;
     }
 
+    if (!isset($_FILES['archivo_visitantes']) || $_FILES['archivo_visitantes']['error'] !== UPLOAD_ERR_OK) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "No se subió ningún archivo o hubo un error en la carga."
+        ]);
+        return;
+    }
+
+    $fileTmp = $_FILES['archivo_visitantes']['tmp_name'];
+    $fileName = $_FILES['archivo_visitantes']['name'];
+    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+    if (!in_array($fileExt, ['xlsx', 'csv'])) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "Solo se permiten archivos en formato XLSX o CSV."
+        ]);
+        return;
+    }
+
     $visitantes = [];
-    $visitantesJson = isset($_POST['visitantes_json']) ? trim($_POST['visitantes_json']) : '';
 
-    if (!empty($visitantesJson)) {
-        $rawVisitantes = json_decode($visitantesJson, true);
-        if (!is_array($rawVisitantes)) {
-            http_response_code(400);
-            echo json_encode([
-                "status" => "error",
-                "message" => "El listado de visitantes tiene un formato JSON inválido."
-            ]);
-            return;
-        }
-
-        $validatedList = [];
-        $rowNum = 0;
-        foreach ($rawVisitantes as $v) {
-            $rowNum++;
-            $nom = trim($v['nombres'] ?? '');
-            $ape = trim($v['apellidos'] ?? '');
-            $ced = trim($v['cedula'] ?? '');
-            $fNac = trim($v['fecha_nacimiento'] ?? '');
-
-            // Validaciones estrictas en el Controller para cada visitante
-            if (empty($nom) || mb_strlen($nom) < 2) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowNum}: El nombre del visitante es obligatorio y debe tener al menos 2 caracteres."
-                ]);
-                return;
+    if ($fileExt === 'csv') {
+        if (($handle = fopen($fileTmp, "r")) !== FALSE) {
+            // Descartar BOM si existe
+            $bom = fread($handle, 3);
+            if ($bom !== "\xEF\xBB\xBF") {
+                rewind($handle);
             }
 
-            if (preg_match('/\d/', $nom)) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowNum}: El nombre '{$nom}' no puede contener números."
-                ]);
-                return;
-            }
-
-            if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $nom)) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowNum}: El nombre '{$nom}' contiene caracteres no permitidos (solo letras)."
-                ]);
-                return;
-            }
-
-            if (empty($ape) || mb_strlen($ape) < 2) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowNum}: El apellido del visitante es obligatorio y debe tener al menos 2 caracteres."
-                ]);
-                return;
-            }
-
-            if (preg_match('/\d/', $ape)) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowNum}: El apellido '{$ape}' no puede contener números."
-                ]);
-                return;
-            }
-
-            if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $ape)) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowNum}: El apellido '{$ape}' contiene caracteres no permitidos (solo letras)."
-                ]);
-                return;
-            }
-
-            if (empty($fNac)) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowNum}: La fecha de nacimiento del visitante '{$nom}' es obligatoria."
-                ]);
-                return;
-            }
-
-            if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $fNac, $matches)) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowNum}: La fecha de nacimiento del visitante '{$nom}' no tiene un formato de fecha válido (AAAA-MM-DD)."
-                ]);
-                return;
-            }
-
-            $y = (int)$matches[1];
-            $m = (int)$matches[2];
-            $d = (int)$matches[3];
-
-            if (!checkdate($m, $d, $y)) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowNum}: La fecha de nacimiento '{$fNac}' para '{$nom}' no es una fecha válida en el calendario."
-                ]);
-                return;
-            }
-
-            $hoy = date('Y-m-d');
-            if ($fNac > $hoy) {
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowNum}: La fecha de nacimiento del visitante '{$nom}' ({$fNac}) no puede ser una fecha futura (máximo hoy)."
-                ]);
-                return;
-            }
-
-            if (!empty($ced)) {
-                if (!ctype_digit($ced)) {
-                    http_response_code(400);
-                    echo json_encode([
-                        "status" => "error",
-                        "message" => "Fila #{$rowNum}: La cédula '{$ced}' del visitante '{$nom}' contiene caracteres no permitidos (solo números)."
-                    ]);
-                    return;
-                }
-                if (strlen($ced) < 5 || strlen($ced) > 12) {
-                    http_response_code(400);
-                    echo json_encode([
-                        "status" => "error",
-                        "message" => "Fila #{$rowNum}: La cédula '{$ced}' del visitante '{$nom}' debe contener entre 5 y 12 dígitos numéricos."
-                    ]);
-                    return;
-                }
-                $cedulaFinal = $ced;
+            // Omitir cabecera
+            $firstRow = fgetcsv($handle, 1000, ",");
+            if ($firstRow === false || count($firstRow) < 2) {
+                rewind($handle);
+                $firstRow = fgetcsv($handle, 1000, ";");
+                $delimiter = ";";
             } else {
-                $cedulaFinal = null;
+                $delimiter = ",";
             }
 
-            $validatedList[] = [
-                'cedula' => $cedulaFinal,
-                'nombres' => strip_tags($nom),
-                'apellidos' => strip_tags($ape),
-                'fecha_nacimiento' => $fNac
-            ];
+            while (($data = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
+                if (empty($data) || (count($data) === 1 && trim($data[0]) === '')) {
+                    continue;
+                }
+
+                $cedula = isset($data[0]) ? trim($data[0]) : null;
+                $nombres = isset($data[1]) ? trim($data[1]) : '';
+                $apellidos = isset($data[2]) ? trim($data[2]) : '';
+                $diaNac = isset($data[3]) ? trim($data[3]) : '';
+                $mesNac = isset($data[4]) ? trim($data[4]) : '';
+                $anoNac = isset($data[5]) ? trim($data[5]) : '';
+
+                if (empty($nombres) && empty($apellidos) && empty($cedula)) {
+                    continue;
+                }
+
+                $cedulaVal = (!empty($cedula) && preg_match('/^[0-9]{5,10}$/', $cedula)) ? $cedula : null;
+                $fechaNac = resolveBirthDatePhp($diaNac, $mesNac, $anoNac);
+
+                $visitantes[] = [
+                    'cedula' => $cedulaVal,
+                    'nombres' => substr($nombres, 0, 100),
+                    'apellidos' => substr($apellidos, 0, 100),
+                    'fecha_nacimiento' => !empty($fechaNac) ? $fechaNac : null
+                ];
+            }
+            fclose($handle);
         }
-        $visitantes = $validatedList;
     } else {
-        if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+        // Parsear archivo XLSX nativamente sin dependencias pesadas
+        $zip = new ZipArchive();
+        if ($zip->open($fileTmp) === TRUE) {
+            // 1. Cargar strings compartidos
+            $sharedStrings = [];
+            $sstXml = $zip->getFromName('xl/sharedStrings.xml');
+            if ($sstXml) {
+                $xml = simplexml_load_string($sstXml);
+                if ($xml) {
+                    foreach ($xml->si as $si) {
+                        if (isset($si->t)) {
+                            $sharedStrings[] = (string)$si->t;
+                        } elseif (isset($si->r)) {
+                            $text = '';
+                            foreach ($si->r as $r) {
+                                $text .= (string)$r->t;
+                            }
+                            $sharedStrings[] = $text;
+                        } else {
+                            $sharedStrings[] = '';
+                        }
+                    }
+                }
+            }
+
+            // 2. Cargar hoja de cálculo 1
+            $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+            if ($sheetXml) {
+                $sheet = simplexml_load_string($sheetXml);
+                if ($sheet && isset($sheet->sheetData->row)) {
+                    $isFirst = true;
+                    foreach ($sheet->sheetData->row as $row) {
+                        if ($isFirst) {
+                            $isFirst = false;
+                            continue; // Omitir cabecera
+                        }
+
+                        $cols = [];
+                        foreach ($row->c as $c) {
+                            $ref = (string)$c['r'];
+                            $colLetter = preg_replace('/[0-9]/', '', $ref);
+                            $t = (string)$c['t'];
+                            $val = isset($c->v) ? (string)$c->v : '';
+
+                            if ($t === 's' && isset($sharedStrings[(int)$val])) {
+                                $val = $sharedStrings[(int)$val];
+                            }
+
+                            $cols[$colLetter] = trim($val);
+                        }
+
+                        // Columna A = Cédula, B = Nombres, C = Apellidos, D = Día, E = Mes, F = Año
+                        $cedula = $cols['A'] ?? null;
+                        $nombres = $cols['B'] ?? '';
+                        $apellidos = $cols['C'] ?? '';
+                        $diaNac = $cols['D'] ?? '';
+                        $mesNac = $cols['E'] ?? '';
+                        $anoNac = $cols['F'] ?? '';
+
+                        if (empty($nombres) && empty($apellidos) && empty($cedula)) {
+                            continue;
+                        }
+
+                        $cedulaVal = (!empty($cedula) && preg_match('/^[0-9]{5,10}$/', $cedula)) ? $cedula : null;
+                        $fechaNac = resolveBirthDatePhp($diaNac, $mesNac, $anoNac);
+
+                        $visitantes[] = [
+                            'cedula' => $cedulaVal,
+                            'nombres' => substr($nombres, 0, 100),
+                            'apellidos' => substr($apellidos, 0, 100),
+                            'fecha_nacimiento' => !empty($fechaNac) ? $fechaNac : null
+                        ];
+                    }
+                }
+            }
+            $zip->close();
+        } else {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
-                "message" => "Debe subir un archivo CSV válido o enviar un listado en formato JSON."
+                "message" => "No se pudo leer el archivo XLSX cargado."
             ]);
             return;
         }
-
-        $fileTmp = $_FILES['file']['tmp_name'];
-        $handle = fopen($fileTmp, "r");
-
-        if (!$handle) {
-            http_response_code(500);
-            echo json_encode([
-                "status" => "error",
-                "message" => "No se pudo leer el archivo cargado."
-            ]);
-            return;
-        }
-
-        $bom = fread($handle, 3);
-        if ($bom !== "\xEF\xBB\xBF") {
-            rewind($handle);
-        }
-
-        $header = fgetcsv($handle, 1000, ";");
-        $delimiter = ";";
-
-        if ($header === false || count($header) < 2) {
-            rewind($handle);
-            if ($bom === "\xEF\xBB\xBF") {
-                fread($handle, 3);
-            }
-            $header = fgetcsv($handle, 1000, ",");
-            $delimiter = ",";
-        }
-
-        $rowIndex = 1;
-
-        while (($data = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
-            $rowIndex++;
-            if (empty($data) || count($data) < 3) continue;
-            
-            $ced = trim($data[0] ?? '');
-            $nom = trim($data[1] ?? '');
-            $ape = trim($data[2] ?? '');
-
-            if (mb_strtolower($nom) === 'nombres' || mb_strtolower($nom) === 'nombre') {
-                continue;
-            }
-
-            if ($ced === '12345678' && $nom === 'Pedro' && $ape === 'Pérez') {
-                continue;
-            }
-
-            if (empty($nom) && empty($ape)) {
-                continue;
-            }
-
-            $col3 = trim($data[3] ?? '');
-            $col4 = trim($data[4] ?? '');
-            $col5 = trim($data[5] ?? '');
-            $fNac = resolveBirthDatePhp($col3, $col4, $col5);
-
-            // Validaciones en el Controller
-            if (empty($nom) || mb_strlen($nom) < 2) {
-                fclose($handle);
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowIndex}: El nombre del visitante es obligatorio y debe tener al menos 2 caracteres."
-                ]);
-                return;
-            }
-
-            if (preg_match('/\d/', $nom)) {
-                fclose($handle);
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowIndex}: El nombre '{$nom}' no puede contener números."
-                ]);
-                return;
-            }
-
-            if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $nom)) {
-                fclose($handle);
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowIndex}: El nombre '{$nom}' contiene caracteres no permitidos (solo letras)."
-                ]);
-                return;
-            }
-
-            if (empty($ape) || mb_strlen($ape) < 2) {
-                fclose($handle);
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowIndex}: El apellido del visitante es obligatorio y debe tener al menos 2 caracteres."
-                ]);
-                return;
-            }
-
-            if (preg_match('/\d/', $ape)) {
-                fclose($handle);
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowIndex}: El apellido '{$ape}' no puede contener números."
-                ]);
-                return;
-            }
-
-            if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $ape)) {
-                fclose($handle);
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowIndex}: El apellido '{$ape}' contiene caracteres no permitidos (solo letras)."
-                ]);
-                return;
-            }
-
-            if (empty($fNac)) {
-                fclose($handle);
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowIndex}: La fecha de nacimiento del visitante '{$nom}' no es válida o está incompleta."
-                ]);
-                return;
-            }
-
-            $hoy = date('Y-m-d');
-            if ($fNac > $hoy) {
-                fclose($handle);
-                http_response_code(400);
-                echo json_encode([
-                    "status" => "error",
-                    "message" => "Fila #{$rowIndex}: La fecha de nacimiento del visitante '{$nom}' ({$fNac}) no puede ser una fecha futura (máximo hoy)."
-                ]);
-                return;
-            }
-
-            if (!empty($ced)) {
-                if (!ctype_digit($ced)) {
-                    fclose($handle);
-                    http_response_code(400);
-                    echo json_encode([
-                        "status" => "error",
-                        "message" => "Fila #{$rowIndex}: La cédula '{$ced}' del visitante '{$nom}' contiene caracteres no permitidos (solo números)."
-                    ]);
-                    return;
-                }
-                if (strlen($ced) < 5 || strlen($ced) > 12) {
-                    fclose($handle);
-                    http_response_code(400);
-                    echo json_encode([
-                        "status" => "error",
-                        "message" => "Fila #{$rowIndex}: La cédula '{$ced}' del visitante '{$nom}' debe contener entre 5 y 12 dígitos numéricos."
-                    ]);
-                    return;
-                }
-                $cedulaFinal = $ced;
-            } else {
-                $cedulaFinal = null;
-            }
-
-            $visitantes[] = [
-                'cedula' => $cedulaFinal,
-                'nombres' => strip_tags($nom),
-                'apellidos' => strip_tags($ape),
-                'fecha_nacimiento' => $fNac
-            ];
-        }
-        fclose($handle);
     }
 
     if (empty($visitantes)) {
@@ -942,7 +755,9 @@ function importarVisitantesAction($db) {
     }
 
     try {
-        if (Visitante::importarVisitantesCita($db, $cita_id, $visitantes)) {
+        $visitanteModel = new Visitante();
+        $visitanteModel->setCitaId($cita_id);
+        if ($visitanteModel->importarVisitantesCita($visitantes)) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
@@ -1024,13 +839,12 @@ function resolveBirthDatePhp($valCol3, $valCol4, $valCol5) {
     $s4 = trim((string)$valCol4);
     $s5 = trim((string)$valCol5);
 
-    // 1. Columnas separadas Día, Mes, Año (cuando hay al menos 2 columnas o las 3 con datos)
+    // 1. Columnas separadas Día, Mes, Año
     if ($s3 !== '' && ($s4 !== '' || $s5 !== '')) {
         $d = parseDayValPhp($s3);
         $m = parseMonthValPhp($s4);
         $y = parseYearValPhp($s5);
 
-        // Si día está en rango de mes (1-12) y mes está en rango de día (>12 y <=31), se detecta inversión
         if ($m > 12 && $m <= 31 && $d >= 1 && $d <= 12) {
             $temp = $d;
             $d = $m;
@@ -1089,7 +903,7 @@ function resolveBirthDatePhp($valCol3, $valCol4, $valCol5) {
 /**
  * Obtiene el listado de visitantes de una cita específica
  */
-function listarVisitantesAction($db) {
+function listarVisitantesAction() {
     $cita_id = isset($_GET['cita_id']) ? filter_var($_GET['cita_id'], FILTER_VALIDATE_INT) : 0;
     if ($cita_id <= 0) {
         http_response_code(400);
@@ -1101,7 +915,9 @@ function listarVisitantesAction($db) {
     }
     
     try {
-        $visitantes = Visitante::obtenerPorCitaId($db, $cita_id);
+        $visitanteModel = new Visitante();
+        $visitanteModel->setCitaId($cita_id);
+        $visitantes = $visitanteModel->obtenerPorCitaId();
         echo json_encode([
             "status" => "success",
             "data" => $visitantes
@@ -1119,10 +935,11 @@ function listarVisitantesAction($db) {
 /**
  * Retorna la información de calendario de visitas y estadísticas de afluencia para el dashboard
  */
-function obtenerDatosDashboardAction($db) {
+function obtenerDatosDashboardAction() {
     try {
-        $calendario = Cita::obtenerCronogramaCalendario($db);
-        $estadisticas = Cita::obtenerEstadisticasAfluencia($db);
+        $citaModel = new Cita();
+        $calendario = $citaModel->obtenerCronogramaCalendario();
+        $estadisticas = $citaModel->obtenerEstadisticasAfluencia();
         
         http_response_code(200);
         echo json_encode([
@@ -1142,14 +959,18 @@ function obtenerDatosDashboardAction($db) {
 /**
  * Retorna las citas programadas para el día de hoy, según el rol y sesión del usuario
  */
-function citasHoyAction($db) {
+function citasHoyAction() {
     try {
         $personal = $_SESSION['personal'];
         $rol = $personal['rol'];
         $personalId = (int)$personal['id'];
-        $tienePermisoCitas = usuarioTienePermisoCitas($db);
+        $tienePermisoCitas = usuarioTienePermisoCitas();
 
-        $citas = Cita::obtenerCitasHoy($db, $rol, $personalId, $tienePermisoCitas);
+        $citaModel = new Cita();
+        $citaModel->setFiltroRol($rol);
+        $citaModel->setFiltroPersonalId($personalId);
+        $citaModel->setTienePermisoCitas($tienePermisoCitas);
+        $citas = $citaModel->obtenerCitasHoy();
 
         http_response_code(200);
         echo json_encode([
@@ -1168,7 +989,7 @@ function citasHoyAction($db) {
 /**
  * Obtiene los detalles de una cita específica por su ID
  */
-function obtenerCitaAction($db) {
+function obtenerCitaAction() {
     $id = isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : null;
 
     if (!$id) {
@@ -1180,7 +1001,9 @@ function obtenerCitaAction($db) {
         return;
     }
 
-    $cita = Cita::obtenerPorId($db, $id);
+    $citaModel = new Cita();
+    $citaModel->setId($id);
+    $cita = $citaModel->obtenerPorId();
 
     if ($cita) {
         http_response_code(200);
@@ -1200,8 +1023,8 @@ function obtenerCitaAction($db) {
 /**
  * Modifica una cita existente
  */
-function editarCitaAction($db) {
-    if (!usuarioTienePermisoCitas($db)) {
+function editarCitaAction() {
+    if (!usuarioTienePermisoCitas()) {
         http_response_code(403);
         echo json_encode([
             "status" => "error",
@@ -1305,7 +1128,9 @@ function editarCitaAction($db) {
     }
 
     try {
-        $citaActual = Cita::obtenerPorId($db, $id);
+        $citaModel = new Cita();
+        $citaModel->setId($id);
+        $citaActual = $citaModel->obtenerPorId();
         if (!$citaActual) {
             http_response_code(404);
             echo json_encode([
@@ -1318,8 +1143,6 @@ function editarCitaAction($db) {
         $finalInstId = $institucion_id ? $institucion_id : $citaActual['institucion_id'];
         $finalSedeId = $sede_id ? $sede_id : ($citaActual['sede_id'] ?? null);
 
-        $citaModel = new Cita($db);
-        $citaModel->setId($id);
         $citaModel->setInstitucionId($finalInstId);
         $citaModel->setSedeId($finalSedeId);
         $citaModel->setRecorridoId($recorrido_id);
@@ -1360,7 +1183,7 @@ function editarCitaAction($db) {
 /**
  * Vincula una lista de visitantes existentes a una cita
  */
-function vincularVisitantesAction($db) {
+function vincularVisitantesAction() {
     $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
     $visitante_ids = isset($_POST['visitante_ids']) ? $_POST['visitante_ids'] : [];
 
@@ -1383,31 +1206,9 @@ function vincularVisitantesAction($db) {
     }
 
     try {
-        $db->beginTransaction();
-
-        $stmtVerificarLink = $db->prepare("SELECT id FROM asistencia_cita WHERE cita_id = :cita_id AND visitante_id = :visitante_id LIMIT 1");
-        $stmtInsertarLink = $db->prepare("INSERT INTO asistencia_cita (cita_id, visitante_id) VALUES (:cita_id, :visitante_id)");
-
-        $vinculados = 0;
-        foreach ($visitante_ids as $vid) {
-            $vidClean = filter_var($vid, FILTER_VALIDATE_INT);
-            if (!$vidClean) continue;
-
-            // Verificar si ya está vinculado
-            $stmtVerificarLink->bindParam(":cita_id", $cita_id, PDO::PARAM_INT);
-            $stmtVerificarLink->bindParam(":visitante_id", $vidClean, PDO::PARAM_INT);
-            $stmtVerificarLink->execute();
-            $linkExists = $stmtVerificarLink->fetchColumn();
-
-            if (!$linkExists) {
-                $stmtInsertarLink->bindParam(":cita_id", $cita_id, PDO::PARAM_INT);
-                $stmtInsertarLink->bindParam(":visitante_id", $vidClean, PDO::PARAM_INT);
-                $stmtInsertarLink->execute();
-                $vinculados++;
-            }
-        }
-
-        $db->commit();
+        $citaModel = new Cita();
+        $citaModel->setId($cita_id);
+        $vinculados = $citaModel->vincularVisitantes($visitante_ids);
 
         http_response_code(200);
         echo json_encode([
@@ -1415,9 +1216,6 @@ function vincularVisitantesAction($db) {
             "message" => "Se han vinculado {$vinculados} visitantes a la cita exitosamente."
         ]);
     } catch (Exception $e) {
-        if ($db->inTransaction()) {
-            $db->rollBack();
-        }
         http_response_code(500);
         echo json_encode([
             "status" => "error",
@@ -1429,7 +1227,7 @@ function vincularVisitantesAction($db) {
 /**
  * Remueve un visitante de la asistencia a una cita
  */
-function desvincularVisitanteAction($db) {
+function desvincularVisitanteAction() {
     $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
     $visitante_id = isset($_POST['visitante_id']) ? filter_var($_POST['visitante_id'], FILTER_VALIDATE_INT) : null;
 
@@ -1443,12 +1241,9 @@ function desvincularVisitanteAction($db) {
     }
 
     try {
-        $query = "DELETE FROM asistencia_cita WHERE cita_id = :cita_id AND visitante_id = :visitante_id";
-        $stmt = $db->prepare($query);
-        $stmt->bindParam(":cita_id", $cita_id, PDO::PARAM_INT);
-        $stmt->bindParam(":visitante_id", $visitante_id, PDO::PARAM_INT);
-
-        if ($stmt->execute()) {
+        $citaModel = new Cita();
+        $citaModel->setId($cita_id);
+        if ($citaModel->desvincularVisitante($visitante_id)) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
@@ -1473,31 +1268,27 @@ function desvincularVisitanteAction($db) {
 /**
  * Lista todos los guías de campo activos en el sistema
  */
-function listarGuiasAction($db) {
+function listarGuiasAction() {
     try {
         $citaId = isset($_GET['cita_id']) ? filter_var($_GET['cita_id'], FILTER_VALIDATE_INT) : null;
         $fechaVisita = null;
         if ($citaId) {
-            $stmtC = $db->prepare("SELECT fecha_visita FROM citas WHERE id = :id LIMIT 1");
-            $stmtC->bindParam(':id', $citaId, PDO::PARAM_INT);
-            $stmtC->execute();
-            $fechaVisita = $stmtC->fetchColumn();
+            $citaModel = new Cita();
+            $citaModel->setId($citaId);
+            $fechaVisita = $citaModel->obtenerFechaVisita();
         }
 
-        $query = "SELECT p.id, e.nombre_completo, e.nombre_completo AS nombre, '' AS apellido 
-                  FROM personal p
-                  INNER JOIN entidades e ON p.entidad_id = e.id
-                  INNER JOIN roles r ON p.rol_id = r.id
-                  WHERE r.nombre = 'guia'
-                  ORDER BY e.nombre_completo ASC";
-        $stmt = $db->prepare($query);
-        $stmt->execute();
-        $guias = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $personalModel = new Personal();
+        $guias = $personalModel->listarGuias();
 
         // Si se especificó cita, calcular disponibilidad para esa fecha
+        $citaCheck = new Cita();
         foreach ($guias as &$g) {
             if ($fechaVisita) {
-                $tieneActiva = Cita::guiaTieneCitaActivaEnFecha($db, (int)$g['id'], (string)$fechaVisita, (int)$citaId);
+                $citaCheck->setPersonalId((int)$g['id']);
+                $citaCheck->setFechaVisita((string)$fechaVisita);
+                $citaCheck->setCitaIdExcluir((int)$citaId);
+                $tieneActiva = $citaCheck->guiaTieneCitaActivaEnFecha();
                 $g['disponible'] = !$tieneActiva;
             } else {
                 $g['disponible'] = true;
@@ -1522,7 +1313,7 @@ function listarGuiasAction($db) {
 /**
  * Asigna un guía a una cita específica
  */
-function asignarGuiaAction($db) {
+function asignarGuiaAction() {
     $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
     $personal_id = isset($_POST['personal_id']) ? filter_var($_POST['personal_id'], FILTER_VALIDATE_INT) : null;
     $rol_guia = isset($_POST['rol_guia']) ? trim($_POST['rol_guia']) : 'principal';
@@ -1538,13 +1329,16 @@ function asignarGuiaAction($db) {
 
     // Regla de Negocio: No permitir asignar a un guía dos veces en el mismo día si tiene una cita ya asignada;
     // sólo se podrá reasignar cuando ya termine la cita que le fue otorgada (estatus 'completado').
-    $stmtCita = $db->prepare("SELECT fecha_visita FROM citas WHERE id = :id LIMIT 1");
-    $stmtCita->bindParam(':id', $cita_id, PDO::PARAM_INT);
-    $stmtCita->execute();
-    $fechaVisita = $stmtCita->fetchColumn();
+    $citaModel = new Cita();
+    $citaModel->setId($cita_id);
+    $fechaVisita = $citaModel->obtenerFechaVisita();
 
     if ($fechaVisita) {
-        if (Cita::guiaTieneCitaActivaEnFecha($db, $personal_id, $fechaVisita, $cita_id)) {
+        $citaCheck = new Cita();
+        $citaCheck->setPersonalId($personal_id);
+        $citaCheck->setFechaVisita($fechaVisita);
+        $citaCheck->setCitaIdExcluir($cita_id);
+        if ($citaCheck->guiaTieneCitaActivaEnFecha()) {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
@@ -1554,7 +1348,9 @@ function asignarGuiaAction($db) {
         }
     }
 
-    $success = Cita::asignarGuia($db, $cita_id, $personal_id, $rol_guia);
+    $citaModel->setPersonalId($personal_id);
+    $citaModel->setRolGuia($rol_guia);
+    $success = $citaModel->asignarGuia();
 
     if ($success) {
         http_response_code(200);
@@ -1574,7 +1370,7 @@ function asignarGuiaAction($db) {
 /**
  * Elimina una asignación de guía de una cita
  */
-function desasignarGuiaAction($db) {
+function desasignarGuiaAction() {
     $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
     $personal_id = isset($_POST['personal_id']) ? filter_var($_POST['personal_id'], FILTER_VALIDATE_INT) : null;
 
@@ -1587,7 +1383,10 @@ function desasignarGuiaAction($db) {
         return;
     }
 
-    $success = Cita::desasignarGuia($db, $cita_id, $personal_id);
+    $citaModel = new Cita();
+    $citaModel->setId($cita_id);
+    $citaModel->setPersonalId($personal_id);
+    $success = $citaModel->desasignarGuia();
 
     if ($success) {
         http_response_code(200);
@@ -1607,7 +1406,7 @@ function desasignarGuiaAction($db) {
 /**
  * Lista los guías asignados a una cita específica
  */
-function guiasCitaAction($db) {
+function guiasCitaAction() {
     $cita_id = isset($_GET['cita_id']) ? filter_var($_GET['cita_id'], FILTER_VALIDATE_INT) : null;
 
     if (!$cita_id) {
@@ -1620,16 +1419,9 @@ function guiasCitaAction($db) {
     }
 
     try {
-        $query = "SELECT ga.personal_id, e.nombre_completo, e.nombre_completo AS nombre, '' AS apellido, ga.rol_guia 
-                  FROM guia_asignado ga
-                  INNER JOIN personal p ON ga.personal_id = p.id
-                  INNER JOIN entidades e ON p.entidad_id = e.id
-                  WHERE ga.cita_id = :cita_id
-                  ORDER BY ga.rol_guia ASC";
-        $stmt = $db->prepare($query);
-        $stmt->bindParam(':cita_id', $cita_id, PDO::PARAM_INT);
-        $stmt->execute();
-        $asignados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $citaModel = new Cita();
+        $citaModel->setId($cita_id);
+        $asignados = $citaModel->obtenerGuiasAsignados();
 
         http_response_code(200);
         echo json_encode([
@@ -1648,7 +1440,7 @@ function guiasCitaAction($db) {
 /**
  * Inicia el recorrido de una cita (cambia estatus a 'en_recorrido' y fija hora de inicio)
  */
-function empezarRecorridoAction($db) {
+function empezarRecorridoAction() {
     $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
 
     if (!$cita_id) {
@@ -1664,9 +1456,13 @@ function empezarRecorridoAction($db) {
     $rolNorm = strtolower(trim((string)$personal['rol']));
     $personalId = (int)$personal['id'];
 
+    $citaModel = new Cita();
+    $citaModel->setId($cita_id);
+    $citaModel->setPersonalId($personalId);
+
     // Si es guía, comprobar que esté asignado a la cita
     if ($rolNorm === 'guia' || $rolNorm === 'guía') {
-        if (!Cita::esGuiaAsignado($db, $cita_id, $personalId)) {
+        if (!$citaModel->esGuiaAsignado()) {
             http_response_code(403);
             echo json_encode([
                 "status" => "error",
@@ -1676,7 +1472,7 @@ function empezarRecorridoAction($db) {
         }
     }
 
-    $success = Cita::empezarRecorrido($db, $cita_id);
+    $success = $citaModel->empezarRecorrido();
 
     if ($success) {
         http_response_code(200);
@@ -1696,7 +1492,7 @@ function empezarRecorridoAction($db) {
 /**
  * Finaliza manualmente el recorrido de una cita (cambia estatus a 'completado')
  */
-function terminarRecorridoAction($db) {
+function terminarRecorridoAction() {
     $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
 
     if (!$cita_id) {
@@ -1712,9 +1508,13 @@ function terminarRecorridoAction($db) {
     $rolNorm = strtolower(trim((string)$personal['rol']));
     $personalId = (int)$personal['id'];
 
+    $citaModel = new Cita();
+    $citaModel->setId($cita_id);
+    $citaModel->setPersonalId($personalId);
+
     // Si es guía, comprobar que esté asignado a la cita
     if ($rolNorm === 'guia' || $rolNorm === 'guía') {
-        if (!Cita::esGuiaAsignado($db, $cita_id, $personalId)) {
+        if (!$citaModel->esGuiaAsignado()) {
             http_response_code(403);
             echo json_encode([
                 "status" => "error",
@@ -1724,7 +1524,7 @@ function terminarRecorridoAction($db) {
         }
     }
 
-    $success = Cita::terminarRecorrido($db, $cita_id);
+    $success = $citaModel->terminarRecorrido();
 
     if ($success) {
         http_response_code(200);
@@ -1745,7 +1545,7 @@ function terminarRecorridoAction($db) {
  * Asigna o modifica el recorrido asignado a una cita.
  * Permitido tanto para el Administrador como para el Guía asignado a dicha cita.
  */
-function asignarRecorridoAction($db) {
+function asignarRecorridoAction() {
     $cita_id = isset($_POST['cita_id']) ? filter_var($_POST['cita_id'], FILTER_VALIDATE_INT) : null;
     $recorrido_id = (isset($_POST['recorrido_id']) && $_POST['recorrido_id'] !== '') 
         ? filter_var($_POST['recorrido_id'], FILTER_VALIDATE_INT) 
@@ -1773,11 +1573,15 @@ function asignarRecorridoAction($db) {
     $rolNorm = strtolower(trim((string)$personal['rol']));
     $personalId = (int)$personal['id'];
 
+    $citaModel = new Cita();
+    $citaModel->setId($cita_id);
+    $citaModel->setPersonalId($personalId);
+
     // Permisos: SuperAdmin, Admin o Guía asignado a esta cita
     $esAdmin = ($rolNorm === 'superadmin' || $rolNorm === 'admin');
     if (!$esAdmin) {
         if ($rolNorm === 'guia' || $rolNorm === 'guía') {
-            if (!Cita::esGuiaAsignado($db, $cita_id, $personalId)) {
+            if (!$citaModel->esGuiaAsignado()) {
                 http_response_code(403);
                 echo json_encode([
                     "status" => "error",
@@ -1798,10 +1602,9 @@ function asignarRecorridoAction($db) {
     // Validar existencia del recorrido si se suministró un ID
     $nombreRecorrido = 'Ninguno / Libre';
     if ($recorrido_id !== null && $recorrido_id > 0) {
-        $stmtR = $db->prepare("SELECT nombre FROM recorrido WHERE id = :id LIMIT 1");
-        $stmtR->bindParam(':id', $recorrido_id, PDO::PARAM_INT);
-        $stmtR->execute();
-        $nombreRecorrido = $stmtR->fetchColumn();
+        $recorridoModel = new Recorrido();
+        $recorridoModel->setId($recorrido_id);
+        $nombreRecorrido = $recorridoModel->obtenerNombre();
         if (!$nombreRecorrido) {
             http_response_code(400);
             echo json_encode([
@@ -1814,7 +1617,8 @@ function asignarRecorridoAction($db) {
         $recorrido_id = null;
     }
 
-    $success = Cita::actualizarRecorrido($db, $cita_id, $recorrido_id);
+    $citaModel->setRecorridoId($recorrido_id);
+    $success = $citaModel->actualizarRecorrido();
 
     if ($success) {
         http_response_code(200);

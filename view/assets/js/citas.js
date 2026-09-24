@@ -144,10 +144,11 @@ $(document).ready(function() {
 
             const nombreInst = c.nombre_completo || c.razon_social || '';
             let sedeInfo = '';
-            if (c.sede_ciudad || c.sede_estado) {
-                sedeInfo = `<div class="mt-1"><span class="badge bg-light text-dark border" style="font-size:0.7rem;">Sede: ${c.sede_ciudad || c.sede_estado}</span> <small class="text-muted">${c.sede_detalles || ''}</small></div>`;
+            if (c.sede_municipio || c.sede_estado) {
+                const ubicacionStr = [c.sede_municipio, c.sede_estado].filter(Boolean).join(', ');
+                sedeInfo = `<div class="mt-1"><span class="badge bg-light text-dark border" style="font-size:0.7rem;">Sede: ${ubicacionStr}</span> <small class="text-muted">${c.sede_detalles || ''}</small></div>`;
             } else if (c.estado) {
-                sedeInfo = `<div class="mt-1"><small class="text-muted">${c.estado}, ${c.ciudad || ''}</small></div>`;
+                sedeInfo = `<div class="mt-1"><small class="text-muted">${c.estado}${c.municipio ? `, ${c.municipio}` : ''}</small></div>`;
             }
 
             const rowHtml = `
@@ -321,27 +322,9 @@ $(document).ready(function() {
         });
     }
 
-    function cargarCascadaSedeCita($card, estadoId, selectedMunId, selectedCiuId, selectedParId, isReadOnly = false) {
+    function cargarCascadaSedeCita($card, estadoId, selectedMunId, selectedParId, isReadOnly = false) {
         const $selectMun = $card.find('.select-municipio');
-        const $selectCiu = $card.find('.select-ciudad');
         const $selectPar = $card.find('.select-parroquia');
-
-        // Ciudades
-        $.ajax({
-            url: `controllers/LocationController.php?action=ciudades&estado_id=${estadoId}`,
-            method: 'GET',
-            dataType: 'json',
-            success: function(resp) {
-                if (resp.status === 'success') {
-                    $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>');
-                    resp.data.forEach(function(c) {
-                        const sel = (selectedCiuId && c.id_ciudad == selectedCiuId) ? 'selected' : '';
-                        $selectCiu.append(`<option value="${c.id_ciudad}" ${sel}>${c.ciudad}</option>`);
-                    });
-                    $selectCiu.prop('disabled', isReadOnly);
-                }
-            }
-        });
 
         // Municipios y Parroquias
         $.ajax({
@@ -440,25 +423,19 @@ $(document).ready(function() {
                     ${deleteBtnHtml}
                 </div>
                 <div class="row g-2">
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Estado</label>
                         <select class="form-select form-select-sm select-estado" ${disabledAttr} required>
                             <option value="">Seleccione Estado</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Municipio</label>
                         <select class="form-select form-select-sm select-municipio" required disabled>
                             <option value="">Seleccione Municipio</option>
                         </select>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Ciudad</label>
-                        <select class="form-select form-select-sm select-ciudad" required disabled>
-                            <option value="">Seleccione Ciudad</option>
-                        </select>
-                    </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Parroquia</label>
                         <select class="form-select form-select-sm select-parroquia" required disabled>
                             <option value="">Seleccione Parroquia</option>
@@ -482,7 +459,7 @@ $(document).ready(function() {
             if (sedeData && (sedeData.id_estado || sedeData.estado_id)) {
                 const estId = sedeData.id_estado || sedeData.estado_id;
                 $selectEstado.val(estId);
-                cargarCascadaSedeCita($card, estId, sedeData.id_municipio || sedeData.municipio_id, sedeData.ciudad_id, sedeData.parroquia_id, isReadOnly);
+                cargarCascadaSedeCita($card, estId, sedeData.id_municipio || sedeData.municipio_id, sedeData.parroquia_id, isReadOnly);
             }
         } else {
             $.ajax({
@@ -496,7 +473,7 @@ $(document).ready(function() {
                         if (sedeData && (sedeData.id_estado || sedeData.estado_id)) {
                             const estId = sedeData.id_estado || sedeData.estado_id;
                             $selectEstado.val(estId);
-                            cargarCascadaSedeCita($card, estId, sedeData.id_municipio || sedeData.municipio_id, sedeData.ciudad_id, sedeData.parroquia_id, isReadOnly);
+                            cargarCascadaSedeCita($card, estId, sedeData.id_municipio || sedeData.municipio_id, sedeData.parroquia_id, isReadOnly);
                         }
                     }
                 }
@@ -507,29 +484,12 @@ $(document).ready(function() {
             $selectEstado.on('change', function() {
                 const estadoId = $(this).val();
                 const $selectMun = $card.find('.select-municipio');
-                const $selectCiu = $card.find('.select-ciudad');
                 const $selectPar = $card.find('.select-parroquia');
 
                 $selectMun.empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
-                $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>').prop('disabled', true);
                 $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
 
                 if (!estadoId) return;
-
-                $.ajax({
-                    url: `controllers/LocationController.php?action=ciudades&estado_id=${estadoId}`,
-                    method: 'GET',
-                    dataType: 'json',
-                    success: function(resp) {
-                        if (resp.status === 'success') {
-                            $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>');
-                            resp.data.forEach(function(c) {
-                                $selectCiu.append(`<option value="${c.id_ciudad}">${c.ciudad}</option>`);
-                            });
-                            $selectCiu.prop('disabled', false);
-                        }
-                    }
-                });
 
                 $.ajax({
                     url: `controllers/LocationController.php?action=municipios&estado_id=${estadoId}`,
@@ -586,7 +546,6 @@ $(document).ready(function() {
         if (esNuevaSede) {
             const estId = $('#nueva_sede_cita_estado').val();
             const munId = $('#nueva_sede_cita_municipio').val();
-            const ciuId = $('#nueva_sede_cita_ciudad').val();
             const parId = $('#nueva_sede_cita_parroquia').val();
             const det = $.trim($('#nueva_sede_cita_detalles').val());
 
@@ -594,7 +553,6 @@ $(document).ready(function() {
                 id: '',
                 id_estado: estId,
                 id_municipio: munId,
-                ciudad_id: ciuId,
                 parroquia_id: parId,
                 detalles: det,
                 is_nueva: true
@@ -708,7 +666,6 @@ $(document).ready(function() {
         $('#final_institucion_id').val('');
         $('#final_sede_id').val('');
         $('#final_crear_nueva_sede').val('0');
-        $('#final_nueva_sede_ciudad_id').val('');
         $('#final_nueva_sede_parroquia_id').val('');
         $('#final_nueva_sede_detalles').val('');
         $('#final_tipo_documento').val('');
@@ -958,7 +915,7 @@ $(document).ready(function() {
                                 <input class="form-check-input radio-sede-item" type="radio" name="wizard_selected_sede" id="sede_opt_${s.id}" value="${s.id}" data-sede='${JSON.stringify(s).replace(/'/g, "&apos;")}' ${isChecked}>
                                 <label class="form-check-label w-100 cursor-pointer" for="sede_opt_${s.id}">
                                     <span class="badge bg-success me-1">Sede #${num}</span>
-                                    <strong>${s.estado}, ${s.ciudad} (${s.parroquia})</strong>
+                                    <strong>${s.estado}${s.municipio ? `, ${s.municipio}` : ''} (${s.parroquia})</strong>
                                     ${labelDetails}
                                 </label>
                             </div>
@@ -1024,29 +981,12 @@ $(document).ready(function() {
     $('#nueva_sede_cita_estado').on('change', function() {
         const estadoId = $(this).val();
         const $selectMun = $('#nueva_sede_cita_municipio');
-        const $selectCiu = $('#nueva_sede_cita_ciudad');
         const $selectPar = $('#nueva_sede_cita_parroquia');
 
         $selectMun.empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
-        $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>').prop('disabled', true);
         $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
 
         if (!estadoId) return;
-
-        $.ajax({
-            url: `controllers/LocationController.php?action=ciudades&estado_id=${estadoId}`,
-            method: 'GET',
-            dataType: 'json',
-            success: function(resp) {
-                if (resp.status === 'success') {
-                    $selectCiu.empty().append('<option value="">Seleccione Ciudad</option>');
-                    resp.data.forEach(function(c) {
-                        $selectCiu.append(`<option value="${c.id_ciudad}">${c.ciudad}</option>`);
-                    });
-                    $selectCiu.prop('disabled', false);
-                }
-            }
-        });
 
         $.ajax({
             url: `controllers/LocationController.php?action=municipios&estado_id=${estadoId}`,
@@ -1085,13 +1025,6 @@ $(document).ready(function() {
                 }
             }
         });
-    });
-
-    $('#nueva_sede_cita_ciudad').on('change', function() {
-        $('#final_nueva_sede_ciudad_id').val($(this).val());
-        if ($('#final_crear_nueva_sede').val() === '1') {
-            actualizarPrevisualizacionSedeEnPaso2();
-        }
     });
     $('#nueva_sede_cita_parroquia').on('change', function() {
         $('#final_nueva_sede_parroquia_id').val($(this).val());
@@ -1203,14 +1136,12 @@ $(document).ready(function() {
                 if ($('#final_crear_nueva_sede').val() === '1') {
                     const estId = $('#nueva_sede_cita_estado').val();
                     const munId = $('#nueva_sede_cita_municipio').val();
-                    const ciuId = $('#nueva_sede_cita_ciudad').val();
                     const parId = $('#nueva_sede_cita_parroquia').val();
 
-                    if (!estId || !munId || !ciuId || !parId) {
-                        showGlobalAlert('Por favor complete todos los datos geográficos (Estado, Municipio, Ciudad y Parroquia) para la nueva sede que desea registrar.', 'warning');
+                    if (!estId || !munId || !parId) {
+                        showGlobalAlert('Por favor complete todos los datos geográficos (Estado, Municipio y Parroquia) para la nueva sede que desea registrar.', 'warning');
                         if (!estId) window.marcarErrorInput('#nueva_sede_cita_estado', 'Seleccione el Estado.', true);
                         else if (!munId) window.marcarErrorInput('#nueva_sede_cita_municipio', 'Seleccione el Municipio.', true);
-                        else if (!ciuId) window.marcarErrorInput('#nueva_sede_cita_ciudad', 'Seleccione la Ciudad.', true);
                         else if (!parId) window.marcarErrorInput('#nueva_sede_cita_parroquia', 'Seleccione la Parroquia.', true);
                         return;
                     }
@@ -1285,7 +1216,6 @@ $(document).ready(function() {
                 const num = idx + 1;
                 const $est = $(this).find('.select-estado');
                 const $mun = $(this).find('.select-municipio');
-                const $ciu = $(this).find('.select-ciudad');
                 const $par = $(this).find('.select-parroquia');
 
                 if (!$est.val()) {
@@ -1298,12 +1228,6 @@ $(document).ready(function() {
                     sedeError = true;
                     $firstSedeErr = $mun;
                     sedeErrorMsg = `Debe seleccionar el Municipio en la Sede #${num}.`;
-                    return false;
-                }
-                if (!$ciu.val()) {
-                    sedeError = true;
-                    $firstSedeErr = $ciu;
-                    sedeErrorMsg = `Debe seleccionar la Ciudad en la Sede #${num}.`;
                     return false;
                 }
                 if (!$par.val()) {
@@ -1484,12 +1408,10 @@ $(document).ready(function() {
             // Nueva institución: recopilar sedes y contactos dinámicos
             const sedes = [];
             $('#citaSedesContainer .sede-card').each(function(idx) {
-                const ciuId = $(this).find('.select-ciudad').val();
                 const parId = $(this).find('.select-parroquia').val();
                 const det = $.trim($(this).find('.input-detalles').val());
-                if (ciuId && parId) {
+                if (parId) {
                     sedes.push({
-                        ciudad_id: ciuId,
                         parroquia_id: parId,
                         detalles: det,
                         es_principal: idx === 0 ? 1 : 0
@@ -1531,7 +1453,6 @@ $(document).ready(function() {
         } else {
             // Institución existente
             if ($('#final_crear_nueva_sede').val() === '1') {
-                $('#final_nueva_sede_ciudad_id').val($('#nueva_sede_cita_ciudad').val());
                 $('#final_nueva_sede_parroquia_id').val($('#nueva_sede_cita_parroquia').val());
                 $('#final_nueva_sede_detalles').val($('#nueva_sede_cita_detalles').val());
             }
@@ -1617,7 +1538,7 @@ $(document).ready(function() {
                                     sResp.data.forEach(function(s, idx) {
                                         const sel = (cita.sede_id && cita.sede_id == s.id) ? 'selected' : '';
                                         const det = s.detalles ? ' - ' + s.detalles : '';
-                                        $sedeSelect.append(`<option value="${s.id}" ${sel}>Sede #${idx+1}: ${s.estado}, ${s.ciudad} (${s.parroquia})${det}</option>`);
+                                        $sedeSelect.append(`<option value="${s.id}" ${sel}>Sede #${idx+1}: ${s.estado}${s.municipio ? `, ${s.municipio}` : ''} (${s.parroquia})${det}</option>`);
                                     });
                                 }
                             }

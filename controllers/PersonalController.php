@@ -3,6 +3,7 @@
  * Controlador de Personal (PersonalController)
  * Procesa de forma segura las operaciones CRUD de personal, respondiendo con estados HTTP y JSON.
  * Acceso restringido exclusivamente a personal con rol 'superadmin'.
+ * Respeta el patrón MVC delegando la gestión de base de datos y SQL al modelo Personal.
  */
 
 // Aseguramos que la sesión esté activa
@@ -14,7 +15,6 @@ if (session_status() === PHP_SESSION_NONE) {
 header("Content-Type: application/json; charset=UTF-8");
 
 // Incluimos las dependencias necesarias
-require_once __DIR__ . "/../config/Database.php";
 require_once __DIR__ . "/../models/Personal.php";
 
 // =========================================================================
@@ -41,19 +41,6 @@ if ($_SESSION['personal']['rol'] !== 'superadmin') {
     exit;
 }
 
-// Inicializar conexión a la base de datos
-$database = new Database();
-$db = $database->getConnection();
-
-if ($db === null) {
-    http_response_code(500);
-    echo json_encode([
-        "status" => "error",
-        "message" => "No se pudo establecer conexión con la base de datos."
-    ]);
-    exit;
-}
-
 // Capturar la acción del request
 $action = isset($_GET['action']) ? trim($_GET['action']) : '';
 
@@ -61,13 +48,13 @@ $action = isset($_GET['action']) ? trim($_GET['action']) : '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($action) {
         case 'crear':
-            crearAction($db);
+            crearAction();
             break;
         case 'actualizar':
-            actualizarAction($db);
+            actualizarAction();
             break;
         case 'eliminar':
-            eliminarAction($db);
+            eliminarAction();
             break;
         default:
             http_response_code(400);
@@ -80,13 +67,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     switch ($action) {
         case 'listar':
-            listarAction($db);
+            listarAction();
             break;
         case 'listar_roles':
-            listarRolesAction($db);
+            listarRolesAction();
             break;
         case 'obtener':
-            obtenerAction($db);
+            obtenerAction();
             break;
         default:
             http_response_code(400);
@@ -111,9 +98,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 /**
  * Obtiene y retorna el listado de todo el personal
  */
-function listarAction($db) {
+function listarAction() {
     try {
-        $personalModel = new Personal($db);
+        $personalModel = new Personal();
         $listaPersonal = $personalModel->listarTodos();
         
         http_response_code(200);
@@ -133,7 +120,7 @@ function listarAction($db) {
 /**
  * Obtiene y retorna los detalles de un personal por su ID
  */
-function obtenerAction($db) {
+function obtenerAction() {
     $id = isset($_GET['id']) && is_numeric($_GET['id']) ? (int)$_GET['id'] : null;
     
     if ($id === null || $id < 0) {
@@ -146,7 +133,9 @@ function obtenerAction($db) {
     }
 
     try {
-        $personalData = Personal::obtenerPorId($db, $id);
+        $personalModel = new Personal();
+        $personalModel->setId($id);
+        $personalData = $personalModel->obtenerPorId();
         
         if ($personalData) {
             http_response_code(200);
@@ -165,7 +154,7 @@ function obtenerAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error al consultar el personal."
+            "message" => "Ocurrió un error al consultar el personal: " . $e->getMessage()
         ]);
     }
 }
@@ -173,7 +162,7 @@ function obtenerAction($db) {
 /**
  * Registra un nuevo personal en el sistema
  */
-function crearAction($db) {
+function crearAction() {
     $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
     $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
     $nombre_completo = isset($_POST['nombre_completo']) ? trim($_POST['nombre_completo']) : '';
@@ -183,7 +172,7 @@ function crearAction($db) {
     $rol = isset($_POST['rol']) ? trim($_POST['rol']) : '';
     $password = isset($_POST['password']) ? trim($_POST['password']) : '';
 
-    // Validar campos requeridos
+    // Validar campos requeridos en el controlador
     if (empty($tipo_documento) || empty($cedula) || empty($nombre_completo) || empty($rol) || empty($password)) {
         $missingField = empty($tipo_documento) ? "tipo_documento" : (empty($cedula) ? "cedula" : (empty($nombre_completo) ? "nombre_completo" : (empty($rol) ? "rol" : "password")));
         http_response_code(400);
@@ -201,37 +190,55 @@ function crearAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El tipo de documento proporcionado no es válido.",
+            "message" => "Tipo de documento no válido. Valores permitidos: V, E, J, G, P.",
             "field" => "tipo_documento"
         ]);
         return;
     }
 
-    // Validar formato de cédula
-    $cleanCedula = preg_replace('/[^0-9]/', '', $cedula);
-    if (strlen($cleanCedula) < 6 || strlen($cleanCedula) > 15) {
+    // Validar cédula numérica
+    if (!ctype_digit($cedula)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La cédula debe contener solo números y tener entre 6 y 15 dígitos.",
+            "message" => "El número de documento debe contener exclusivamente dígitos.",
             "field" => "cedula"
         ]);
         return;
     }
 
-    // Validar longitud de nombre_completo
-    $cleanNombre = strip_tags(trim($nombre_completo));
-    if (empty($cleanNombre) || strlen($cleanNombre) < 3 || strlen($cleanNombre) > 150) {
+    if (strlen($cedula) < 6 || strlen($cedula) > 10) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre completo debe tener entre 3 y 150 caracteres.",
+            "message" => "El documento debe contener entre 6 y 10 dígitos.",
+            "field" => "cedula"
+        ]);
+        return;
+    }
+
+    // Validar longitud y formato de nombre_completo
+    if (mb_strlen($nombre_completo) < 3 || mb_strlen($nombre_completo) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre completo debe tener entre 3 y 100 caracteres.",
             "field" => "nombre_completo"
         ]);
         return;
     }
 
-    // Validar longitud de contraseña
+    if (preg_match('/\d/', $nombre_completo)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre no puede contener números.",
+            "field" => "nombre_completo"
+        ]);
+        return;
+    }
+
+    // Validar contraseña
     if (strlen($password) < 6) {
         http_response_code(400);
         echo json_encode([
@@ -242,15 +249,9 @@ function crearAction($db) {
         return;
     }
 
-    // Obtener roles válidos desde la base de datos (excluyendo superadmin)
-    $validRoles = [];
-    try {
-        $stmtRoles = $db->prepare("SELECT nombre FROM roles WHERE nombre != 'superadmin'");
-        $stmtRoles->execute();
-        $validRoles = $stmtRoles->fetchAll(PDO::FETCH_COLUMN);
-    } catch (PDOException $e) {
-        error_log("Error al cargar roles válidos en PersonalController: " . $e->getMessage());
-    }
+    // Obtener roles válidos desde el modelo Personal
+    $personalModel = new Personal();
+    $validRoles = $personalModel->obtenerRolesList();
     if (empty($validRoles)) {
         $validRoles = ['admin', 'guia'];
     }
@@ -269,11 +270,24 @@ function crearAction($db) {
         return;
     }
 
+    // Validar unicidad del documento en la BD mediante el modelo
+    $personalModel->setTipoDocumento($tipo_documento);
+    $personalModel->setCedula($cedula);
+    if ($personalModel->existeDocumento()) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El documento {$tipo_documento}-{$cedula} ya se encuentra registrado en el sistema.",
+            "field" => "cedula"
+        ]);
+        return;
+    }
+
     try {
-        $personal = new Personal($db);
+        $personal = new Personal();
         $personal->setTipoDocumento($tipo_documento);
-        $personal->setCedula($cleanCedula);
-        $personal->setNombreCompleto($cleanNombre);
+        $personal->setCedula($cedula);
+        $personal->setNombreCompleto($nombre_completo);
         $personal->setRol($rol);
         $personal->setPlainPassword($password);
 
@@ -281,13 +295,16 @@ function crearAction($db) {
             http_response_code(201);
             echo json_encode([
                 "status" => "success",
-                "message" => "Personal registrado correctamente en el sistema."
+                "message" => "Personal registrado en el sistema exitosamente.",
+                "data" => [
+                    "id" => $personal->getId()
+                ]
             ]);
         } else {
             http_response_code(500);
             echo json_encode([
                 "status" => "error",
-                "message" => "No se pudo registrar el personal por un fallo en la base de datos."
+                "message" => "No se pudo registrar al personal en la base de datos."
             ]);
         }
     } catch (InvalidArgumentException $e) {
@@ -306,9 +323,9 @@ function crearAction($db) {
 }
 
 /**
- * Modifica un personal existente
+ * Actualiza la información de un personal existente
  */
-function actualizarAction($db) {
+function actualizarAction() {
     $id = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : null;
     $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
     $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
@@ -319,12 +336,22 @@ function actualizarAction($db) {
     $rol = isset($_POST['rol']) ? trim($_POST['rol']) : '';
     $password = isset($_POST['password']) ? trim($_POST['password']) : '';
 
-    if ($id === null || $id < 0 || empty($tipo_documento) || empty($cedula) || empty($nombre_completo) || empty($rol)) {
+    if ($id === null || $id < 0) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "ID de personal inválido para la actualización."
+        ]);
+        return;
+    }
+
+    // Validar campos obligatorios
+    if (empty($tipo_documento) || empty($cedula) || empty($nombre_completo) || empty($rol)) {
         $missingField = empty($tipo_documento) ? "tipo_documento" : (empty($cedula) ? "cedula" : (empty($nombre_completo) ? "nombre_completo" : "rol"));
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Los campos ID, tipo de documento, documento, nombre completo y rol son requeridos.",
+            "message" => "Los campos Tipo, Documento, Nombre Completo y Rol son obligatorios.",
             "field" => $missingField
         ]);
         return;
@@ -335,29 +362,47 @@ function actualizarAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El tipo de documento proporcionado no es válido.",
+            "message" => "Tipo de documento no válido.",
             "field" => "tipo_documento"
         ]);
         return;
     }
 
-    $cleanCedula = preg_replace('/[^0-9]/', '', $cedula);
-    if (strlen($cleanCedula) < 6 || strlen($cleanCedula) > 15) {
+    if (!ctype_digit($cedula)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La cédula debe contener solo números y tener entre 6 y 15 dígitos.",
+            "message" => "El número de documento debe contener exclusivamente dígitos.",
             "field" => "cedula"
         ]);
         return;
     }
 
-    $cleanNombre = strip_tags(trim($nombre_completo));
-    if (empty($cleanNombre) || strlen($cleanNombre) < 3 || strlen($cleanNombre) > 150) {
+    if (strlen($cedula) < 6 || strlen($cedula) > 10) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El nombre completo debe tener entre 3 y 150 caracteres.",
+            "message" => "El documento debe contener entre 6 y 10 dígitos.",
+            "field" => "cedula"
+        ]);
+        return;
+    }
+
+    if (mb_strlen($nombre_completo) < 3 || mb_strlen($nombre_completo) > 100) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre completo debe tener entre 3 y 100 caracteres.",
+            "field" => "nombre_completo"
+        ]);
+        return;
+    }
+
+    if (preg_match('/\d/', $nombre_completo)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El nombre no puede contener números.",
             "field" => "nombre_completo"
         ]);
         return;
@@ -373,82 +418,82 @@ function actualizarAction($db) {
         return;
     }
 
-    try {
-        $personalActual = Personal::obtenerPorId($db, $id);
-        if (!$personalActual) {
-            http_response_code(404);
-            echo json_encode([
-                "status" => "error",
-                "message" => "El personal a modificar no existe."
-            ]);
-            return;
-        }
+    // Verificar si el personal actual existe
+    $personalModel = new Personal();
+    $personalModel->setId($id);
+    $personalActual = $personalModel->obtenerPorId();
+    if (!$personalActual) {
+        http_response_code(404);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El registro de personal que intenta actualizar no existe."
+        ]);
+        return;
+    }
 
-        if ($personalActual['rol'] !== 'superadmin' && $rol === 'superadmin') {
-            http_response_code(400);
-            echo json_encode([
-                "status" => "error",
-                "message" => "No está permitido promover personal al rol de Super Administrador.",
-                "field" => "rol"
-            ]);
-            return;
-        }
+    // Proteger el rol de superadmin de degradaciones accidentales
+    if ($personalActual['rol'] === 'superadmin' && $rol !== 'superadmin') {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El rol de un Super Administrador no puede ser degradado.",
+            "field" => "rol"
+        ]);
+        return;
+    }
 
-        if ($personalActual['rol'] === 'superadmin' && $rol !== 'superadmin') {
-            http_response_code(400);
-            echo json_encode([
-                "status" => "error",
-                "message" => "No está permitido degradar o cambiar el rol de un Super Administrador.",
-                "field" => "rol"
-            ]);
-            return;
-        }
-
-        $validRoles = [];
-        try {
-            $stmtRoles = $db->prepare("SELECT nombre FROM roles WHERE nombre != 'superadmin'");
-            $stmtRoles->execute();
-            $validRoles = $stmtRoles->fetchAll(PDO::FETCH_COLUMN);
-        } catch (PDOException $e) {
-            error_log("Error al cargar roles válidos en PersonalController: " . $e->getMessage());
-        }
+    // Si no es superadmin, validar el rol contra la lista de roles permitidos desde el modelo
+    if ($personalActual['rol'] !== 'superadmin') {
+        $validRoles = $personalModel->obtenerRolesList();
         if (empty($validRoles)) {
             $validRoles = ['admin', 'guia'];
         }
 
-        if ($rol !== 'superadmin' && !in_array($rol, $validRoles, true)) {
+        if ($rol === 'superadmin' || !in_array($rol, $validRoles, true)) {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
-                "message" => "El rol especificado no es válido.",
+                "message" => "Rol no permitido. Roles válidos: " . implode(', ', array_map(function($r) {
+                    if ($r === 'admin') return 'Administrador';
+                    if ($r === 'guia') return 'Guía de Campo';
+                    return ucfirst($r);
+                }, $validRoles)),
                 "field" => "rol"
             ]);
             return;
         }
+    }
 
-        $personal = new Personal($db);
+    // Validar unicidad del documento excluyendo el ID actual mediante el modelo
+    $personalModel->setTipoDocumento($tipo_documento);
+    $personalModel->setCedula($cedula);
+    $personalModel->setExcluirId($id);
+    if ($personalModel->existeDocumento()) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El documento {$tipo_documento}-{$cedula} ya se encuentra registrado por otro usuario.",
+            "field" => "cedula"
+        ]);
+        return;
+    }
+
+    try {
+        $personal = new Personal();
         $personal->setId($id);
         $personal->setTipoDocumento($tipo_documento);
-        $personal->setCedula($cleanCedula);
-        $personal->setNombreCompleto($cleanNombre);
+        $personal->setCedula($cedula);
+        $personal->setNombreCompleto($nombre_completo);
         $personal->setRol($rol);
-
         if (!empty($password)) {
             $personal->setPlainPassword($password);
         }
 
         if ($personal->actualizar()) {
-            if ($_SESSION['personal']['id'] == $id) {
-                $_SESSION['personal']['tipo_documento'] = $personal->getTipoDocumento();
-                $_SESSION['personal']['cedula'] = $personal->getCedula();
-                $_SESSION['personal']['nombre_completo'] = $personal->getNombreCompleto();
-                $_SESSION['personal']['nombre'] = $personal->getNombreCompleto();
-            }
-
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
-                "message" => "Personal actualizado con éxito."
+                "message" => "Información del personal actualizada exitosamente."
             ]);
         } else {
             http_response_code(500);
@@ -475,7 +520,7 @@ function actualizarAction($db) {
 /**
  * Elimina un personal por ID (Previene eliminar superadmins)
  */
-function eliminarAction($db) {
+function eliminarAction() {
     $id = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : null;
 
     if ($id === null || $id < 0) {
@@ -488,7 +533,9 @@ function eliminarAction($db) {
     }
 
     try {
-        $personalActual = Personal::obtenerPorId($db, $id);
+        $personalModel = new Personal();
+        $personalModel->setId($id);
+        $personalActual = $personalModel->obtenerPorId();
         if (!$personalActual) {
             http_response_code(404);
             echo json_encode([
@@ -507,8 +554,7 @@ function eliminarAction($db) {
             return;
         }
 
-        $personal = new Personal($db);
-        if ($personal->eliminar($id)) {
+        if ($personalModel->eliminar()) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
@@ -531,7 +577,7 @@ function eliminarAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error inesperado al intentar eliminar el personal."
+            "message" => "Ocurrió un error inesperado al intentar eliminar el personal: " . $e->getMessage()
         ]);
     }
 }
@@ -539,9 +585,10 @@ function eliminarAction($db) {
 /**
  * Obtiene y retorna los roles del personal
  */
-function listarRolesAction($db) {
+function listarRolesAction() {
     try {
-        $roles = Personal::obtenerRolesList($db);
+        $personalModel = new Personal();
+        $roles = $personalModel->obtenerRolesList();
         http_response_code(200);
         echo json_encode([
             "status" => "success",

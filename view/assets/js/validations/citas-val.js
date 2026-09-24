@@ -108,9 +108,6 @@ $(document).ready(function() {
                 parroquia_id: {
                     required: "Debe seleccionar la parroquia."
                 },
-                ciudad_id: {
-                    required: "Debe seleccionar la ciudad."
-                },
                 fecha_visita: {
                     required: "Debe seleccionar una fecha para la visita guiada."
                 },

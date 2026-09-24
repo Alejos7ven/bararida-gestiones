@@ -3,6 +3,7 @@
  * Controlador de Instituciones (InstitucionController)
  * Gestiona el listado, creación, edición, sedes y eliminación de instituciones externas.
  * Acceso restringido a personal autenticado.
+ * Respeta el patrón MVC operando mediante los modelos Institucion y Sede con setters/getters.
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -22,38 +23,24 @@ if (!isset($_SESSION['personal'])) {
 }
 
 // Incluir dependencias
-require_once __DIR__ . "/../config/Database.php";
 require_once __DIR__ . "/../models/Institucion.php";
 require_once __DIR__ . "/../models/Sede.php";
-
-// Inicializar conexión
-$database = new Database();
-$db = $database->getConnection();
-
-if ($db === null) {
-    http_response_code(500);
-    echo json_encode([
-        "status" => "error",
-        "message" => "No se pudo establecer conexión con la base de datos."
-    ]);
-    exit;
-}
 
 $action = isset($_GET['action']) ? trim($_GET['action']) : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($action) {
         case 'crear':
-            crearInstitucionAction($db);
+            crearInstitucionAction();
             break;
         case 'actualizar':
-            actualizarInstitucionAction($db);
+            actualizarInstitucionAction();
             break;
         case 'eliminar':
-            eliminarInstitucionAction($db);
+            eliminarInstitucionAction();
             break;
         case 'agregar_sede':
-            agregarSedeAction($db);
+            agregarSedeAction();
             break;
         default:
             http_response_code(400);
@@ -66,16 +53,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     switch ($action) {
         case 'listar':
-            listarInstitucionesAction($db);
+            listarInstitucionesAction();
             break;
         case 'obtener':
-            obtenerInstitucionAction($db);
+            obtenerInstitucionAction();
             break;
         case 'obtener_sedes':
-            obtenerSedesAction($db);
+            obtenerSedesAction();
             break;
         case 'buscar_autocomplete':
-            buscarAutocompleteAction($db);
+            buscarAutocompleteAction();
             break;
         default:
             http_response_code(400);
@@ -97,9 +84,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // ACCIONES DEL CONTROLADOR
 // =========================================================================
 
-function listarInstitucionesAction($db) {
+function listarInstitucionesAction() {
     try {
-        $instituciones = Institucion::listarTodas($db);
+        $instModel = new Institucion();
+        $instituciones = $instModel->listarTodas();
         http_response_code(200);
         echo json_encode([
             "status" => "success",
@@ -114,7 +102,7 @@ function listarInstitucionesAction($db) {
     }
 }
 
-function obtenerInstitucionAction($db) {
+function obtenerInstitucionAction() {
     $id = isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : null;
     if (!$id) {
         http_response_code(400);
@@ -125,7 +113,9 @@ function obtenerInstitucionAction($db) {
         return;
     }
 
-    $institucion = Institucion::obtenerPorId($db, $id);
+    $instModel = new Institucion();
+    $instModel->setId($id);
+    $institucion = $instModel->obtenerPorId();
     if ($institucion) {
         http_response_code(200);
         echo json_encode([
@@ -141,7 +131,7 @@ function obtenerInstitucionAction($db) {
     }
 }
 
-function obtenerSedesAction($db) {
+function obtenerSedesAction() {
     $institucion_id = isset($_GET['institucion_id']) ? filter_var($_GET['institucion_id'], FILTER_VALIDATE_INT) : (isset($_GET['id']) ? filter_var($_GET['id'], FILTER_VALIDATE_INT) : null);
     if (!$institucion_id) {
         http_response_code(400);
@@ -152,7 +142,9 @@ function obtenerSedesAction($db) {
         return;
     }
 
-    $sedes = Sede::listarPorInstitucion($db, $institucion_id);
+    $sedeModel = new Sede();
+    $sedeModel->setInstitucionId($institucion_id);
+    $sedes = $sedeModel->listarPorInstitucion();
     http_response_code(200);
     echo json_encode([
         "status" => "success",
@@ -160,7 +152,7 @@ function obtenerSedesAction($db) {
     ]);
 }
 
-function crearInstitucionAction($db) {
+function crearInstitucionAction() {
     $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'J';
     $documento = isset($_POST['documento']) ? trim($_POST['documento']) : '';
     $nombre_completo = isset($_POST['nombre_completo']) ? trim($_POST['nombre_completo']) : (isset($_POST['nombre']) ? trim($_POST['nombre']) : '');
@@ -169,10 +161,9 @@ function crearInstitucionAction($db) {
     $sedesRaw = isset($_POST['sedes']) ? $_POST['sedes'] : [];
     $contactosRaw = isset($_POST['contactos']) ? $_POST['contactos'] : [];
 
-    // Fallback: si no viene el array de sedes pero vienen ciudad_id y parroquia_id directos
-    if (empty($sedesRaw) && !empty($_POST['ciudad_id']) && !empty($_POST['parroquia_id'])) {
+    // Fallback: si no viene el array de sedes pero viene parroquia_id directo
+    if (empty($sedesRaw) && !empty($_POST['parroquia_id'])) {
         $sedesRaw[] = [
-            'ciudad_id' => $_POST['ciudad_id'],
             'parroquia_id' => $_POST['parroquia_id'],
             'detalles' => $_POST['detalles_direccion'] ?? ''
         ];
@@ -234,13 +225,11 @@ function crearInstitucionAction($db) {
     $sedesValidadas = [];
     if (is_array($sedesRaw)) {
         foreach ($sedesRaw as $idx => $s) {
-            $cId = filter_var($s['ciudad_id'] ?? 0, FILTER_VALIDATE_INT);
             $pId = filter_var($s['parroquia_id'] ?? 0, FILTER_VALIDATE_INT);
             $det = strip_tags(trim($s['detalles'] ?? ''));
 
-            if ($cId && $pId) {
+            if ($pId) {
                 $sedesValidadas[] = [
-                    'ciudad_id' => $cId,
                     'parroquia_id' => $pId,
                     'detalles' => substr($det, 0, 150)
                 ];
@@ -252,7 +241,7 @@ function crearInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Debe agregar al menos una sede válida con su respectivo Estado, Municipio, Parroquia y Ciudad.",
+            "message" => "Debe agregar al menos una sede válida con su respectiva Parroquia.",
             "field" => "sedes"
         ]);
         return;
@@ -305,22 +294,22 @@ function crearInstitucionAction($db) {
         return;
     }
 
-    // Validar existencia previa de la institución por documento en el Controller
-    $existente = Institucion::buscarPorDocumento($db, $tipo_documento, $documento);
+    // Validar unicidad del RIF/documento mediante el modelo Institucion
+    $instModel = new Institucion();
+    $instModel->setTipoDocumento($tipo_documento);
+    $instModel->setDocumento($documento);
+    $existente = $instModel->buscarPorDocumento();
     if ($existente) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "La institución con el documento indicado ya se encuentra registrada.",
+            "message" => "El RIF/documento {$tipo_documento}-{$documento} ya se encuentra registrado con la institución: " . $existente['nombre_completo'],
             "field" => "documento"
         ]);
         return;
     }
 
     try {
-        $instModel = new Institucion($db);
-        $instModel->setTipoDocumento($tipo_documento);
-        $instModel->setDocumento($documento);
         $instModel->setNombreCompleto($nombre_completo);
         $instModel->setTipoOrganizacion($tipo_organizacion);
         $instModel->setTipoGestion($tipo_gestion);
@@ -331,9 +320,11 @@ function crearInstitucionAction($db) {
             http_response_code(201);
             echo json_encode([
                 "status" => "success",
-                "message" => "Institución registrada con éxito en el sistema.",
-                "id" => $instModel->getId(),
-                "institucion_id" => $instModel->getId()
+                "message" => "Institución registrada exitosamente con " . count($sedesValidadas) . " sede(s).",
+                "data" => [
+                    "id" => $instModel->getId(),
+                    "nombre" => $instModel->getNombreCompleto()
+                ]
             ]);
         } else {
             http_response_code(500);
@@ -352,12 +343,12 @@ function crearInstitucionAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Error interno del servidor: " . $e->getMessage()
+            "message" => "Ocurrió un error inesperado al registrar la institución: " . $e->getMessage()
         ]);
     }
 }
 
-function actualizarInstitucionAction($db) {
+function actualizarInstitucionAction() {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
     $entidad_id = isset($_POST['entidad_id']) ? filter_var($_POST['entidad_id'], FILTER_VALIDATE_INT) : null;
     $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'J';
@@ -372,9 +363,18 @@ function actualizarInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Se requiere el ID y el Entidad ID para actualizar la institución."
+            "message" => "ID de la institución o de la entidad inválido o no suministrado."
         ]);
         return;
+    }
+
+    // Fallback: si no viene el array de sedes pero viene parroquia_id directo
+    if (empty($sedesRaw) && !empty($_POST['parroquia_id'])) {
+        $sedesRaw[] = [
+            'id' => $_POST['sede_id'] ?? null,
+            'parroquia_id' => $_POST['parroquia_id'],
+            'detalles' => $_POST['detalles_direccion'] ?? ''
+        ];
     }
 
     if (empty($documento) || empty($nombre_completo) || empty($tipo_organizacion) || empty($tipo_gestion)) {
@@ -382,7 +382,7 @@ function actualizarInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Todos los campos de la institución son obligatorios.",
+            "message" => "Todos los datos identificativos de la institución son obligatorios.",
             "field" => $missingField
         ]);
         return;
@@ -392,7 +392,7 @@ function actualizarInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Tipo de documento inválido para la institución.",
+            "message" => "Tipo de documento/RIF no válido.",
             "field" => "tipo_documento"
         ]);
         return;
@@ -418,28 +418,26 @@ function actualizarInstitucionAction($db) {
         return;
     }
 
-    // Fallback de sedes si vienen campos directos
-    if (empty($sedesRaw) && !empty($_POST['ciudad_id']) && !empty($_POST['parroquia_id'])) {
-        $sedesRaw[] = [
-            'id' => $_POST['sede_id'] ?? null,
-            'ciudad_id' => $_POST['ciudad_id'],
-            'parroquia_id' => $_POST['parroquia_id'],
-            'detalles' => $_POST['detalles_direccion'] ?? ''
-        ];
+    if (!in_array($tipo_gestion, ['publica', 'privada'], true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El tipo de gestión proporcionado no es válido.",
+            "field" => "tipo_gestion"
+        ]);
+        return;
     }
 
     $sedesValidadas = [];
     if (is_array($sedesRaw)) {
-        foreach ($sedesRaw as $s) {
-            $cId = filter_var($s['ciudad_id'] ?? 0, FILTER_VALIDATE_INT);
+        foreach ($sedesRaw as $idx => $s) {
+            $sId = !empty($s['id']) ? filter_var($s['id'], FILTER_VALIDATE_INT) : null;
             $pId = filter_var($s['parroquia_id'] ?? 0, FILTER_VALIDATE_INT);
             $det = strip_tags(trim($s['detalles'] ?? ''));
-            $sId = !empty($s['id']) ? filter_var($s['id'], FILTER_VALIDATE_INT) : null;
 
-            if ($cId && $pId) {
+            if ($pId) {
                 $sedesValidadas[] = [
                     'id' => $sId,
-                    'ciudad_id' => $cId,
                     'parroquia_id' => $pId,
                     'detalles' => substr($det, 0, 150)
                 ];
@@ -451,7 +449,7 @@ function actualizarInstitucionAction($db) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Debe especificar al menos una sede válida para la institución.",
+            "message" => "Debe registrar al menos una sede válida para la institución.",
             "field" => "sedes"
         ]);
         return;
@@ -469,7 +467,7 @@ function actualizarInstitucionAction($db) {
                         http_response_code(400);
                         echo json_encode([
                             "status" => "error",
-                            "message" => "El número de teléfono '{$contVal}' es inválido. No debe contener letras y debe tener al menos 7 dígitos.",
+                            "message" => "El número de teléfono '{$contVal}' es inválido.",
                             "field" => "telefono"
                         ]);
                         return;
@@ -503,13 +501,12 @@ function actualizarInstitucionAction($db) {
         return;
     }
 
-    // Validar si el RIF/documento ya pertenece a otra institución
-    $stmtCheck = $db->prepare("SELECT COUNT(*) FROM entidades WHERE tipo_documento = :tipo_documento AND documento = :documento AND id != :entidad_id");
-    $stmtCheck->bindValue(":tipo_documento", $tipo_documento, PDO::PARAM_STR);
-    $stmtCheck->bindValue(":documento", $documento, PDO::PARAM_STR);
-    $stmtCheck->bindValue(":entidad_id", $entidad_id, PDO::PARAM_INT);
-    $stmtCheck->execute();
-    if ($stmtCheck->fetchColumn() > 0) {
+    // Validar si el RIF/documento ya pertenece a otra institución mediante el modelo
+    $instModel = new Institucion();
+    $instModel->setTipoDocumento($tipo_documento);
+    $instModel->setDocumento($documento);
+    $instModel->setEntidadId($entidad_id);
+    if ($instModel->existeDocumentoEnOtraEntidad()) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
@@ -520,11 +517,7 @@ function actualizarInstitucionAction($db) {
     }
 
     try {
-        $instModel = new Institucion($db);
         $instModel->setId($id);
-        $instModel->setEntidadId($entidad_id);
-        $instModel->setTipoDocumento($tipo_documento);
-        $instModel->setDocumento($documento);
         $instModel->setNombreCompleto($nombre_completo);
         $instModel->setTipoOrganizacion($tipo_organizacion);
         $instModel->setTipoGestion($tipo_gestion);
@@ -535,13 +528,13 @@ function actualizarInstitucionAction($db) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
-                "message" => "Información de la institución actualizada con éxito."
+                "message" => "Institución y sedes actualizadas correctamente."
             ]);
         } else {
             http_response_code(500);
             echo json_encode([
                 "status" => "error",
-                "message" => "No se pudo actualizar la institución en la base de datos."
+                "message" => "No se pudo actualizar la información de la institución."
             ]);
         }
     } catch (InvalidArgumentException $e) {
@@ -554,38 +547,35 @@ function actualizarInstitucionAction($db) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
-            "message" => "Error interno del servidor: " . $e->getMessage()
+            "message" => "Ocurrió un error inesperado al actualizar la institución: " . $e->getMessage()
         ]);
     }
 }
 
-/**
- * Agrega una nueva sede a una institución existente
- */
-function agregarSedeAction($db) {
+function agregarSedeAction() {
     $institucion_id = isset($_POST['institucion_id']) ? filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT) : null;
-    $ciudad_id = isset($_POST['ciudad_id']) ? filter_var($_POST['ciudad_id'], FILTER_VALIDATE_INT) : null;
     $parroquia_id = isset($_POST['parroquia_id']) ? filter_var($_POST['parroquia_id'], FILTER_VALIDATE_INT) : null;
     $detalles = isset($_POST['detalles']) ? strip_tags(trim($_POST['detalles'])) : (isset($_POST['detalles_direccion']) ? strip_tags(trim($_POST['detalles_direccion'])) : '');
 
-    if (!$institucion_id || !$ciudad_id || !$parroquia_id) {
+    if (!$institucion_id || !$parroquia_id) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Institución, Estado, Municipio, Parroquia y Ciudad son obligatorios para registrar la sede."
+            "message" => "Institución y Parroquia son obligatorios para registrar la sede."
         ]);
         return;
     }
 
     try {
-        $sedeModel = new Sede($db);
+        $sedeModel = new Sede();
         $sedeModel->setInstitucionId($institucion_id);
-        $sedeModel->setCiudadId($ciudad_id);
         $sedeModel->setParroquiaId($parroquia_id);
         $sedeModel->setDetalles(substr($detalles, 0, 150));
 
         if ($sedeModel->crear()) {
-            $sedeCompleta = Sede::obtenerPorId($db, $sedeModel->getId());
+            $sedeCompletaModel = new Sede();
+            $sedeCompletaModel->setId($sedeModel->getId());
+            $sedeCompleta = $sedeCompletaModel->obtenerPorId();
             http_response_code(201);
             echo json_encode([
                 "status" => "success",
@@ -608,7 +598,7 @@ function agregarSedeAction($db) {
     }
 }
 
-function eliminarInstitucionAction($db) {
+function eliminarInstitucionAction() {
     $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
 
     if (!$id) {
@@ -621,7 +611,9 @@ function eliminarInstitucionAction($db) {
     }
 
     // Regla de negocio en el Controller: no permitir eliminar instituciones con citas
-    $totalCitas = Institucion::contarCitas($db, $id);
+    $instModel = new Institucion();
+    $instModel->setId($id);
+    $totalCitas = $instModel->contarCitas();
     if ($totalCitas > 0) {
         http_response_code(400);
         echo json_encode([
@@ -632,8 +624,7 @@ function eliminarInstitucionAction($db) {
     }
 
     try {
-        $instModel = new Institucion($db);
-        if ($instModel->eliminar($id)) {
+        if ($instModel->eliminar()) {
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
@@ -658,7 +649,7 @@ function eliminarInstitucionAction($db) {
 /**
  * Busca instituciones para sugerencias de autocompletado en tiempo real
  */
-function buscarAutocompleteAction($db) {
+function buscarAutocompleteAction() {
     $q = isset($_GET['q']) ? trim($_GET['q']) : '';
     if (strlen($q) < 2) {
         echo json_encode([
@@ -669,7 +660,9 @@ function buscarAutocompleteAction($db) {
     }
 
     try {
-        $resultados = Institucion::buscarPorTermino($db, $q);
+        $instModel = new Institucion();
+        $instModel->setTerminoBusqueda($q);
+        $resultados = $instModel->buscarPorTermino();
         echo json_encode([
             "status" => "success",
             "data" => $resultados

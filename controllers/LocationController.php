@@ -3,6 +3,7 @@
  * Controlador de Localización (LocationController)
  * Retorna estados, ciudades, municipios y parroquias en formato JSON.
  * Acceso exclusivo a personal autenticado.
+ * Respeta el patrón MVC delegando las consultas SQL al modelo Location.
  */
 
 if (session_status() === PHP_SESSION_NONE) {
@@ -22,35 +23,23 @@ if (!isset($_SESSION['personal'])) {
     exit;
 }
 
-// Incluir conexión a base de datos
-require_once __DIR__ . "/../config/Database.php";
-
-$database = new Database();
-$db = $database->getConnection();
-
-if ($db === null) {
-    http_response_code(500);
-    echo json_encode([
-        "status" => "error",
-        "message" => "No se pudo establecer conexión con la base de datos."
-    ]);
-    exit;
-}
+// Incluir modelo de localización
+require_once __DIR__ . "/../models/Location.php";
 
 $action = isset($_GET['action']) ? trim($_GET['action']) : '';
 
 switch ($action) {
     case 'estados':
-        obtenerEstados($db);
+        obtenerEstadosAction();
         break;
     case 'municipios':
-        obtenerMunicipios($db);
+        obtenerMunicipiosAction();
         break;
     case 'parroquias':
-        obtenerParroquias($db);
+        obtenerParroquiasAction();
         break;
     case 'ciudades':
-        obtenerCiudades($db);
+        obtenerCiudadesAction();
         break;
     default:
         http_response_code(400);
@@ -64,18 +53,17 @@ switch ($action) {
 /**
  * Retorna todos los estados
  */
-function obtenerEstados($db) {
+function obtenerEstadosAction() {
     try {
-        $stmt = $db->prepare("SELECT id_estado, estado FROM estados ORDER BY estado ASC");
-        $stmt->execute();
-        $estados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $locationModel = new Location();
+        $estados = $locationModel->obtenerEstados();
 
         http_response_code(200);
         echo json_encode([
             "status" => "success",
             "data" => $estados
         ]);
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
@@ -87,10 +75,10 @@ function obtenerEstados($db) {
 /**
  * Retorna los municipios de un estado específico
  */
-function obtenerMunicipios($db) {
+function obtenerMunicipiosAction() {
     $estado_id = isset($_GET['estado_id']) ? filter_var($_GET['estado_id'], FILTER_VALIDATE_INT) : null;
 
-    if (!$estado_id) {
+    if (!$estado_id || $estado_id <= 0) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
@@ -100,16 +88,16 @@ function obtenerMunicipios($db) {
     }
 
     try {
-        $stmt = $db->prepare("SELECT id_municipio, municipio FROM municipios WHERE id_estado = :estado_id ORDER BY municipio ASC");
-        $stmt->execute([':estado_id' => $estado_id]);
-        $municipios = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $locationModel = new Location();
+        $locationModel->setEstadoId((int)$estado_id);
+        $municipios = $locationModel->obtenerMunicipios();
 
         http_response_code(200);
         echo json_encode([
             "status" => "success",
             "data" => $municipios
         ]);
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
@@ -121,10 +109,10 @@ function obtenerMunicipios($db) {
 /**
  * Retorna las parroquias de un municipio específico
  */
-function obtenerParroquias($db) {
+function obtenerParroquiasAction() {
     $municipio_id = isset($_GET['municipio_id']) ? filter_var($_GET['municipio_id'], FILTER_VALIDATE_INT) : null;
 
-    if (!$municipio_id) {
+    if (!$municipio_id || $municipio_id <= 0) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
@@ -134,16 +122,16 @@ function obtenerParroquias($db) {
     }
 
     try {
-        $stmt = $db->prepare("SELECT id_parroquia, parroquia FROM parroquias WHERE id_municipio = :municipio_id ORDER BY parroquia ASC");
-        $stmt->execute([':municipio_id' => $municipio_id]);
-        $parroquias = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $locationModel = new Location();
+        $locationModel->setMunicipioId((int)$municipio_id);
+        $parroquias = $locationModel->obtenerParroquias();
 
         http_response_code(200);
         echo json_encode([
             "status" => "success",
             "data" => $parroquias
         ]);
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",
@@ -155,10 +143,10 @@ function obtenerParroquias($db) {
 /**
  * Retorna las ciudades de un estado específico
  */
-function obtenerCiudades($db) {
+function obtenerCiudadesAction() {
     $estado_id = isset($_GET['estado_id']) ? filter_var($_GET['estado_id'], FILTER_VALIDATE_INT) : null;
 
-    if (!$estado_id) {
+    if (!$estado_id || $estado_id <= 0) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
@@ -168,16 +156,16 @@ function obtenerCiudades($db) {
     }
 
     try {
-        $stmt = $db->prepare("SELECT id_ciudad, ciudad FROM ciudades WHERE id_estado = :estado_id ORDER BY ciudad ASC");
-        $stmt->execute([':estado_id' => $estado_id]);
-        $ciudades = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        $locationModel = new Location();
+        $locationModel->setEstadoId((int)$estado_id);
+        $ciudades = $locationModel->obtenerCiudades();
 
         http_response_code(200);
         echo json_encode([
             "status" => "success",
             "data" => $ciudades
         ]);
-    } catch (PDOException $e) {
+    } catch (Exception $e) {
         http_response_code(500);
         echo json_encode([
             "status" => "error",

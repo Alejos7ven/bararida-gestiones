@@ -2,6 +2,7 @@
 /**
  * Controlador de Autenticación (AuthController)
  * Gestiona el login, logout y validación de sesiones, respondiendo con estados HTTP y JSON.
+ * Respeta el patrón MVC operando sobre el modelo Personal con setters/getters y sin manejar conexiones DB en el controlador.
  */
 
 // Aseguramos que la sesión esté activa
@@ -9,12 +10,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-// Habilitar reporte de errores adecuado
+// Encabezado JSON
 header("Content-Type: application/json; charset=UTF-8");
 
 // Incluimos las dependencias necesarias
-// En una aplicación real, se podría utilizar un autoloader, pero aquí incluimos de forma directa por portabilidad
-require_once __DIR__ . "/../config/Database.php";
 require_once __DIR__ . "/../models/Personal.php";
 
 // Obtenemos la acción del request
@@ -52,12 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
  * Procesa la acción de inicio de sesión
  */
 function loginAction() {
-    // Obtenemos los parámetros enviados vía POST (o desde el body JSON si es el caso)
+    // Obtenemos los parámetros enviados vía POST
     $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
     $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : null;
     $password = isset($_POST['password']) ? trim($_POST['password']) : null;
 
-    // Validación independiente de campos
+    // Validación independiente de campos en el controlador
     $errors = [];
 
     if (empty($tipo_documento)) {
@@ -85,25 +84,15 @@ function loginAction() {
         return;
     }
 
-    // Inicializamos la conexión a la base de datos
-    $database = new Database();
-    $db = $database->getConnection();
-
-    if ($db === null) {
-        http_response_code(500);
-        echo json_encode([
-            "status" => "error",
-            "message" => "No se pudo establecer conexión con la base de datos."
-        ]);
-        return;
-    }
-
     try {
-        // Instanciamos el modelo de Personal
-        $personal = new Personal($db);
+        // Instanciamos el modelo Personal (gestiona su conexión internamente)
+        $personal = new Personal();
+        $personal->setTipoDocumento($tipo_documento);
+        $personal->setCedula($cedula);
+        $personal->setPlainPassword($password);
 
         // Intentamos el login
-        if ($personal->login($tipo_documento, $cedula, $password)) {
+        if ($personal->login()) {
             // Guardamos la información del personal en la sesión para RBAC
             $_SESSION['personal'] = [
                 "id"              => $personal->getId(),
@@ -135,14 +124,12 @@ function loginAction() {
             ]);
         }
     } catch (InvalidArgumentException $e) {
-        // Errores de validación de datos
         http_response_code(400);
         echo json_encode([
             "status" => "error",
             "message" => $e->getMessage()
         ]);
     } catch (Exception $e) {
-        // Errores imprevistos
         http_response_code(500);
         echo json_encode([
             "status" => "error",
