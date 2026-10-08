@@ -145,6 +145,23 @@ function resolverRutaVista($vista) {
 }
 
 /**
+ * Retorna la etiqueta legible y formateada correspondiente al rol del usuario.
+ *
+ * @param string|null $rol Identificador del rol ('superadmin', 'admin', 'guia', etc.)
+ * @return string Etiqueta legible para la interfaz
+ */
+function obtenerEtiquetaRol(?string $rol): string {
+    $rolNormalizado = strtolower(trim((string)$rol));
+    $etiquetas = [
+        'superadmin' => 'Super Administrador',
+        'admin'      => 'Administrador',
+        'guia'       => 'Guía de Campo'
+    ];
+
+    return $etiquetas[$rolNormalizado] ?? ($rolNormalizado !== '' ? ucfirst($rolNormalizado) : 'Usuario');
+}
+
+/**
  * Despacha y prepara todo el contexto del Dashboard (control de sesión,
  * permisos RBAC, ruteo de vistas y assets) antes de renderizar la vista.
  * Centraliza las validaciones de acceso y sesión en el Controlador.
@@ -167,6 +184,7 @@ function despacharDashboard() {
     $userCedula  = htmlspecialchars(($currentUser['tipo_documento'] ?? 'V') . '-' . ($currentUser['cedula'] ?? ''));
 
     $userPermissions   = cargarPermisosUsuario($userRol, $userRolId);
+    $userRolEtiqueta   = obtenerEtiquetaRol($userRol);
     $requestedView     = $_GET['view'] ?? 'dashboard';
     $currentView       = resolverVistaPermitida($requestedView, $userRol, $userPermissions);
     $viewAssets        = obtenerAssetsVista($currentView, $userPermissions, $userRol);
@@ -178,6 +196,7 @@ function despacharDashboard() {
         'currentUser',
         'userRol',
         'userRolId',
+        'userRolEtiqueta',
         'userName',
         'userCedula',
         'userPermissions',
@@ -280,54 +299,91 @@ function obtenerMenuUsuario($currentView, $userRol, array $userPermissions) {
 function obtenerAssetsVista($vista, array $userPermissions = [], $userRol = '') {
     $assets = [
         'dashboard' => [
-            'css' => ['view/css/dashboard_main.css'],
-            'js'  => ['view/js/dashboard_main.js']
+            'css' => [
+                'view/assets/css/personal.css'
+            ],
+            'js'  => [
+                'view/assets/js/chart.min.js',
+                'view/assets/js/fullcalendar.min.js',
+                'view/assets/js/fullcalendar.es.js',
+                'view/assets/js/recorridos.js'
+            ]
         ],
         'citas' => [
             'css' => [
-                'view/css/recorridos.css',
-                'view/css/citas.css'
+                'view/assets/css/personal.css',
+                'view/assets/css/citas.css'
             ],
             'js'  => [
-                'view/js/citas.js',
-                'view/js/citas_validation.js'
+                'view/assets/js/fullcalendar.min.js',
+                'view/assets/js/fullcalendar.es.js',
+                'view/assets/js/xlsx.min.js',
+                'view/assets/js/recorridos.js',
+                'view/assets/js/citas.js',
+                'view/assets/js/validations/citas-val.js'
             ]
         ],
         'instituciones' => [
-            'css' => ['view/css/instituciones.css'],
+            'css' => [
+                'view/assets/css/personal.css'
+            ],
             'js'  => [
-                'view/js/instituciones.js',
-                'view/js/instituciones_validation.js'
+                'view/assets/js/instituciones.js',
+                'view/assets/js/validations/instituciones-val.js'
             ]
         ],
         'recorridos' => [
-            'css' => ['view/css/recorridos.css'],
-            'js'  => ['view/js/recorridos.js']
+            'css' => [
+                'view/assets/css/personal.css',
+                'view/assets/css/recorridos.css'
+            ],
+            'js'  => [
+                'view/assets/js/recorridos.js',
+                'view/assets/js/validations/recorridos-val.js'
+            ]
         ],
         'visitantes' => [
-            'css' => ['view/css/visitantes.css'],
+            'css' => [
+                'view/assets/css/personal.css'
+            ],
             'js'  => [
-                'view/js/visitantes.js',
-                'view/js/visitantes_validation.js'
+                'view/assets/js/visitantes.js',
+                'view/assets/js/validations/visitantes-val.js'
             ]
         ],
         'personal' => [
-            'css' => ['view/css/personal.css'],
+            'css' => [
+                'view/assets/css/personal.css'
+            ],
             'js'  => [
-                'view/js/personal.js',
-                'view/js/personal_validation.js'
+                'view/assets/js/personal.js',
+                'view/assets/js/validations/personal-val.js'
             ]
         ],
         'app' => [
-            'css' => ['view/css/app.css'],
-            'js'  => ['view/js/app.js']
+            'css' => [
+                'view/assets/css/personal.css'
+            ],
+            'js'  => [
+                'view/assets/js/app.js'
+            ]
         ],
         'reportes' => [
-            'css' => ['view/css/reportes.css'],
-            'js'  => ['view/js/reportes.js']
+            'css' => [
+                'view/assets/css/personal.css',
+                'view/assets/css/reportes.css'
+            ],
+            'js'  => [
+                'view/assets/js/chart.min.js',
+                'view/assets/js/html2pdf.bundle.min.js',
+                'view/assets/js/reportes.js',
+                'view/assets/js/validations/reportes-val.js'
+            ]
         ],
         'acceso_denegado' => [
-            'css' => ['view/css/acceso_denegado.css'],
+            'css' => [
+                'view/assets/css/personal.css'
+            ],
             'js'  => []
         ]
     ];

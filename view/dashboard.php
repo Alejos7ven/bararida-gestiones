@@ -5,9 +5,11 @@
  * Todas las variables ($currentUser, $userRol, $menuItems, $viewPath, etc.)
  * son resueltas, validadas y provistas exclusivamente por DashboardController.
  */
-if (!isset($viewPath)) {
+if (!isset($viewPath) || !function_exists('obtenerEtiquetaRol')) {
     require_once __DIR__ . "/../controllers/DashboardController.php";
-    extract(despacharDashboard());
+    if (!isset($viewPath)) {
+        extract(despacharDashboard());
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -104,7 +106,7 @@ if (!isset($viewPath)) {
                     <div class="user-info">
                         <p class="name"><?php echo $userName; ?></p>
                         <span class="role-badge role-<?php echo htmlspecialchars($userRol); ?>">
-                            <?php echo htmlspecialchars(obtenerEtiquetaRol($userRol)); ?>
+                            <?php echo htmlspecialchars($userRolEtiqueta ?? (function_exists('obtenerEtiquetaRol') ? obtenerEtiquetaRol($userRol) : ucfirst($userRol))); ?>
                         </span>
                     </div>
                     <div class="avatar-circle">

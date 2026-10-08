@@ -467,37 +467,7 @@ $(document).ready(function() {
             }
         });
     }
-            dataType: 'json',
-            success: function(resp) {
-                if (resp.status === 'success') {
-                    $selectMun.empty().append('<option value="">Seleccione Municipio</option>');
-                    resp.data.forEach(function(m) {
-                        const sel = (selectedMunId && m.id_municipio == selectedMunId) ? 'selected' : '';
-                        $selectMun.append(`<option value="${m.id_municipio}" ${sel}>${m.municipio}</option>`);
-                    });
-                    $selectMun.prop('disabled', false);
 
-                    if (selectedMunId) {
-                        $.ajax({
-                            url: `controllers/LocationController.php?action=parroquias&municipio_id=${selectedMunId}`,
-                            method: 'GET',
-                            dataType: 'json',
-                            success: function(pResp) {
-                                if (pResp.status === 'success') {
-                                    $selectPar.empty().append('<option value="">Seleccione Parroquia</option>');
-                                    pResp.data.forEach(function(p) {
-                                        const selP = (selectedParId && p.id_parroquia == selectedParId) ? 'selected' : '';
-                                        $selectPar.append(`<option value="${p.id_parroquia}" ${selP}>${p.parroquia}</option>`);
-                                    });
-                                    $selectPar.prop('disabled', false);
-                                }
-                            }
-                        });
-                    }
-                }
-            }
-        });
-    }
 
     function actualizarBotonesEliminarSedes(containerSelector) {
         const $container = $(containerSelector);

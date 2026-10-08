@@ -9,7 +9,7 @@
                         👋 ¡Hola, <?php echo htmlspecialchars($_SESSION['personal']['nombre'] ?? ($userName ?? 'Usuario')); ?>!
                     </h3>
                     <p class="text-muted mb-0" style="font-size: 0.88rem;">
-                        Panel de accesos rápidos para rol de <strong><?php echo htmlspecialchars(obtenerEtiquetaRol($userRol)); ?></strong>.
+                        Panel de accesos rápidos para rol de <strong><?php echo htmlspecialchars($userRolEtiqueta ?? (function_exists('obtenerEtiquetaRol') ? obtenerEtiquetaRol($userRol) : ucfirst($userRol))); ?></strong>.
                     </p>
                 </div>
                 <div class="d-flex gap-2 flex-wrap">
