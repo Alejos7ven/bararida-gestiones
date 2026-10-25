@@ -602,168 +602,258 @@ function importarVisitantesAction() {
         return;
     }
 
-    if (!isset($_FILES['archivo_visitantes']) || $_FILES['archivo_visitantes']['error'] !== UPLOAD_ERR_OK) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "No se subió ningún archivo o hubo un error en la carga."
-        ]);
-        return;
-    }
-
-    $fileTmp = $_FILES['archivo_visitantes']['tmp_name'];
-    $fileName = $_FILES['archivo_visitantes']['name'];
-    $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-    if (!in_array($fileExt, ['xlsx', 'csv'])) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Solo se permiten archivos en formato XLSX o CSV."
-        ]);
-        return;
-    }
-
     $visitantes = [];
 
-    if ($fileExt === 'csv') {
-        if (($handle = fopen($fileTmp, "r")) !== FALSE) {
-            // Descartar BOM si existe
-            $bom = fread($handle, 3);
-            if ($bom !== "\xEF\xBB\xBF") {
-                rewind($handle);
-            }
+    // Prioridad 1: Si se envían los datos previsualizados en formato JSON desde el frontend
+    if (isset($_POST['visitantes_json']) && trim((string)$_POST['visitantes_json']) !== '') {
+        $rawJson = is_string($_POST['visitantes_json']) ? trim($_POST['visitantes_json']) : '';
+        $decoded = json_decode($rawJson, true);
 
-            // Omitir cabecera
-            $firstRow = fgetcsv($handle, 1000, ",");
-            if ($firstRow === false || count($firstRow) < 2) {
-                rewind($handle);
-                $firstRow = fgetcsv($handle, 1000, ";");
-                $delimiter = ";";
-            } else {
-                $delimiter = ",";
-            }
-
-            while (($data = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
-                if (empty($data) || (count($data) === 1 && trim($data[0]) === '')) {
-                    continue;
-                }
-
-                $cedula = isset($data[0]) ? trim($data[0]) : null;
-                $nombres = isset($data[1]) ? trim($data[1]) : '';
-                $apellidos = isset($data[2]) ? trim($data[2]) : '';
-                $diaNac = isset($data[3]) ? trim($data[3]) : '';
-                $mesNac = isset($data[4]) ? trim($data[4]) : '';
-                $anoNac = isset($data[5]) ? trim($data[5]) : '';
-
-                if (empty($nombres) && empty($apellidos) && empty($cedula)) {
-                    continue;
-                }
-
-                $cedulaVal = (!empty($cedula) && preg_match('/^[0-9]{5,10}$/', $cedula)) ? $cedula : null;
-                $fechaNac = resolveBirthDatePhp($diaNac, $mesNac, $anoNac);
-
-                $visitantes[] = [
-                    'cedula' => $cedulaVal,
-                    'nombres' => substr($nombres, 0, 100),
-                    'apellidos' => substr($apellidos, 0, 100),
-                    'fecha_nacimiento' => !empty($fechaNac) ? $fechaNac : null
-                ];
-            }
-            fclose($handle);
-        }
-    } else {
-        // Parsear archivo XLSX nativamente sin dependencias pesadas
-        $zip = new ZipArchive();
-        if ($zip->open($fileTmp) === TRUE) {
-            // 1. Cargar strings compartidos
-            $sharedStrings = [];
-            $sstXml = $zip->getFromName('xl/sharedStrings.xml');
-            if ($sstXml) {
-                $xml = simplexml_load_string($sstXml);
-                if ($xml) {
-                    foreach ($xml->si as $si) {
-                        if (isset($si->t)) {
-                            $sharedStrings[] = (string)$si->t;
-                        } elseif (isset($si->r)) {
-                            $text = '';
-                            foreach ($si->r as $r) {
-                                $text .= (string)$r->t;
-                            }
-                            $sharedStrings[] = $text;
-                        } else {
-                            $sharedStrings[] = '';
-                        }
-                    }
-                }
-            }
-
-            // 2. Cargar hoja de cálculo 1
-            $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
-            if ($sheetXml) {
-                $sheet = simplexml_load_string($sheetXml);
-                if ($sheet && isset($sheet->sheetData->row)) {
-                    $isFirst = true;
-                    foreach ($sheet->sheetData->row as $row) {
-                        if ($isFirst) {
-                            $isFirst = false;
-                            continue; // Omitir cabecera
-                        }
-
-                        $cols = [];
-                        foreach ($row->c as $c) {
-                            $ref = (string)$c['r'];
-                            $colLetter = preg_replace('/[0-9]/', '', $ref);
-                            $t = (string)$c['t'];
-                            $val = isset($c->v) ? (string)$c->v : '';
-
-                            if ($t === 's' && isset($sharedStrings[(int)$val])) {
-                                $val = $sharedStrings[(int)$val];
-                            }
-
-                            $cols[$colLetter] = trim($val);
-                        }
-
-                        // Columna A = Cédula, B = Nombres, C = Apellidos, D = Día, E = Mes, F = Año
-                        $cedula = $cols['A'] ?? null;
-                        $nombres = $cols['B'] ?? '';
-                        $apellidos = $cols['C'] ?? '';
-                        $diaNac = $cols['D'] ?? '';
-                        $mesNac = $cols['E'] ?? '';
-                        $anoNac = $cols['F'] ?? '';
-
-                        if (empty($nombres) && empty($apellidos) && empty($cedula)) {
-                            continue;
-                        }
-
-                        $cedulaVal = (!empty($cedula) && preg_match('/^[0-9]{5,10}$/', $cedula)) ? $cedula : null;
-                        $fechaNac = resolveBirthDatePhp($diaNac, $mesNac, $anoNac);
-
-                        $visitantes[] = [
-                            'cedula' => $cedulaVal,
-                            'nombres' => substr($nombres, 0, 100),
-                            'apellidos' => substr($apellidos, 0, 100),
-                            'fecha_nacimiento' => !empty($fechaNac) ? $fechaNac : null
-                        ];
-                    }
-                }
-            }
-            $zip->close();
-        } else {
+        if (!is_array($decoded)) {
             http_response_code(400);
             echo json_encode([
                 "status" => "error",
-                "message" => "No se pudo leer el archivo XLSX cargado."
+                "message" => "El formato de los datos de visitantes enviados no es un JSON válido."
             ]);
             return;
         }
+
+        $todayStr = date('Y-m-d');
+        foreach ($decoded as $index => $item) {
+            $cedula = isset($item['cedula']) ? trim((string)$item['cedula']) : null;
+            $nombres = isset($item['nombres']) ? trim((string)$item['nombres']) : '';
+            $apellidos = isset($item['apellidos']) ? trim((string)$item['apellidos']) : '';
+            $fechaNac = isset($item['fecha_nacimiento']) ? trim((string)$item['fecha_nacimiento']) : null;
+
+            // Omitir filas totalmente vacías
+            if (empty($nombres) && empty($apellidos) && empty($cedula)) {
+                continue;
+            }
+
+            $rowNum = $index + 1;
+
+            if (empty($nombres)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "El nombre es obligatorio para todos los visitantes (fila $rowNum)."
+                ]);
+                return;
+            }
+
+            if (empty($apellidos)) {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "El apellido es obligatorio para todos los visitantes (fila $rowNum)."
+                ]);
+                return;
+            }
+
+            // Validar cédula: opcional en menores, pero si se especifica debe ser numérica de 5 a 12 dígitos
+            $cedulaVal = null;
+            if (!empty($cedula)) {
+                if (!preg_match('/^[0-9]{5,12}$/', $cedula)) {
+                    http_response_code(400);
+                    echo json_encode([
+                        "status" => "error",
+                        "message" => "La cédula '$cedula' no es válida (debe tener entre 5 y 12 dígitos numéricos, fila $rowNum)."
+                    ]);
+                    return;
+                }
+                $cedulaVal = $cedula;
+            }
+
+            // Validar fecha de nacimiento: formato AAAA-MM-DD y no futura
+            $fechaNacVal = null;
+            if (!empty($fechaNac)) {
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fechaNac)) {
+                    http_response_code(400);
+                    echo json_encode([
+                        "status" => "error",
+                        "message" => "La fecha de nacimiento '$fechaNac' no tiene un formato válido (AAAA-MM-DD, fila $rowNum)."
+                    ]);
+                    return;
+                }
+                if ($fechaNac > $todayStr) {
+                    http_response_code(400);
+                    echo json_encode([
+                        "status" => "error",
+                        "message" => "La fecha de nacimiento no puede ser una fecha futura (fila $rowNum)."
+                    ]);
+                    return;
+                }
+                $fechaNacVal = $fechaNac;
+            }
+
+            $visitantes[] = [
+                'cedula' => $cedulaVal,
+                'nombres' => substr($nombres, 0, 100),
+                'apellidos' => substr($apellidos, 0, 100),
+                'fecha_nacimiento' => $fechaNacVal
+            ];
+        }
+    } elseif (isset($_FILES['archivo_visitantes']) && $_FILES['archivo_visitantes']['error'] === UPLOAD_ERR_OK) {
+        // Fallback: Si se envía directamente un archivo físico XLSX o CSV
+        $fileTmp = $_FILES['archivo_visitantes']['tmp_name'];
+        $fileName = $_FILES['archivo_visitantes']['name'];
+        $fileExt = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
+
+        if (!in_array($fileExt, ['xlsx', 'csv'])) {
+            http_response_code(400);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Solo se permiten archivos en formato XLSX o CSV."
+            ]);
+            return;
+        }
+
+        if ($fileExt === 'csv') {
+            if (($handle = fopen($fileTmp, "r")) !== FALSE) {
+                // Descartar BOM si existe
+                $bom = fread($handle, 3);
+                if ($bom !== "\xEF\xBB\xBF") {
+                    rewind($handle);
+                }
+
+                // Omitir cabecera
+                $firstRow = fgetcsv($handle, 1000, ",");
+                if ($firstRow === false || count($firstRow) < 2) {
+                    rewind($handle);
+                    $firstRow = fgetcsv($handle, 1000, ";");
+                    $delimiter = ";";
+                } else {
+                    $delimiter = ",";
+                }
+
+                while (($data = fgetcsv($handle, 1000, $delimiter)) !== FALSE) {
+                    if (empty($data) || (count($data) === 1 && trim($data[0]) === '')) {
+                        continue;
+                    }
+
+                    $cedula = isset($data[0]) ? trim($data[0]) : null;
+                    $nombres = isset($data[1]) ? trim($data[1]) : '';
+                    $apellidos = isset($data[2]) ? trim($data[2]) : '';
+                    $diaNac = isset($data[3]) ? trim($data[3]) : '';
+                    $mesNac = isset($data[4]) ? trim($data[4]) : '';
+                    $anoNac = isset($data[5]) ? trim($data[5]) : '';
+
+                    if (empty($nombres) && empty($apellidos) && empty($cedula)) {
+                        continue;
+                    }
+
+                    $cedulaVal = (!empty($cedula) && preg_match('/^[0-9]{5,12}$/', $cedula)) ? $cedula : null;
+                    $fechaNac = resolveBirthDatePhp($diaNac, $mesNac, $anoNac);
+
+                    $visitantes[] = [
+                        'cedula' => $cedulaVal,
+                        'nombres' => substr($nombres, 0, 100),
+                        'apellidos' => substr($apellidos, 0, 100),
+                        'fecha_nacimiento' => !empty($fechaNac) ? $fechaNac : null
+                    ];
+                }
+                fclose($handle);
+            }
+        } else {
+            // Parsear archivo XLSX nativamente sin dependencias pesadas
+            $zip = new ZipArchive();
+            if ($zip->open($fileTmp) === TRUE) {
+                // 1. Cargar strings compartidos
+                $sharedStrings = [];
+                $sstXml = $zip->getFromName('xl/sharedStrings.xml');
+                if ($sstXml) {
+                    $xml = simplexml_load_string($sstXml);
+                    if ($xml) {
+                        foreach ($xml->si as $si) {
+                            if (isset($si->t)) {
+                                $sharedStrings[] = (string)$si->t;
+                            } elseif (isset($si->r)) {
+                                $text = '';
+                                foreach ($si->r as $r) {
+                                    $text .= (string)$r->t;
+                                }
+                                $sharedStrings[] = $text;
+                            } else {
+                                $sharedStrings[] = '';
+                            }
+                        }
+                    }
+                }
+
+                // 2. Cargar hoja de cálculo 1
+                $sheetXml = $zip->getFromName('xl/worksheets/sheet1.xml');
+                if ($sheetXml) {
+                    $sheet = simplexml_load_string($sheetXml);
+                    if ($sheet && isset($sheet->sheetData->row)) {
+                        $isFirst = true;
+                        foreach ($sheet->sheetData->row as $row) {
+                            if ($isFirst) {
+                                $isFirst = false;
+                                continue; // Omitir cabecera
+                            }
+
+                            $cols = [];
+                            foreach ($row->c as $c) {
+                                $ref = (string)$c['r'];
+                                $colLetter = preg_replace('/[0-9]/', '', $ref);
+                                $t = (string)$c['t'];
+                                $val = isset($c->v) ? (string)$c->v : '';
+
+                                if ($t === 's' && isset($sharedStrings[(int)$val])) {
+                                    $val = $sharedStrings[(int)$val];
+                                }
+
+                                $cols[$colLetter] = trim($val);
+                            }
+
+                            // Columna A = Cédula, B = Nombres, C = Apellidos, D = Día, E = Mes, F = Año
+                            $cedula = $cols['A'] ?? null;
+                            $nombres = $cols['B'] ?? '';
+                            $apellidos = $cols['C'] ?? '';
+                            $diaNac = $cols['D'] ?? '';
+                            $mesNac = $cols['E'] ?? '';
+                            $anoNac = $cols['F'] ?? '';
+
+                            if (empty($nombres) && empty($apellidos) && empty($cedula)) {
+                                continue;
+                            }
+
+                            $cedulaVal = (!empty($cedula) && preg_match('/^[0-9]{5,12}$/', $cedula)) ? $cedula : null;
+                            $fechaNac = resolveBirthDatePhp($diaNac, $mesNac, $anoNac);
+
+                            $visitantes[] = [
+                                'cedula' => $cedulaVal,
+                                'nombres' => substr($nombres, 0, 100),
+                                'apellidos' => substr($apellidos, 0, 100),
+                                'fecha_nacimiento' => !empty($fechaNac) ? $fechaNac : null
+                            ];
+                        }
+                    }
+                }
+                $zip->close();
+            } else {
+                http_response_code(400);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "No se pudo leer el archivo XLSX cargado."
+                ]);
+                return;
+            }
+        }
+    } else {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "No se subió ningún archivo ni se enviaron datos de visitantes para procesar."
+        ]);
+        return;
     }
 
     if (empty($visitantes)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El archivo cargado no contiene filas de visitantes válidas para importar."
+            "message" => "No se encontraron filas de visitantes válidas para importar."
         ]);
         return;
     }
