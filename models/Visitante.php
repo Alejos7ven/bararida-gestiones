@@ -183,13 +183,41 @@ class Visitante extends Database {
 
     /**
      * Obtiene el listado completo de todos los visitantes registrados activos
+     * con la información de procedencia correspondiente a la última cita a la que asistió
      * @return array Listado de visitantes
      */
     public function listarTodos(): array {
         if (!$this->db) {
             return [];
         }
-        $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM " . $this->table_name . " WHERE activo = 1 ORDER BY id DESC";
+        $query = "SELECT 
+                    v.id, 
+                    v.cedula, 
+                    v.nombres, 
+                    v.apellidos, 
+                    v.fecha_nacimiento,
+                    c.id AS ultima_cita_id,
+                    c.fecha_visita AS ultima_cita_fecha,
+                    e.nombre_completo AS procedencia_institucion,
+                    par.parroquia AS procedencia_parroquia,
+                    mun.municipio AS procedencia_municipio,
+                    est.estado AS procedencia_estado
+                  FROM " . $this->table_name . " v
+                  LEFT JOIN (
+                      SELECT ac.visitante_id, MAX(ac.cita_id) AS max_cita_id
+                      FROM asistencia_cita ac
+                      INNER JOIN citas c ON ac.cita_id = c.id AND c.activo = 1
+                      GROUP BY ac.visitante_id
+                  ) ult_asistencia ON v.id = ult_asistencia.visitante_id
+                  LEFT JOIN citas c ON ult_asistencia.max_cita_id = c.id
+                  LEFT JOIN instituciones i ON c.institucion_id = i.id
+                  LEFT JOIN entidades e ON i.entidad_id = e.id
+                  LEFT JOIN sedes s ON c.sede_id = s.id
+                  LEFT JOIN parroquias par ON s.parroquia_id = par.id_parroquia
+                  LEFT JOIN municipios mun ON par.id_municipio = mun.id_municipio
+                  LEFT JOIN estados est ON mun.id_estado = est.id_estado
+                  WHERE v.activo = 1 
+                  ORDER BY v.id DESC";
         $stmt = $this->db->prepare($query);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

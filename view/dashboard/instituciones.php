@@ -19,13 +19,6 @@
             </div>
         </div>
 
-        <div id="loaderInstituciones" class="text-center py-5">
-            <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
-                <span class="visually-hidden">Cargando...</span>
-            </div>
-            <p class="text-muted mt-2">Cargando instituciones registradas...</p>
-        </div>
-
         <div class="table-responsive-premium">
             <table class="table-premium">
                 <thead>
@@ -38,8 +31,15 @@
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <tbody id="tablaInstitucionesBody" style="display: none;">
-                    <!-- Se poblará vía AJAX -->
+                <tbody id="tablaInstitucionesBody">
+                    <tr id="loaderInstituciones">
+                        <td colspan="6" class="text-center py-5">
+                            <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando instituciones registradas...</p>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -283,7 +283,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: #ef4444; color: #ffffff; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalEliminarInstitucionLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Confirmar Eliminación</h5>
+                    <h5 class="modal-title text-white" id="modalEliminarInstitucionLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Confirmar Eliminación</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body" style="background:#ffffff; padding: 24px;">

@@ -65,6 +65,9 @@ $(document).ready(function() {
                 },
                 
                 // Paso 3 (Detalles de la Cita)
+                tipo: {
+                    required: true
+                },
                 fecha_visita: {
                     required: true
                 },
@@ -108,6 +111,9 @@ $(document).ready(function() {
                 parroquia_id: {
                     required: "Debe seleccionar la parroquia."
                 },
+                tipo: {
+                    required: "Debe seleccionar el tipo de cita."
+                },
                 fecha_visita: {
                     required: "Debe seleccionar una fecha para la visita guiada."
                 },
@@ -128,6 +134,12 @@ $(document).ready(function() {
     if ($('#formEditarCita').length) {
         $('#formEditarCita').validate({
             rules: {
+                sede_id: {
+                    required: false
+                },
+                tipo: {
+                    required: true
+                },
                 recorrido_id: {
                     required: false
                 },
@@ -148,6 +160,9 @@ $(document).ready(function() {
                 }
             },
             messages: {
+                tipo: {
+                    required: "Debe seleccionar el tipo de cita."
+                },
                 fecha_visita: {
                     required: "Debe seleccionar una fecha para la visita guiada."
                 },

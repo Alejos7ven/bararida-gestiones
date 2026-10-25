@@ -54,8 +54,16 @@ $(document).ready(function() {
     // 1. LISTAR CITAS (AJAX)
     // =========================================================================
     function listarCitas() {
-        $tablaCitas.hide();
-        $loader.show();
+        $tablaCitas.html(`
+            <tr id="loaderCitas">
+                <td colspan="8" class="text-center py-5">
+                    <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando cronograma de citas del parque...</p>
+                </td>
+            </tr>
+        `);
         $('#paginacionCitas').hide();
 
         $.ajax({
@@ -63,7 +71,6 @@ $(document).ready(function() {
             method: 'GET',
             dataType: 'json',
             success: function(response) {
-                $loader.hide();
                 if (response.status === 'success') {
                     cacheCitas = response.data || [];
                     
@@ -73,7 +80,7 @@ $(document).ready(function() {
                         filteredCitas = cacheCitas;
                     } else {
                         filteredCitas = cacheCitas.filter(function(c) {
-                            const searchStr = `${c.razon_social.toLowerCase()} ${c.RIF.toLowerCase()} ${c.id} ${c.tipo_documento.toLowerCase()}`;
+                            const searchStr = `${c.razon_social.toLowerCase()} ${c.RIF.toLowerCase()} ${c.id} ${c.tipo_documento.toLowerCase()} ${(c.tipo || '').toLowerCase()}`;
                             return searchStr.indexOf(query) > -1;
                         });
                     }
@@ -81,11 +88,10 @@ $(document).ready(function() {
                     renderCitasTable();
                 } else {
                     $tablaCitas.empty().append('<tr><td colspan="8" class="text-center text-muted py-4">No se pudo cargar el listado de citas.</td></tr>');
-                    $tablaCitas.fadeIn(300);
                 }
             },
             error: function(xhr) {
-                $loader.hide();
+                $tablaCitas.empty().append('<tr><td colspan="8" class="text-center text-muted py-4">Ocurrió un error al cargar el listado de citas.</td></tr>');
                 showGlobalAlert('Ocurrió un error al cargar el listado de citas.', 'danger');
             }
         });
@@ -155,7 +161,8 @@ $(document).ready(function() {
                 <tr class="cita-row">
                     <td><strong>#CIT-${c.id}</strong></td>
                     <td>
-                        <span style="white-space: nowrap;"><strong>${c.tipo_documento}-${c.RIF}</strong></span><br>
+                        <span style="white-space: nowrap;"><strong>${c.tipo_documento}-${c.RIF}</strong></span>
+                        <span class="badge bg-light text-success border ms-1" style="font-size:0.72rem; text-transform:capitalize; font-weight:600;">${c.tipo || 'Institucional'}</span><br>
                         <strong class="text-success" style="font-size:0.88rem;">${nombreInst}</strong>
                         ${sedeInfo}
                     </td>
@@ -1310,7 +1317,7 @@ $(document).ready(function() {
         } else if (currentStep === 3) {
             // Validaciones Paso 3 usando jquery-validate
             if (!$('#formCrearCita').valid()) {
-                showGlobalAlert('Por favor complete los campos obligatorios de la cita (fecha, hora y método de pago).', 'warning');
+                showGlobalAlert('Por favor complete los campos obligatorios de la cita (tipo de cita, fecha, hora y método de pago).', 'warning');
                 return;
             }
 
@@ -1445,6 +1452,7 @@ $(document).ready(function() {
                 sedes: sedes,
                 contactos: contactos,
                 recorrido_id: $('#recorrido_id').val() || '',
+                tipo: $('#tipo').val() || 'institucional',
                 fecha_visita: $('#fecha_visita').val(),
                 hora_inicio: $('#hora_inicio').val(),
                 metodo_pago: $('#metodo_pago').val(),
@@ -1513,6 +1521,7 @@ $(document).ready(function() {
                 if (response.status === 'success') {
                     const cita = response.data;
                     $('#edit_cita_id').val(cita.id);
+                    $('#edit_tipo').val(cita.tipo || 'institucional');
                     $('#edit_recorrido_id').val(cita.recorrido_id || '');
                     $('#edit_fecha_visita').val(cita.fecha_visita);
                     

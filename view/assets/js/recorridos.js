@@ -1273,7 +1273,7 @@ $(document).ready(function() {
         if ($select.length === 0) return;
 
         // Mantener opción vacía
-        $select.empty().append('<option value="">-- Seleccione un Recorrido para visualizar ruta --</option>');
+        $select.empty().append('<option value="">Seleccionar Recorrido</option>');
 
         listaRecorridos.forEach(function(rec) {
             $select.append(`<option value="${rec.id}">${rec.nombre} (${rec.paradas.length} paradas)</option>`);

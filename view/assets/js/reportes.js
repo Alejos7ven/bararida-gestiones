@@ -58,6 +58,11 @@ $(document).ready(function() {
         ejecutarConsultaReporte();
     });
 
+    // Cambio en tipo de cita
+    $('#filtroTipoCita').on('change', function() {
+        ejecutarConsultaReporte();
+    });
+
     // Cambio en mes o año separado
     $('#filtroMesMes, #filtroMesAnio').on('change', function() {
         ejecutarConsultaReporte();
@@ -88,11 +93,13 @@ $(document).ready(function() {
         const seccion = $('#filtroSeccion').val() || 'general';
         const filtroTiempo = $('#filtroTiempo').val() || 'mes';
         const estatus = $('#filtroEstatus').val() || 'todos';
+        const tipoCita = $('#filtroTipoCita').val() || 'todos';
 
         let params = {
             seccion: seccion,
             filtro_tiempo: filtroTiempo,
-            estatus: estatus
+            estatus: estatus,
+            tipo_cita: tipoCita
         };
 
         if (filtroTiempo === 'dia') {
@@ -406,6 +413,7 @@ $(document).ready(function() {
                     <th># Cita</th>
                     <th>Fecha y Hora</th>
                     <th>Institución</th>
+                    <th>Tipo de Cita</th>
                     <th>Tipo y Gestión</th>
                     <th>Recorrido Asignado</th>
                     <th>Visitantes</th>
@@ -417,6 +425,7 @@ $(document).ready(function() {
             datos.forEach(function(c) {
                 const estatusBadge = obtenerBadgeEstatus(c.estatus);
                 const gestionBadge = `<span class="badge-gestion-${c.tipo_gestion}">${c.tipo_gestion === 'publica' ? 'Pública' : 'Privada'}</span>`;
+                const tipoBadge = `<span class="badge bg-light text-success border" style="font-size:0.75rem; text-transform:capitalize; font-weight:600;">${c.tipo || 'Institucional'}</span>`;
 
                 $body.append(`
                     <tr>
@@ -429,6 +438,7 @@ $(document).ready(function() {
                             <div class="fw-bold">${c.institucion_nombre || 'Sin nombre'}</div>
                             <small class="text-muted">${c.tipo_documento || 'J'}-${c.institucion_rif || ''}</small>
                         </td>
+                        <td>${tipoBadge}</td>
                         <td>
                             <div>${c.tipo_organizacion || 'Educativa'}</div>
                             <div>${gestionBadge}</div>
@@ -623,11 +633,12 @@ $(document).ready(function() {
             $pdfHead.html(`
                 <tr>
                     <th style="width: 8%;"># Cita</th>
-                    <th style="width: 15%;">Fecha</th>
-                    <th style="width: 25%;">Institución</th>
-                    <th style="width: 15%;">Gestión</th>
-                    <th style="width: 17%;">Recorrido</th>
-                    <th style="width: 10%;">Visitantes</th>
+                    <th style="width: 14%;">Fecha</th>
+                    <th style="width: 22%;">Institución</th>
+                    <th style="width: 14%;">Tipo Cita</th>
+                    <th style="width: 12%;">Gestión</th>
+                    <th style="width: 12%;">Recorrido</th>
+                    <th style="width: 8%;">Visitantes</th>
                     <th style="width: 10%;">Estatus</th>
                 </tr>
             `);
@@ -638,6 +649,7 @@ $(document).ready(function() {
                         <td style="text-align: center;">#${c.id}</td>
                         <td>${formatearFechaVisual(c.fecha_visita)} ${c.hora_inicio ? c.hora_inicio.substring(0, 5) : ''}</td>
                         <td><strong>${c.institucion_nombre}</strong><br><small>${c.tipo_documento}-${c.institucion_rif}</small></td>
+                        <td style="text-transform: capitalize;">${c.tipo || 'Institucional'}</td>
                         <td>${c.tipo_gestion === 'publica' ? 'Pública' : 'Privada'}</td>
                         <td>${c.recorrido_nombre || 'N/A'}</td>
                         <td style="text-align: center; font-weight: bold;">${c.total_visitantes}</td>

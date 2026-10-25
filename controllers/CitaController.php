@@ -267,15 +267,28 @@ function crearCitaAction() {
     $recorrido_id = (isset($_POST['recorrido_id']) && trim($_POST['recorrido_id']) !== '') ? trim($_POST['recorrido_id']) : null;
     $fecha_visita = isset($_POST['fecha_visita']) ? trim($_POST['fecha_visita']) : '';
     $hora_inicio = isset($_POST['hora_inicio']) ? trim($_POST['hora_inicio']) : '';
+    $tipo = isset($_POST['tipo']) ? trim(strtolower($_POST['tipo'])) : '';
     $metodo_pago = isset($_POST['metodo_pago']) ? trim($_POST['metodo_pago']) : '';
     $pago_estado = isset($_POST['pago_estado']) ? trim($_POST['pago_estado']) : 'pendiente';
 
-    if (empty($fecha_visita) || empty($hora_inicio) || empty($metodo_pago)) {
+    $tiposValidos = ['campamento nocturno', 'corporativo', 'evento', 'institucional', 'otro', 'particular'];
+
+    if (empty($fecha_visita) || empty($hora_inicio) || empty($tipo) || empty($metodo_pago)) {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Los campos fecha de visita, hora de inicio y método de pago son requeridos.",
-            "field" => empty($fecha_visita) ? "fecha_visita" : (empty($hora_inicio) ? "hora_inicio" : "metodo_pago")
+            "message" => "Los campos fecha de visita, hora de inicio, tipo de cita y método de pago son requeridos.",
+            "field" => empty($fecha_visita) ? "fecha_visita" : (empty($hora_inicio) ? "hora_inicio" : (empty($tipo) ? "tipo" : "metodo_pago"))
+        ]);
+        return;
+    }
+
+    if (strlen($tipo) > 40 || !in_array($tipo, $tiposValidos, true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El tipo de cita seleccionado no es válido.",
+            "field" => "tipo"
         ]);
         return;
     }
@@ -463,6 +476,7 @@ function crearCitaAction() {
         $citaModel->setRecorridoId($recorrido_id);
         $citaModel->setFechaVisita($fecha_visita);
         $citaModel->setHoraInicio($hora_inicio);
+        $citaModel->setTipo($tipo);
         $citaModel->setMetodoPago($metodo_pago);
         $citaModel->setPagoEstado($pago_estado);
 
@@ -1049,17 +1063,30 @@ function editarCitaAction() {
     $recorrido_id = (isset($_POST['recorrido_id']) && trim($_POST['recorrido_id']) !== '') ? trim($_POST['recorrido_id']) : null;
     $fecha_visita = isset($_POST['fecha_visita']) ? trim($_POST['fecha_visita']) : '';
     $hora_inicio = isset($_POST['hora_inicio']) ? trim($_POST['hora_inicio']) : '';
+    $tipo = isset($_POST['tipo']) ? trim(strtolower($_POST['tipo'])) : '';
     $metodo_pago = isset($_POST['metodo_pago']) ? trim($_POST['metodo_pago']) : '';
     $pago_estado = isset($_POST['pago_estado']) ? trim($_POST['pago_estado']) : 'pendiente';
     $estatus = isset($_POST['estatus']) ? trim($_POST['estatus']) : 'pendiente';
 
-    if (empty($fecha_visita) || empty($hora_inicio) || empty($metodo_pago) || empty($estatus)) {
-        $missingField = empty($fecha_visita) ? "fecha_visita" : (empty($hora_inicio) ? "hora_inicio" : (empty($metodo_pago) ? "metodo_pago" : "estatus"));
+    $tiposValidos = ['campamento nocturno', 'corporativo', 'evento', 'institucional', 'otro', 'particular'];
+
+    if (empty($fecha_visita) || empty($hora_inicio) || empty($tipo) || empty($metodo_pago) || empty($estatus)) {
+        $missingField = empty($fecha_visita) ? "fecha_visita" : (empty($hora_inicio) ? "hora_inicio" : (empty($tipo) ? "tipo" : (empty($metodo_pago) ? "metodo_pago" : "estatus")));
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Los campos fecha de visita, hora de inicio, método de pago y estado de la cita son requeridos.",
+            "message" => "Los campos fecha de visita, hora de inicio, tipo de cita, método de pago y estado de la cita son requeridos.",
             "field" => $missingField
+        ]);
+        return;
+    }
+
+    if (strlen($tipo) > 40 || !in_array($tipo, $tiposValidos, true)) {
+        http_response_code(400);
+        echo json_encode([
+            "status" => "error",
+            "message" => "El tipo de cita seleccionado no es válido.",
+            "field" => "tipo"
         ]);
         return;
     }
@@ -1148,6 +1175,7 @@ function editarCitaAction() {
         $citaModel->setRecorridoId($recorrido_id);
         $citaModel->setFechaVisita($fecha_visita);
         $citaModel->setHoraInicio($hora_inicio);
+        $citaModel->setTipo($tipo);
         $citaModel->setMetodoPago($metodo_pago);
         $citaModel->setPagoEstado($pago_estado);
         $citaModel->setEstatus($estatus);

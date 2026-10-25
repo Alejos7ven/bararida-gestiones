@@ -90,7 +90,7 @@
                 <div class="tour-selector-box">
                     <label for="selectRecorridoDashboard" style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 2px;">Visualizar Recorrido</label>
                     <select id="selectRecorridoDashboard" class="form-select tour-select-custom" style="min-width: 200px; padding: 4px 8px; font-size: 0.85rem;">
-                        <option value="">Cargando recorridos...</option>
+                        <option value="">Seleccionar Recorrido</option>
                     </select>
                 </div>
             </div>

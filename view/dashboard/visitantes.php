@@ -16,15 +16,8 @@
         <div class="search-filter-row">
             <div class="search-input-group">
                 <svg class="search-icon-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                <input type="text" id="searchVisitantes" placeholder="Filtrar por Cédula, Nombres o Apellidos...">
+                <input type="text" id="searchVisitantes" placeholder="Filtrar por Cédula, Nombres, Apellidos o Procedencia...">
             </div>
-        </div>
-
-        <div id="loaderVisitantes" class="text-center py-5">
-            <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
-                <span class="visually-hidden">Cargando...</span>
-            </div>
-            <p class="text-muted mt-2">Cargando listado de visitantes...</p>
         </div>
 
         <div class="table-responsive-premium">
@@ -36,11 +29,19 @@
                         <th>Nombres</th>
                         <th>Apellidos</th>
                         <th>Fecha de Nacimiento</th>
+                        <th>Procedencia</th>
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <tbody id="tablaVisitantesBody" style="display: none;">
-                    <!-- Se poblará vía AJAX -->
+                <tbody id="tablaVisitantesBody">
+                    <tr id="loaderVisitantes">
+                        <td colspan="7" class="text-center py-5">
+                            <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando listado de visitantes...</p>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -138,7 +139,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: #ef4444; color: #ffffff; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalEliminarVisitanteLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Confirmar Eliminación</h5>
+                    <h5 class="modal-title text-white" id="modalEliminarVisitanteLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Confirmar Eliminación</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body" style="background:#ffffff; padding: 24px;">
@@ -148,7 +149,7 @@
                 </div>
                 <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">
                     <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
-                    <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminarVisitante" style="border-radius:10px; font-weight:600; font-size:0.9rem; background:#ef4444; border-color:#ef4444;">Eliminar Visitante</button>
+                    <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminarVisitante" style="border-radius:10px; font-weight:600; font-size:0.9rem; background:#ef4444; border-color:#ef4444; color:#ffffff;">Eliminar Visitante</button>
                 </div>
             </div>
         </div>

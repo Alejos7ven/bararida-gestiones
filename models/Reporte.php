@@ -13,6 +13,7 @@ class Reporte extends Database {
     private ?string $estatus = null;
     private ?string $tipoOrganizacion = null;
     private ?string $tipoGestion = null;
+    private ?string $tipoCita = null;
     private ?string $anio = null;
 
     public function __construct() {
@@ -38,6 +39,9 @@ class Reporte extends Database {
     public function getTipoGestion(): ?string { return $this->tipoGestion; }
     public function setTipoGestion(?string $tipo): void { $this->tipoGestion = $tipo ? trim($tipo) : null; }
 
+    public function getTipoCita(): ?string { return $this->tipoCita; }
+    public function setTipoCita(?string $tipo): void { $this->tipoCita = $tipo ? trim($tipo) : null; }
+
     public function getAnio(): ?string { return $this->anio; }
     public function setAnio(?string $anio): void { $this->anio = $anio ? trim($anio) : null; }
 
@@ -57,18 +61,27 @@ class Reporte extends Database {
         }
 
         try {
+            $filtroTipoSql = "";
+            $tieneFiltroTipo = (!empty($this->tipoCita) && $this->tipoCita !== 'todos');
+            if ($tieneFiltroTipo) {
+                $filtroTipoSql = " AND c.tipo = :tipo_cita";
+            }
+
             // 1. Estadísticas de citas
             $sqlCitas = "SELECT 
                             COUNT(*) AS total_citas,
-                            SUM(CASE WHEN estatus = 'aprobado' THEN 1 ELSE 0 END) AS citas_aprobadas,
-                            SUM(CASE WHEN estatus = 'completado' THEN 1 ELSE 0 END) AS citas_completadas,
-                            SUM(CASE WHEN estatus = 'pendiente' THEN 1 ELSE 0 END) AS citas_pendientes,
-                            SUM(CASE WHEN estatus = 'cancelado' THEN 1 ELSE 0 END) AS citas_canceladas
-                         FROM citas 
-                         WHERE fecha_visita BETWEEN :inicio AND :fin AND activo = 1";
+                            SUM(CASE WHEN c.estatus = 'aprobado' THEN 1 ELSE 0 END) AS citas_aprobadas,
+                            SUM(CASE WHEN c.estatus = 'completado' THEN 1 ELSE 0 END) AS citas_completadas,
+                            SUM(CASE WHEN c.estatus = 'pendiente' THEN 1 ELSE 0 END) AS citas_pendientes,
+                            SUM(CASE WHEN c.estatus = 'cancelado' THEN 1 ELSE 0 END) AS citas_canceladas
+                         FROM citas c
+                         WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1" . $filtroTipoSql;
             $stmtCitas = $this->db->prepare($sqlCitas);
             $stmtCitas->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
             $stmtCitas->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if ($tieneFiltroTipo) {
+                $stmtCitas->bindParam(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
             $stmtCitas->execute();
             $statsCitas = $stmtCitas->fetch(PDO::FETCH_ASSOC) ?: [
                 'total_citas' => 0, 'citas_aprobadas' => 0, 'citas_completadas' => 0,
@@ -79,20 +92,26 @@ class Reporte extends Database {
             $sqlVisitantes = "SELECT COUNT(ac.id) AS total_visitantes
                               FROM asistencia_cita ac
                               INNER JOIN citas c ON ac.cita_id = c.id
-                              WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
+                              WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1" . $filtroTipoSql;
             $stmtVisitantes = $this->db->prepare($sqlVisitantes);
             $stmtVisitantes->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
             $stmtVisitantes->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if ($tieneFiltroTipo) {
+                $stmtVisitantes->bindParam(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
             $stmtVisitantes->execute();
             $totalVisitantes = (int)$stmtVisitantes->fetchColumn();
 
             // 3. Instituciones atendidas únicas
             $sqlInst = "SELECT COUNT(DISTINCT c.institucion_id) AS total_instituciones
                         FROM citas c
-                        WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
+                        WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1" . $filtroTipoSql;
             $stmtInst = $this->db->prepare($sqlInst);
             $stmtInst->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
             $stmtInst->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if ($tieneFiltroTipo) {
+                $stmtInst->bindParam(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
             $stmtInst->execute();
             $totalInstituciones = (int)$stmtInst->fetchColumn();
 
@@ -103,10 +122,13 @@ class Reporte extends Database {
                          FROM citas c
                          INNER JOIN recorrido r ON c.recorrido_id = r.id
                          INNER JOIN rutas ru ON r.id = ru.recorrido_id
-                         WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
+                         WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1" . $filtroTipoSql;
             $stmtZonas = $this->db->prepare($sqlZonas);
             $stmtZonas->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
             $stmtZonas->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if ($tieneFiltroTipo) {
+                $stmtZonas->bindParam(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
             $stmtZonas->execute();
             $statsZonas = $stmtZonas->fetch(PDO::FETCH_ASSOC) ?: ['total_visitas_zonas' => 0, 'zonas_distintas_visitadas' => 0];
 
@@ -122,10 +144,13 @@ class Reporte extends Database {
                           AND c.activo = 1
                           AND (c.pago_estado = 'exonerado' 
                                OR LOWER(c.metodo_pago) LIKE '%exonera%' 
-                               OR LOWER(c.metodo_pago) LIKE '%exen%')";
+                               OR LOWER(c.metodo_pago) LIKE '%exen%')" . $filtroTipoSql;
             $stmtExon = $this->db->prepare($sqlExon);
             $stmtExon->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
             $stmtExon->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if ($tieneFiltroTipo) {
+                $stmtExon->bindParam(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
             $stmtExon->execute();
             $statsExon = $stmtExon->fetch(PDO::FETCH_ASSOC) ?: [
                 'total_citas_exoneradas' => 0,
@@ -183,6 +208,7 @@ class Reporte extends Database {
         try {
             $query = "SELECT 
                         c.id,
+                        c.tipo,
                         c.fecha_solicitud,
                         c.fecha_visita,
                         c.hora_inicio,
@@ -215,6 +241,10 @@ class Reporte extends Database {
                 $query .= " AND c.estatus = :estatus";
             }
 
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $query .= " AND c.tipo = :tipo_cita";
+            }
+
             $query .= " GROUP BY c.id ORDER BY c.fecha_visita ASC, c.hora_inicio ASC";
 
             $stmt = $this->db->prepare($query);
@@ -225,6 +255,10 @@ class Reporte extends Database {
                 $stmt->bindParam(":estatus", $this->estatus, PDO::PARAM_STR);
             }
 
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $stmt->bindParam(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
+
             $stmt->execute();
             $citas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -232,6 +266,7 @@ class Reporte extends Database {
             $totalCitas = count($citas);
             $totalVisitantes = 0;
             $estatusCounts = ['aprobado' => 0, 'completado' => 0, 'pendiente' => 0, 'cancelado' => 0];
+            $tiposCounts = [];
 
             foreach ($citas as $c) {
                 $totalVisitantes += (int)$c['total_visitantes'];
@@ -239,6 +274,8 @@ class Reporte extends Database {
                 if (isset($estatusCounts[$st])) {
                     $estatusCounts[$st]++;
                 }
+                $t = !empty($c['tipo']) ? strtolower($c['tipo']) : 'institucional';
+                $tiposCounts[$t] = ($tiposCounts[$t] ?? 0) + 1;
             }
 
             return [
@@ -246,7 +283,8 @@ class Reporte extends Database {
                     'total_citas' => $totalCitas,
                     'total_visitantes' => $totalVisitantes,
                     'promedio_visitantes' => $totalCitas > 0 ? round($totalVisitantes / $totalCitas, 1) : 0,
-                    'estatus' => $estatusCounts
+                    'estatus' => $estatusCounts,
+                    'tipos' => $tiposCounts
                 ],
                 'datos' => $citas
             ];
@@ -283,13 +321,20 @@ class Reporte extends Database {
                           FROM asistencia_cita
                           GROUP BY cita_id
                       ) asistentes ON c.id = asistentes.cita_id
-                      WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1
-                      GROUP BY z.id, z.nombre
-                      ORDER BY total_visitas DESC, total_visitantes_zona DESC";
+                      WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
+
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $query .= " AND c.tipo = :tipo_cita";
+            }
+
+            $query .= " GROUP BY z.id, z.nombre ORDER BY total_visitas DESC, total_visitantes_zona DESC";
 
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
             $stmt->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $stmt->bindParam(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
             $stmt->execute();
             $zonasVisitadas = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -300,12 +345,17 @@ class Reporte extends Database {
                                      SELECT DISTINCT ru2.zona_id 
                                      FROM citas c2 
                                      INNER JOIN rutas ru2 ON c2.recorrido_id = ru2.recorrido_id 
-                                     WHERE c2.fecha_visita BETWEEN :inicio AND :fin AND c2.activo = 1
-                                 )
-                                 ORDER BY z.nombre ASC";
+                                     WHERE c2.fecha_visita BETWEEN :inicio AND :fin AND c2.activo = 1";
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $queryNoVisitadas .= " AND c2.tipo = :tipo_cita";
+            }
+            $queryNoVisitadas .= " ) ORDER BY z.nombre ASC";
             $stmtNo = $this->db->prepare($queryNoVisitadas);
             $stmtNo->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
             $stmtNo->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $stmtNo->bindParam(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
             $stmtNo->execute();
             $zonasNoVisitadas = $stmtNo->fetchAll(PDO::FETCH_ASSOC);
 
@@ -347,6 +397,7 @@ class Reporte extends Database {
         try {
             $query = "SELECT 
                         c.id AS cita_id,
+                        c.tipo,
                         c.fecha_visita,
                         c.estatus,
                         c.metodo_pago,
@@ -371,13 +422,20 @@ class Reporte extends Database {
                         AND c.activo = 1
                         AND (c.pago_estado = 'exonerado' 
                              OR LOWER(c.metodo_pago) LIKE '%exonera%' 
-                             OR LOWER(c.metodo_pago) LIKE '%exen%')
-                      GROUP BY c.id
-                      ORDER BY c.fecha_visita ASC, e.nombre_completo ASC";
+                             OR LOWER(c.metodo_pago) LIKE '%exen%')";
+
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $query .= " AND c.tipo = :tipo_cita";
+            }
+
+            $query .= " GROUP BY c.id ORDER BY c.fecha_visita ASC, e.nombre_completo ASC";
 
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
             $stmt->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $stmt->bindParam(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
             $stmt->execute();
             $exoneraciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -456,12 +514,20 @@ class Reporte extends Database {
                       INNER JOIN visitantes v ON ac.visitante_id = v.id
                       INNER JOIN instituciones i ON c.institucion_id = i.id
                       INNER JOIN entidades e ON i.entidad_id = e.id
-                      WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1
-                      ORDER BY c.fecha_visita ASC, v.apellidos ASC, v.nombres ASC";
+                      WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
+
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $query .= " AND c.tipo = :tipo_cita";
+            }
+
+            $query .= " ORDER BY c.fecha_visita ASC, v.apellidos ASC, v.nombres ASC";
 
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
             $stmt->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $stmt->bindParam(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
             $stmt->execute();
             $visitantes = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -532,13 +598,21 @@ class Reporte extends Database {
                       INNER JOIN entidades e ON i.entidad_id = e.id
                       INNER JOIN citas c ON i.id = c.institucion_id
                       LEFT JOIN asistencia_cita ac ON c.id = ac.cita_id
-                      WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1
-                      GROUP BY i.id, e.tipo_documento, e.documento, e.nombre_completo, i.tipo_organizacion, i.tipo_gestion
+                      WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
+
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $query .= " AND c.tipo = :tipo_cita";
+            }
+
+            $query .= " GROUP BY i.id, e.tipo_documento, e.documento, e.nombre_completo, i.tipo_organizacion, i.tipo_gestion
                       ORDER BY total_visitantes_atendidos DESC, total_citas DESC, e.nombre_completo ASC";
 
             $stmt = $this->db->prepare($query);
             $stmt->bindParam(":inicio", $this->fechaInicio, PDO::PARAM_STR);
             $stmt->bindParam(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if (!empty($this->tipoCita) && $this->tipoCita !== 'todos') {
+                $stmt->bindParam(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
             $stmt->execute();
             $instituciones = $stmt->fetchAll(PDO::FETCH_ASSOC);
 

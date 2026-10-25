@@ -125,7 +125,7 @@ if (!isset($viewPath) || !function_exists('obtenerEtiquetaRol')) {
             </div>
 
             <!-- Global Alert feedback toast style -->
-            <div id="alertFeedbackGlobal" class="alert alert-toast alert-toast-success alert-dismissible" role="alert" style="display:none; position: fixed; top: 20px; right: 20px; z-index: 9999; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width:400px; width: 100%;"></div>
+            <div id="alertFeedbackGlobal" class="alert alert-toast alert-toast-success alert-dismissible" role="alert" style="display:none;"></div>
 
             <!-- Área scrollable del módulo -->
             <div class="content-area">

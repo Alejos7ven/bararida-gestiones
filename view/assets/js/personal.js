@@ -64,8 +64,16 @@ $(document).ready(function() {
     // LISTAR PERSONAL (AJAX)
     // =========================================================================
     function listarPersonal() {
-        $tablaPersonal.hide();
-        $loader.show();
+        $tablaPersonal.html(`
+            <tr id="loaderPersonal">
+                <td colspan="6" class="text-center py-5">
+                    <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando registros de personal...</p>
+                </td>
+            </tr>
+        `);
         $('#paginacionPersonal').hide();
 
         $.ajax({
@@ -73,7 +81,6 @@ $(document).ready(function() {
             method: 'GET',
             dataType: 'json',
             success: function(response) {
-                $loader.hide();
                 if (response.status === 'success') {
                     cachePersonal = response.data || [];
                     
@@ -92,11 +99,10 @@ $(document).ready(function() {
                     renderPersonalTable();
                 } else {
                     $tablaPersonal.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">No se pudo cargar la lista de personal.</td></tr>');
-                    $tablaPersonal.fadeIn(300);
                 }
             },
             error: function(xhr) {
-                $loader.hide();
+                $tablaPersonal.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">Ocurrió un error al cargar la lista de personal.</td></tr>');
                 showGlobalAlert('Ocurrió un error al cargar la lista de personal. Contacte a soporte.', 'danger');
             }
         });

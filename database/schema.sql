@@ -155,6 +155,7 @@ CREATE TABLE IF NOT EXISTS citas (
   `fecha_solicitud` date NOT NULL,
   `fecha_visita` date NOT NULL,
   `hora_inicio` time NOT NULL,
+  `tipo` varchar(40) NOT NULL DEFAULT 'institucional',
   `estatus` varchar(20) NOT NULL DEFAULT 'pendiente',
   `metodo_pago` varchar(50) NOT NULL,
   `pago_estado` varchar(20) NOT NULL DEFAULT 'pendiente',
@@ -229,7 +230,7 @@ INSERT INTO `instituciones` (`entidad_id`, `tipo_organizacion`) VALUES
 
 -- Catálogo de módulos del sistema
 INSERT INTO `modulos` (`nombre`, `label`) VALUES
-('dashboard', 'Dashboard'),
+('dashboard', 'Inicio'),
 ('citas', 'Citas'),
 ('instituciones', 'Instituciones'),
 ('recorridos', 'Recorridos'),

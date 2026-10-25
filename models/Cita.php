@@ -18,6 +18,7 @@ class Cita extends Database {
     private ?string $fecha_solicitud = null;
     private ?string $fecha_visita = null;
     private ?string $hora_inicio = null;
+    private ?string $tipo = 'institucional'; // 'campamento nocturno', 'corporativo', 'evento', 'institucional', 'otro', 'particular'
     private ?string $estatus = 'pendiente'; // 'pendiente', 'aprobado', 'en_recorrido', 'completado', 'cancelada'
     private ?string $metodo_pago = null;
     private ?string $pago_estado = 'pendiente'; // 'pendiente', 'pagado'
@@ -36,6 +37,7 @@ class Cita extends Database {
     public function __construct() {
         parent::__construct();
         $this->fecha_solicitud = date('Y-m-d');
+        $this->tipo = 'institucional';
         $this->estatus = 'pendiente';
         $this->pago_estado = 'pendiente';
     }
@@ -124,6 +126,14 @@ class Cita extends Database {
         $this->pago_estado = $estado !== null ? trim($estado) : 'pendiente';
     }
 
+    public function getTipo(): ?string {
+        return $this->tipo;
+    }
+
+    public function setTipo(?string $tipo): void {
+        $this->tipo = $tipo !== null ? trim($tipo) : 'institucional';
+    }
+
     public function getPersonalId(): ?int {
         return $this->personal_id;
     }
@@ -187,8 +197,8 @@ class Cita extends Database {
 
         try {
             $query = "INSERT INTO " . $this->table_name . " 
-                      (institucion_id, sede_id, recorrido_id, fecha_solicitud, fecha_visita, hora_inicio, estatus, metodo_pago, pago_estado) 
-                      VALUES (:institucion_id, :sede_id, :recorrido_id, :fecha_solicitud, :fecha_visita, :hora_inicio, :estatus, :metodo_pago, :pago_estado)";
+                      (institucion_id, sede_id, recorrido_id, tipo, fecha_solicitud, fecha_visita, hora_inicio, estatus, metodo_pago, pago_estado) 
+                      VALUES (:institucion_id, :sede_id, :recorrido_id, :tipo, :fecha_solicitud, :fecha_visita, :hora_inicio, :estatus, :metodo_pago, :pago_estado)";
             
             $stmt = $this->db->prepare($query);
             $stmt->bindValue(":institucion_id", (int)$this->institucion_id, PDO::PARAM_INT);
@@ -202,6 +212,7 @@ class Cita extends Database {
             } else {
                 $stmt->bindValue(":recorrido_id", (int)$this->recorrido_id, PDO::PARAM_INT);
             }
+            $stmt->bindValue(":tipo", $this->tipo ?: 'institucional', PDO::PARAM_STR);
             $stmt->bindValue(":fecha_solicitud", $this->fecha_solicitud, PDO::PARAM_STR);
             $stmt->bindValue(":fecha_visita", $this->fecha_visita, PDO::PARAM_STR);
             $stmt->bindValue(":hora_inicio", $this->hora_inicio, PDO::PARAM_STR);
@@ -234,6 +245,7 @@ class Cita extends Database {
                       institucion_id = :institucion_id,
                       sede_id = :sede_id,
                       recorrido_id = :recorrido_id, 
+                      tipo = :tipo,
                       fecha_visita = :fecha_visita, 
                       hora_inicio = :hora_inicio, 
                       estatus = :estatus, 
@@ -253,6 +265,7 @@ class Cita extends Database {
             } else {
                 $stmt->bindValue(":recorrido_id", (int)$this->recorrido_id, PDO::PARAM_INT);
             }
+            $stmt->bindValue(":tipo", $this->tipo ?: 'institucional', PDO::PARAM_STR);
             $stmt->bindValue(":fecha_visita", $this->fecha_visita, PDO::PARAM_STR);
             $stmt->bindValue(":hora_inicio", $this->hora_inicio, PDO::PARAM_STR);
             $stmt->bindValue(":estatus", $this->estatus, PDO::PARAM_STR);
@@ -302,7 +315,7 @@ class Cita extends Database {
         }
 
         try {
-            $query = "SELECT c.id, c.institucion_id, c.sede_id, c.recorrido_id, c.fecha_solicitud, c.fecha_visita, c.hora_inicio, c.estatus, c.metodo_pago, c.pago_estado,
+            $query = "SELECT c.id, c.institucion_id, c.sede_id, c.recorrido_id, c.tipo, c.fecha_solicitud, c.fecha_visita, c.hora_inicio, c.estatus, c.metodo_pago, c.pago_estado,
                              e.tipo_documento, e.documento AS RIF, e.nombre_completo AS razon_social, e.nombre_completo,
                              r.nombre AS recorrido_nombre,
                              s.detalles AS sede_detalles, par.parroquia AS sede_parroquia,
@@ -347,7 +360,7 @@ class Cita extends Database {
         }
 
         try {
-            $query = "SELECT c.id, c.institucion_id, c.sede_id, c.recorrido_id, c.fecha_solicitud, c.fecha_visita, c.hora_inicio, c.estatus, c.metodo_pago, c.pago_estado,
+            $query = "SELECT c.id, c.institucion_id, c.sede_id, c.recorrido_id, c.tipo, c.fecha_solicitud, c.fecha_visita, c.hora_inicio, c.estatus, c.metodo_pago, c.pago_estado,
                              e.tipo_documento, e.documento AS RIF, e.nombre_completo AS razon_social, e.nombre_completo,
                              r.nombre AS recorrido_nombre,
                              s.detalles AS sede_detalles, s.parroquia_id AS sede_parroquia_id,
@@ -373,6 +386,7 @@ class Cita extends Database {
                 $this->institucion_id = (int)$row['institucion_id'];
                 $this->sede_id = $row['sede_id'] ? (int)$row['sede_id'] : null;
                 $this->recorrido_id = $row['recorrido_id'] ? (int)$row['recorrido_id'] : null;
+                $this->tipo = $row['tipo'] ?? 'institucional';
                 $this->fecha_solicitud = $row['fecha_solicitud'];
                 $this->fecha_visita = $row['fecha_visita'];
                 $this->hora_inicio = $row['hora_inicio'];
@@ -503,7 +517,7 @@ class Cita extends Database {
 
             $loggedId = $this->filtro_personal_id !== null ? (int)$this->filtro_personal_id : 0;
 
-            $base = "SELECT c.id, c.hora_inicio, c.estatus, c.pago_estado, c.fecha_visita, c.recorrido_id,
+            $base = "SELECT c.id, c.hora_inicio, c.estatus, c.pago_estado, c.tipo, c.fecha_visita, c.recorrido_id,
                             e.nombre_completo AS razon_social, e.tipo_documento, e.documento AS rif,
                             r.nombre AS recorrido_nombre,
                             s.detalles AS sede_detalles, par.parroquia AS sede_parroquia, mun.municipio AS sede_municipio, est.estado AS sede_estado,

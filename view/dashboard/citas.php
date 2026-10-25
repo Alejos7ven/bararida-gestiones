@@ -20,14 +20,6 @@
             </div>
         </div>
 
-        <!-- Loader Animado -->
-        <div id="loaderCitas" class="text-center py-5">
-            <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
-                <span class="visually-hidden">Cargando...</span>
-            </div>
-            <p class="text-muted mt-2">Cargando cronograma de citas del parque...</p>
-        </div>
-
         <!-- Tabla de Citas Agendadas -->
         <div class="table-responsive-premium">
             <table class="table-premium">
@@ -43,8 +35,15 @@
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <tbody id="tablaCitasBody" style="display: none;">
-                    <!-- Se poblará vía AJAX -->
+                <tbody id="tablaCitasBody">
+                    <tr id="loaderCitas">
+                        <td colspan="8" class="text-center py-5">
+                            <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando cronograma de citas del parque...</p>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -267,7 +266,19 @@
                             <p class="text-muted mb-4" style="font-size:0.85rem;">Defina la fecha, hora, recorrido y estado de facturación de la visita guiada agendada.</p>
 
                             <div class="row g-3">
-                                <div class="col-md-12">
+                                <div class="col-md-6">
+                                    <label for="tipo" class="form-premium-label">Tipo de Cita *</label>
+                                    <select class="form-select form-premium-control" id="tipo" name="tipo" required>
+                                        <option value="">Seleccione Tipo de Cita</option>
+                                        <option value="campamento nocturno">Campamento Nocturno</option>
+                                        <option value="corporativo">Corporativo</option>
+                                        <option value="evento">Evento</option>
+                                        <option value="institucional">Institucional</option>
+                                        <option value="otro">Otro</option>
+                                        <option value="particular">Particular</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
                                     <label for="recorrido_id" class="form-premium-label">Recorrido del Parque Asignado (Opcional)</label>
                                     <select class="form-select form-premium-control" id="recorrido_id" name="recorrido_id">
                                         <option value="">Cargando recorridos...</option>
@@ -330,19 +341,19 @@
     <!-- MODAL: ELIMINAR CITA -->
     <div class="modal fade modal-premium" id="modalEliminarCita" tabindex="-1" aria-labelledby="modalEliminarCitaLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content" style="border-radius: 20px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+            <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: #ef4444; color: #ffffff; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalEliminarCitaLabel" style="font-family:'Outfit'; font-weight:600; margin:0;">Confirmar Eliminación de Cita</h5>
+                    <h5 class="modal-title text-white" id="modalEliminarCitaLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Confirmar Eliminación de Cita</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
-                <div class="modal-body" style="padding: 24px;">
+                <div class="modal-body" style="background:#ffffff; padding: 24px;">
                     <input type="hidden" id="delete_cita_id">
                     <p class="mb-0" style="font-size:0.95rem;">¿Está completamente seguro de que desea eliminar la cita <strong id="deleteCitaNameSpan" class="text-danger"></strong> del sistema?</p>
                     <p class="text-danger mt-2 mb-0" style="font-size:0.85rem; font-weight:600;">Esta acción es irreversible y revocaría el agendamiento y los registros de visitantes asociados.</p>
                 </div>
                 <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">
                     <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
-                    <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminarCita" style="border-radius:10px; font-weight:600; font-size:0.9rem; background:#ef4444; border-color:#ef4444;">Eliminar Cita</button>
+                    <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminarCita" style="border-radius:10px; font-weight:600; font-size:0.9rem; background:#ef4444; border-color:#ef4444; color:#ffffff;">Eliminar Cita</button>
                 </div>
             </div>
         </div>
@@ -367,7 +378,19 @@
                                     <option value="">Seleccione Sede</option>
                                 </select>
                             </div>
-                            <div class="col-md-12">
+                            <div class="col-md-6">
+                                <label for="edit_tipo" class="form-premium-label">Tipo de Cita *</label>
+                                <select class="form-select form-premium-control" id="edit_tipo" name="tipo" required>
+                                    <option value="">Seleccione Tipo de Cita</option>
+                                    <option value="campamento nocturno">Campamento Nocturno</option>
+                                    <option value="corporativo">Corporativo</option>
+                                    <option value="evento">Evento</option>
+                                    <option value="institucional">Institucional</option>
+                                    <option value="otro">Otro</option>
+                                    <option value="particular">Particular</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
                                 <label for="edit_recorrido_id" class="form-premium-label">Recorrido del Parque Asignado (Opcional)</label>
                                 <select class="form-select form-premium-control" id="edit_recorrido_id" name="recorrido_id">
                                     <option value="">Cargando recorridos...</option>
@@ -633,7 +656,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: #ef4444; color: #ffffff; border-bottom: none; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalConfirmarEliminarAsistenteLabel" style="font-family:'Outfit'; font-weight:600; margin: 0;">Confirmar Remoción de Asistente</h5>
+                    <h5 class="modal-title text-white" id="modalConfirmarEliminarAsistenteLabel" style="font-family:'Outfit'; font-weight:600; margin: 0; color:#ffffff !important;">Confirmar Remoción de Asistente</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body" style="background:#ffffff; padding: 24px;">

@@ -26,8 +26,16 @@ $(document).ready(function() {
     // 1. LISTAR VISITANTES (AJAX)
     // =========================================================================
     function listarVisitantes() {
-        $tablaVisitantes.hide();
-        $loader.show();
+        $tablaVisitantes.html(`
+            <tr id="loaderVisitantes">
+                <td colspan="7" class="text-center py-5">
+                    <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando listado de visitantes...</p>
+                </td>
+            </tr>
+        `);
         $('#paginacionVisitantes').hide();
 
         $.ajax({
@@ -35,7 +43,6 @@ $(document).ready(function() {
             method: 'GET',
             dataType: 'json',
             success: function(response) {
-                $loader.hide();
                 if (response.status === 'success') {
                     cacheVisitantes = response.data || [];
                     
@@ -45,19 +52,18 @@ $(document).ready(function() {
                         filteredVisitantes = cacheVisitantes;
                     } else {
                         filteredVisitantes = cacheVisitantes.filter(function(v) {
-                            const searchString = `${(v.cedula || '').toLowerCase()} ${v.nombres.toLowerCase()} ${v.apellidos.toLowerCase()}`;
+                            const searchString = `${(v.cedula || '').toLowerCase()} ${v.nombres.toLowerCase()} ${v.apellidos.toLowerCase()} ${(v.procedencia_institucion || '').toLowerCase()}`;
                             return searchString.indexOf(query) > -1;
                         });
                     }
 
                     renderVisitantesTable();
                 } else {
-                    $tablaVisitantes.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">No se pudo cargar el listado de visitantes.</td></tr>');
-                    $tablaVisitantes.fadeIn(300);
+                    $tablaVisitantes.empty().append('<tr><td colspan="7" class="text-center text-muted py-4">No se pudo cargar el listado de visitantes.</td></tr>');
                 }
             },
             error: function() {
-                $loader.hide();
+                $tablaVisitantes.empty().append('<tr><td colspan="7" class="text-center text-muted py-4">Ocurrió un error al cargar el listado de visitantes.</td></tr>');
                 alert('Ocurrió un error al cargar el listado de visitantes.');
             }
         });
@@ -68,7 +74,7 @@ $(document).ready(function() {
         const totalRecords = filteredVisitantes.length;
 
         if (totalRecords === 0) {
-            $tablaVisitantes.append('<tr><td colspan="6" class="text-center text-muted py-4">No se encontraron visitantes registrados.</td></tr>');
+            $tablaVisitantes.append('<tr><td colspan="7" class="text-center text-muted py-4">No se encontraron visitantes registrados.</td></tr>');
             $('#paginacionVisitantes').hide();
             $tablaVisitantes.fadeIn(300);
             return;
@@ -91,6 +97,22 @@ $(document).ready(function() {
             const cedula = v.cedula ? v.cedula : '<span class="text-muted italic">Sin Cédula (Menor)</span>';
             const fechaNac = v.fecha_nacimiento ? formatDate(v.fecha_nacimiento) : '<span class="text-muted">N/E</span>';
 
+            // Formatear procedencia de la última cita
+            let procedenciaHtml = '<span class="badge bg-light text-muted border" style="font-size:0.75rem;">Sin citas registradas</span>';
+            if (v.procedencia_institucion) {
+                const ubicacionArr = [v.procedencia_municipio, v.procedencia_estado].filter(Boolean);
+                const ubicacionStr = ubicacionArr.length > 0 ? ` &bull; ${ubicacionArr.join(', ')}` : '';
+                const fechaVisitaStr = v.ultima_cita_fecha ? formatDate(v.ultima_cita_fecha) : '';
+                procedenciaHtml = `
+                    <div>
+                        <strong class="text-success" style="font-size:0.88rem;">${v.procedencia_institucion}</strong>
+                        <div class="mt-1" style="font-size:0.75rem; color:#6c757d;">
+                            <span>#CIT-${v.ultima_cita_id}${fechaVisitaStr ? ' (' + fechaVisitaStr + ')' : ''}</span>${ubicacionStr}
+                        </div>
+                    </div>
+                `;
+            }
+
             const rowHtml = `
                 <tr class="visitor-row">
                     <td><strong>#VIS-${v.id}</strong></td>
@@ -98,6 +120,7 @@ $(document).ready(function() {
                     <td>${v.nombres}</td>
                     <td>${v.apellidos}</td>
                     <td>${fechaNac}</td>
+                    <td>${procedenciaHtml}</td>
                     <td>
                         <div class="table-actions">
                             <button class="btn-action btn-action-edit btn-editar-visitor" data-id="${v.id}" title="Editar Visitante">
@@ -175,7 +198,7 @@ $(document).ready(function() {
             filteredVisitantes = cacheVisitantes;
         } else {
             filteredVisitantes = cacheVisitantes.filter(function(v) {
-                const searchString = `${(v.cedula || '').toLowerCase()} ${v.nombres.toLowerCase()} ${v.apellidos.toLowerCase()}`;
+                const searchString = `${(v.cedula || '').toLowerCase()} ${v.nombres.toLowerCase()} ${v.apellidos.toLowerCase()} ${(v.procedencia_institucion || '').toLowerCase()}`;
                 return searchString.indexOf(query) > -1;
             });
         }

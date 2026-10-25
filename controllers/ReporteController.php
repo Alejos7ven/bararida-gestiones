@@ -59,6 +59,18 @@ if (!function_exists('procesarConsultaReporte')) {
         $seccion = isset($_REQUEST['seccion']) ? trim(strtolower($_REQUEST['seccion'])) : 'general';
         $filtroTiempo = isset($_REQUEST['filtro_tiempo']) ? trim(strtolower($_REQUEST['filtro_tiempo'])) : 'mes';
         $estatus = isset($_REQUEST['estatus']) ? trim(strtolower($_REQUEST['estatus'])) : 'todos';
+        $tipoCita = isset($_REQUEST['tipo_cita']) ? trim(strtolower($_REQUEST['tipo_cita'])) : (isset($_REQUEST['tipo']) ? trim(strtolower($_REQUEST['tipo'])) : 'todos');
+
+        // Validar tipo de cita
+        $tiposCitaValidos = ['todos', 'campamento nocturno', 'corporativo', 'evento', 'institucional', 'otro', 'particular'];
+        if (!in_array($tipoCita, $tiposCitaValidos, true)) {
+            http_response_code(422);
+            echo json_encode([
+                "status" => "error",
+                "message" => "Tipo de cita no válido para filtrar."
+            ]);
+            return;
+        }
 
         // Validar sección
         $seccionesValidas = ['general', 'citas', 'zonas', 'exoneraciones', 'visitantes', 'instituciones'];
@@ -167,6 +179,7 @@ if (!function_exists('procesarConsultaReporte')) {
         $reporteModel->setFechaInicio($fechaInicio);
         $reporteModel->setFechaFin($fechaFin);
         $reporteModel->setEstatus($estatus);
+        $reporteModel->setTipoCita($tipoCita);
 
         // Ejecutar consulta según sección solicitada
         $resultado = [];
@@ -211,6 +224,10 @@ if (!function_exists('procesarConsultaReporte')) {
                 "inicio" => $fechaInicio,
                 "fin" => $fechaFin,
                 "etiqueta" => $etiquetaPeriodo
+            ],
+            "filtros" => [
+                "tipo_cita" => $tipoCita,
+                "estatus" => $estatus
             ],
             "kpis_globales" => $estadisticasGenerales,
             "reporte" => $resultado

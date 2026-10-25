@@ -136,6 +136,22 @@
                         </select>
                     </div>
 
+                    <!-- Filtro: Tipo de Cita -->
+                    <div class="col-lg-2 col-md-6" id="colFiltroTipoCita">
+                        <label for="filtroTipoCita" class="form-label-filter">
+                            <span class="label-icon">📌</span> Tipo de Cita
+                        </label>
+                        <select id="filtroTipoCita" name="tipo_cita" class="form-select form-select-custom">
+                            <option value="todos" selected>Todos los Tipos</option>
+                            <option value="campamento nocturno">Campamento Nocturno</option>
+                            <option value="corporativo">Corporativo</option>
+                            <option value="evento">Evento</option>
+                            <option value="institucional">Institucional</option>
+                            <option value="otro">Otro</option>
+                            <option value="particular">Particular</option>
+                        </select>
+                    </div>
+
                     <!-- Botón de Filtrado -->
                     <div class="col-lg-auto col-md-6 flex-grow-1">
                         <button type="submit" id="btnConsultarReporte" class="btn-filter-apply w-100">

@@ -1076,7 +1076,7 @@
     // Poblar el selector del modal con los recorridos
     function poblarSelectRecorridosModal(recorridoActualId) {
         const $select = $('#selectRecorridoModal');
-        $select.empty().append('<option value="">-- Seleccione un recorrido / itinerario --</option>');
+        $select.empty().append('<option value="">Seleccionar Recorrido</option>');
 
         cacheRecorridosDisponibles.forEach(function(rec) {
             const paradasCount = (rec.paradas && Array.isArray(rec.paradas)) ? rec.paradas.length : 0;

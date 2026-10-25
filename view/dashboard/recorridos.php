@@ -130,7 +130,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: #ef4444; color: #ffffff; border-bottom: none; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalConfirmarEliminarZonaLabel" style="font-family:'Outfit'; font-weight:600; margin: 0;">Confirmar Eliminación de Zona</h5>
+                    <h5 class="modal-title text-white" id="modalConfirmarEliminarZonaLabel" style="font-family:'Outfit'; font-weight:600; margin: 0; color:#ffffff !important;">Confirmar Eliminación de Zona</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body" style="background:#ffffff; padding: 24px;">
@@ -140,7 +140,7 @@
                 </div>
                 <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">
                     <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
-                    <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminarZonaModal" style="border-radius:10px; font-weight:600; font-size:0.9rem; background: #ef4444; border-color: #ef4444;">Eliminar Zona</button>
+                    <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminarZonaModal" style="border-radius:10px; font-weight:600; font-size:0.9rem; background: #ef4444; border-color: #ef4444; color:#ffffff;">Eliminar Zona</button>
                 </div>
             </div>
         </div>
@@ -151,7 +151,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content" style="border-radius: 20px; overflow: hidden; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
                 <div class="modal-header" style="background: #ef4444; color: #ffffff; border-bottom: none; padding: 20px 24px;">
-                    <h5 class="modal-title" id="modalConfirmarEliminarRecorridoLabel" style="font-family:'Outfit'; font-weight:600; margin: 0;">Confirmar Eliminación de Recorrido</h5>
+                    <h5 class="modal-title text-white" id="modalConfirmarEliminarRecorridoLabel" style="font-family:'Outfit'; font-weight:600; margin: 0; color:#ffffff !important;">Confirmar Eliminación de Recorrido</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
                 <div class="modal-body" style="background:#ffffff; padding: 24px;">

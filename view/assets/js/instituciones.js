@@ -64,8 +64,16 @@ $(document).ready(function() {
     }
 
     function listarInstituciones() {
-        $tablaInst.hide();
-        $loader.show();
+        $tablaInst.html(`
+            <tr id="loaderInstituciones">
+                <td colspan="6" class="text-center py-5">
+                    <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando instituciones registradas...</p>
+                </td>
+            </tr>
+        `);
         $('#paginacionInstituciones').hide();
 
         $.ajax({
@@ -73,7 +81,6 @@ $(document).ready(function() {
             method: 'GET',
             dataType: 'json',
             success: function(response) {
-                $loader.hide();
                 if (response.status === 'success') {
                     cacheInstituciones = response.data || [];
                     
@@ -94,11 +101,10 @@ $(document).ready(function() {
                     renderInstitucionesTable();
                 } else {
                     $tablaInst.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">No se pudo cargar el listado de instituciones.</td></tr>');
-                    $tablaInst.fadeIn(300);
                 }
             },
             error: function() {
-                $loader.hide();
+                $tablaInst.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">Ocurrió un error al cargar el listado de instituciones.</td></tr>');
                 showGlobalAlert('Ocurrió un error al cargar el listado de instituciones.', 'danger');
             }
         });

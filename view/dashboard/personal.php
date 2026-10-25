@@ -20,13 +20,6 @@
             </div>
         </div>
 
-        <!-- Cargador Asíncrono AJAX -->
-        <div id="loaderPersonal" class="loader-wrapper">
-            <div class="spinner-border spinner-premium" role="status">
-                <span class="visually-hidden">Cargando registros...</span>
-            </div>
-        </div>
-
         <!-- Tabla de Personal -->
         <div class="table-responsive-premium">
             <table class="table-premium">
@@ -40,8 +33,15 @@
                         <th>Acciones</th>
                     </tr>
                 </thead>
-                <tbody id="tablaPersonalBody" style="display:none;">
-                    <!-- Cargado vía AJAX por personal.js -->
+                <tbody id="tablaPersonalBody">
+                    <tr id="loaderPersonal">
+                        <td colspan="6" class="text-center py-5">
+                            <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                            <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando registros de personal...</p>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -165,19 +165,19 @@
     <!-- Modal Confirmar Eliminación -->
     <div class="modal fade modal-premium" id="modalEliminarPersonal" tabindex="-1" aria-labelledby="modalEliminarPersonalLabel" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="modalEliminarPersonalLabel">Confirmar Eliminación</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.15);">
+                <div class="modal-header" style="background: #ef4444; color: #ffffff; padding: 20px 24px;">
+                    <h5 class="modal-title text-white" id="modalEliminarPersonalLabel" style="font-family:'Outfit'; font-weight:600; margin:0; color:#ffffff !important;">Confirmar Eliminación</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body" style="background:#ffffff; padding: 24px;">
                     <input type="hidden" id="delete_id">
-                    <p class="mb-0" style="font-size:0.95rem;">¿Está completamente seguro de que desea eliminar al personal <strong id="deleteUserNameSpan"></strong> del sistema?</p>
+                    <p class="mb-0" style="font-size:0.95rem;">¿Está completamente seguro de que desea eliminar al personal <strong id="deleteUserNameSpan" class="text-danger"></strong> del sistema?</p>
                     <p class="text-danger mt-2 mb-0" style="font-size:0.85rem; font-weight:600;">Esta acción es irreversible y revocaría todo acceso inmediato del personal al sistema.</p>
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">
                     <button type="button" class="btn btn-secondary py-2 px-3" data-bs-dismiss="modal" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Cancelar</button>
-                    <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminar" style="border-radius:10px; font-weight:600; font-size:0.9rem;">Eliminar Personal</button>
+                    <button type="button" class="btn btn-danger py-2 px-3" id="btnConfirmarEliminar" style="border-radius:10px; font-weight:600; font-size:0.9rem; background:#ef4444; border-color:#ef4444; color:#ffffff;">Eliminar Personal</button>
                 </div>
             </div>
         </div>
