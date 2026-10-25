@@ -243,7 +243,38 @@ $(document).ready(function() {
         renderPersonalTable();
     });
 
+    // =========================================================================
+    // REVELAR / OCULTAR CONTRASEÑA EN FORMULARIOS DE PERSONAL
+    // =========================================================================
+    const eyeOpenSvg = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
+    const eyeClosedSvg = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.82l2.92 2.92C21.27 15.39 22.4 13.81 23 12c-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-4 .7l2.18 2.18C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>';
+
+    $(document).on('click', '.btn-toggle-password', function() {
+        const $btn = $(this);
+        const $input = $btn.closest('.input-group').find('input');
+        const $svg = $btn.find('svg');
+        const isPassword = $input.attr('type') === 'password';
+
+        if (isPassword) {
+            $input.attr('type', 'text');
+            $svg.html(eyeClosedSvg);
+        } else {
+            $input.attr('type', 'password');
+            $svg.html(eyeOpenSvg);
+        }
+    });
+
+    function resetPasswordToggle($modal) {
+        $modal.find('.btn-toggle-password').each(function() {
+            const $btn = $(this);
+            const $input = $btn.closest('.input-group').find('input');
+            $input.attr('type', 'password');
+            $btn.find('svg').html(eyeOpenSvg);
+        });
+    }
+
     $('#modalCrearPersonal').on('show.bs.modal', function() {
+        resetPasswordToggle($(this));
         $('#alertCrearFeedback').hide();
         if (typeof window.limpiarErroresFormulario === 'function') {
             window.limpiarErroresFormulario('#formCrearPersonal');
@@ -253,10 +284,22 @@ $(document).ready(function() {
         }
     });
 
+    $('#modalCrearPersonal').on('hidden.bs.modal', function() {
+        resetPasswordToggle($(this));
+    });
+
     $('#modalCrearPersonal').on('shown.bs.modal', function() {
         setTimeout(function() {
-            $('#create_cedula').trigger('focus');
+            $('#cedula').trigger('focus');
         }, 100);
+    });
+
+    $('#modalEditarPersonal').on('show.bs.modal', function() {
+        resetPasswordToggle($(this));
+    });
+
+    $('#modalEditarPersonal').on('hidden.bs.modal', function() {
+        resetPasswordToggle($(this));
     });
 
     $('#formCrearPersonal').on('submit', function(e) {
