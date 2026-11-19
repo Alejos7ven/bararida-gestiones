@@ -2064,20 +2064,20 @@ $(document).ready(function() {
         const nomVal = v.nombres !== undefined && v.nombres !== null ? String(v.nombres).trim() : '';
         const apeVal = v.apellidos !== undefined && v.apellidos !== null ? String(v.apellidos).trim() : '';
 
-        // Validación Cédula (opcional para menores, pero si se coloca debe ser estrictamente numérica de 5 a 12 dígitos)
+        // Validación Cédula (opcional para menores, pero si se coloca debe ser estrictamente numérica de 5 a 15 dígitos)
         let isCedInvalid = false;
         let cedFeedback = '';
         if (cedVal !== '') {
             if (!/^\d+$/.test(cedVal)) {
                 isCedInvalid = true;
                 cedFeedback = 'Solo números';
-            } else if (cedVal.length < 5 || cedVal.length > 12) {
+            } else if (cedVal.length < 5 || cedVal.length > 15) {
                 isCedInvalid = true;
-                cedFeedback = 'Mín. 5 dígitos';
+                cedFeedback = cedVal.length < 5 ? 'Mín. 5 dígitos' : 'Máx. 15 dígitos';
             }
         }
 
-        // Validación Nombres (obligatorio, solo letras, sin números)
+        // Validación Nombres (obligatorio, solo letras, sin números, máx 25 caracteres)
         let isNomInvalid = false;
         let nomFeedback = '';
         if (!nomVal) {
@@ -2089,9 +2089,12 @@ $(document).ready(function() {
         } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(nomVal) || nomVal.length < 2) {
             isNomInvalid = true;
             nomFeedback = 'Solo letras';
+        } else if (nomVal.length > 25) {
+            isNomInvalid = true;
+            nomFeedback = 'Máx. 25 car.';
         }
 
-        // Validación Apellidos (obligatorio, solo letras, sin números)
+        // Validación Apellidos (obligatorio, solo letras, sin números, máx 25 caracteres)
         let isApeInvalid = false;
         let apeFeedback = '';
         if (!apeVal) {
@@ -2103,6 +2106,9 @@ $(document).ready(function() {
         } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(apeVal) || apeVal.length < 2) {
             isApeInvalid = true;
             apeFeedback = 'Solo letras';
+        } else if (apeVal.length > 25) {
+            isApeInvalid = true;
+            apeFeedback = 'Máx. 25 car.';
         }
 
         // Validación Fecha
@@ -2113,17 +2119,17 @@ $(document).ready(function() {
             <tr class="preview-visitor-row">
                 <td style="padding-left: 8px; vertical-align: top;">
                     <input type="text" class="form-control form-premium-control p-1 text-center input-preview-cedula ${isCedInvalid ? 'is-invalid' : ''}" 
-                           value="${cedVal}" placeholder="Ej. 12345678" maxlength="12" style="font-size:0.8rem; border-radius: 6px;">
+                           value="${cedVal}" placeholder="Ej. 12345678" maxlength="15" style="font-size:0.8rem; border-radius: 6px;">
                     <div class="invalid-feedback text-start" style="font-size:0.7rem; line-height:1.1; margin-top:2px; ${isCedInvalid ? 'display:block;' : ''}">${cedFeedback}</div>
                 </td>
                 <td style="vertical-align: top;">
                     <input type="text" class="form-control form-premium-control p-1 input-preview-nombres ${isNomInvalid ? 'is-invalid' : ''}" 
-                           value="${nomVal}" placeholder="Ej. Carlos Eduardo" required style="font-size:0.8rem; border-radius: 6px;">
+                           value="${nomVal}" placeholder="Ej. Carlos Eduardo" required maxlength="25" style="font-size:0.8rem; border-radius: 6px;">
                     <div class="invalid-feedback text-start" style="font-size:0.7rem; line-height:1.1; margin-top:2px; ${isNomInvalid ? 'display:block;' : ''}">${nomFeedback}</div>
                 </td>
                 <td style="vertical-align: top;">
                     <input type="text" class="form-control form-premium-control p-1 input-preview-apellidos ${isApeInvalid ? 'is-invalid' : ''}" 
-                           value="${apeVal}" placeholder="Ej. Pérez Gómez" required style="font-size:0.8rem; border-radius: 6px;">
+                           value="${apeVal}" placeholder="Ej. Pérez Gómez" required maxlength="25" style="font-size:0.8rem; border-radius: 6px;">
                     <div class="invalid-feedback text-start" style="font-size:0.7rem; line-height:1.1; margin-top:2px; ${isApeInvalid ? 'display:block;' : ''}">${apeFeedback}</div>
                 </td>
                 <td style="vertical-align: top;">

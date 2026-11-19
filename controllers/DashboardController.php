@@ -74,6 +74,11 @@ function cargarPermisosUsuario($userRol, &$userRolId) {
         }
     }
 
+    // Sincronizar en la sesión activa los permisos frescos de la BD
+    if (isset($_SESSION['personal'])) {
+        $_SESSION['personal']['permisos'] = $userPermissions;
+    }
+
     return $userPermissions;
 }
 

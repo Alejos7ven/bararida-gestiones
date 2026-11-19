@@ -17,12 +17,14 @@ $(document).ready(function() {
 
     $.validator.addClassRules("input-telefono-val", {
         required: false,
-        formatoTelefono: true
+        formatoTelefono: true,
+        maxlength: 30
     });
 
     $.validator.addClassRules("input-correo-val", {
         required: false,
-        formatoCorreo: true
+        formatoCorreo: true,
+        maxlength: 30
     });
 
     // Formulario de Creación de Cita (Wizard Multi-paso)
@@ -32,41 +34,52 @@ $(document).ready(function() {
             rules: {
                 // Paso 2 (Creación de Institución si corresponde)
                 tipo_documento: {
-                    required: true
+                    required: true,
+                    maxlength: 10
                 },
                 documento: {
                     required: true,
                     digits: true,
                     minlength: 6,
-                    maxlength: 12
+                    maxlength: 15
                 },
                 tipo_documento_inst: {
-                    required: true
+                    required: true,
+                    maxlength: 10
                 },
                 documento_inst: {
                     required: true,
                     digits: true,
                     minlength: 6,
-                    maxlength: 12
+                    maxlength: 15
                 },
                 nombre: {
                     required: true,
-                    minlength: 3
+                    minlength: 3,
+                    maxlength: 50
                 },
                 nombre_completo: {
                     required: true,
-                    minlength: 3
+                    minlength: 3,
+                    maxlength: 50
                 },
                 tipo_organizacion: {
-                    required: true
+                    required: true,
+                    maxlength: 20
                 },
                 tipo_gestion: {
-                    required: true
+                    required: true,
+                    maxlength: 20
+                },
+                nueva_sede_detalles: {
+                    required: false,
+                    maxlength: 150
                 },
                 
                 // Paso 3 (Detalles de la Cita)
                 tipo: {
-                    required: true
+                    required: true,
+                    maxlength: 25
                 },
                 fecha_visita: {
                     required: true
@@ -75,10 +88,12 @@ $(document).ready(function() {
                     required: true
                 },
                 metodo_pago: {
-                    required: true
+                    required: true,
+                    maxlength: 25
                 },
                 pago_estado: {
-                    required: true
+                    required: true,
+                    maxlength: 20
                 }
             },
             messages: {
@@ -86,33 +101,38 @@ $(document).ready(function() {
                     required: "El RIF/Cédula es obligatorio.",
                     digits: "El RIF/Cédula debe contener solo números.",
                     minlength: "Debe tener al menos 6 dígitos.",
-                    maxlength: "No puede exceder los 12 dígitos."
+                    maxlength: "No puede exceder los 15 dígitos."
                 },
                 documento_inst: {
                     required: "El RIF/Cédula es obligatorio.",
                     digits: "El RIF/Cédula debe contener solo números.",
                     minlength: "Debe tener al menos 6 dígitos.",
-                    maxlength: "No puede exceder los 12 dígitos."
+                    maxlength: "No puede exceder los 15 dígitos."
                 },
                 nombre: {
                     required: "La Razón Social o Nombre Oficial es requerido.",
-                    minlength: "La Razón Social debe tener al menos 3 caracteres."
+                    minlength: "La Razón Social debe tener al menos 3 caracteres.",
+                    maxlength: "La Razón Social no puede superar los 50 caracteres."
                 },
                 nombre_completo: {
                     required: "La Razón Social o Nombre Oficial es requerido.",
-                    minlength: "La Razón Social debe tener al menos 3 caracteres."
+                    minlength: "La Razón Social debe tener al menos 3 caracteres.",
+                    maxlength: "La Razón Social no puede superar los 50 caracteres."
                 },
                 tipo_organizacion: {
-                    required: "Debe seleccionar un tipo de organización."
+                    required: "Debe seleccionar un tipo de organización.",
+                    maxlength: "El tipo de organización no puede superar los 20 caracteres."
                 },
                 tipo_gestion: {
-                    required: "Debe seleccionar el tipo de gestión."
+                    required: "Debe seleccionar el tipo de gestión.",
+                    maxlength: "El tipo de gestión no puede superar los 20 caracteres."
                 },
                 parroquia_id: {
                     required: "Debe seleccionar la parroquia."
                 },
                 tipo: {
-                    required: "Debe seleccionar el tipo de cita."
+                    required: "Debe seleccionar el tipo de cita.",
+                    maxlength: "El tipo de cita no puede exceder los 25 caracteres."
                 },
                 fecha_visita: {
                     required: "Debe seleccionar una fecha para la visita guiada."
@@ -121,10 +141,12 @@ $(document).ready(function() {
                     required: "Debe definir la hora de inicio de la visita."
                 },
                 metodo_pago: {
-                    required: "Debe seleccionar el método de pago."
+                    required: "Debe seleccionar el método de pago.",
+                    maxlength: "El método de pago no puede exceder los 25 caracteres."
                 },
                 pago_estado: {
-                    required: "Debe seleccionar el estado del pago."
+                    required: "Debe seleccionar el estado del pago.",
+                    maxlength: "El estado de pago no puede exceder los 20 caracteres."
                 }
             }
         });
@@ -138,7 +160,8 @@ $(document).ready(function() {
                     required: false
                 },
                 tipo: {
-                    required: true
+                    required: true,
+                    maxlength: 25
                 },
                 recorrido_id: {
                     required: false
@@ -150,18 +173,22 @@ $(document).ready(function() {
                     required: true
                 },
                 metodo_pago: {
-                    required: true
+                    required: true,
+                    maxlength: 25
                 },
                 pago_estado: {
-                    required: true
+                    required: true,
+                    maxlength: 20
                 },
                 estatus: {
-                    required: true
+                    required: true,
+                    maxlength: 20
                 }
             },
             messages: {
                 tipo: {
-                    required: "Debe seleccionar el tipo de cita."
+                    required: "Debe seleccionar el tipo de cita.",
+                    maxlength: "El tipo de cita no puede exceder los 25 caracteres."
                 },
                 fecha_visita: {
                     required: "Debe seleccionar una fecha para la visita guiada."
@@ -170,7 +197,16 @@ $(document).ready(function() {
                     required: "Debe definir la hora de inicio de la visita."
                 },
                 metodo_pago: {
-                    required: "Debe seleccionar el método de pago."
+                    required: "Debe seleccionar el método de pago.",
+                    maxlength: "El método de pago no puede exceder los 25 caracteres."
+                },
+                pago_estado: {
+                    required: "Debe seleccionar el estado del pago.",
+                    maxlength: "El estado de pago no puede exceder los 20 caracteres."
+                },
+                estatus: {
+                    required: "Debe seleccionar el estatus de la cita.",
+                    maxlength: "El estatus no puede exceder los 20 caracteres."
                 }
             }
         });

@@ -85,12 +85,12 @@
                                     <option value="G">G</option>
                                     <option value="P">P</option>
                                 </select>
-                                <input type="text" class="form-control form-premium-control" id="cedula" name="cedula" placeholder="Ej. 25123456" style="border-top-left-radius: 0; border-bottom-left-radius: 0;" required>
+                                <input type="text" class="form-control form-premium-control" id="cedula" name="cedula" placeholder="Ej. 25123456" style="border-top-left-radius: 0; border-bottom-left-radius: 0;" required maxlength="15">
                             </div>
                         </div>
                         <div class="mb-3">
                             <label for="nombre_completo" class="form-premium-label">Nombre Completo</label>
-                            <input type="text" class="form-control form-premium-control" id="nombre_completo" name="nombre_completo" placeholder="Ej. Juan Carlos Pérez" required>
+                            <input type="text" class="form-control form-premium-control" id="nombre_completo" name="nombre_completo" placeholder="Ej. Juan Carlos Pérez" required maxlength="50">
                         </div>
                         <div class="mb-3">
                             <label for="rol" class="form-premium-label">Rol del Personal</label>
@@ -101,7 +101,7 @@
                         <div class="mb-3">
                             <label for="password" class="form-premium-label">Contraseña</label>
                             <div class="input-group">
-                                <input type="password" class="form-control form-premium-control" id="password" name="password" placeholder="Mínimo 6 caracteres" required autocomplete="new-password">
+                                <input type="password" class="form-control form-premium-control" id="password" name="password" placeholder="Mínimo 6 caracteres" required autocomplete="new-password" maxlength="100">
                                 <button class="btn btn-outline-secondary btn-toggle-password" type="button" id="togglePasswordPersonal" aria-label="Mostrar u ocultar contraseña">
                                     <svg class="eye-icon" viewBox="0 0 24 24" width="20" height="20" fill="#6c757d">
                                         <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
@@ -142,12 +142,12 @@
                                     <option value="G">G</option>
                                     <option value="P">P</option>
                                 </select>
-                                <input type="text" class="form-control form-premium-control" id="edit_cedula" name="cedula" style="border-top-left-radius: 0; border-bottom-left-radius: 0;" required>
+                                <input type="text" class="form-control form-premium-control" id="edit_cedula" name="cedula" style="border-top-left-radius: 0; border-bottom-left-radius: 0;" required maxlength="15">
                             </div>
                         </div>
                         <div class="mb-3">
                             <label for="edit_nombre_completo" class="form-premium-label">Nombre Completo</label>
-                            <input type="text" class="form-control form-premium-control" id="edit_nombre_completo" name="nombre_completo" placeholder="Ej. Juan Carlos Pérez" required>
+                            <input type="text" class="form-control form-premium-control" id="edit_nombre_completo" name="nombre_completo" placeholder="Ej. Juan Carlos Pérez" required maxlength="50">
                         </div>
                         <div class="mb-3">
                             <label for="edit_rol" class="form-premium-label">Rol del Personal</label>
@@ -158,7 +158,7 @@
                         <div class="mb-3">
                             <label for="edit_password" class="form-premium-label">Nueva Contraseña (Opcional)</label>
                             <div class="input-group">
-                                <input type="password" class="form-control form-premium-control" id="edit_password" name="password" placeholder="Dejar en blanco para mantener la actual" autocomplete="new-password">
+                                <input type="password" class="form-control form-premium-control" id="edit_password" name="password" placeholder="Dejar en blanco para mantener la actual" autocomplete="new-password" maxlength="100">
                                 <button class="btn btn-outline-secondary btn-toggle-password" type="button" id="toggleEditPasswordPersonal" aria-label="Mostrar u ocultar contraseña">
                                     <svg class="eye-icon" viewBox="0 0 24 24" width="20" height="20" fill="#6c757d">
                                         <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>

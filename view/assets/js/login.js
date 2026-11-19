@@ -62,6 +62,12 @@ $(document).ready(function() {
             return;
         }
 
+        if (cedula.length < 5 || cedula.length > 15) {
+            markInputError($('#cedula'), 'El número de documento debe tener entre 5 y 15 dígitos.');
+            showAlert('danger', 'El número de documento debe tener entre 5 y 15 dígitos.');
+            return;
+        }
+
         if (password === '') {
             markInputError($('#password'), 'La contraseña es requerida.');
             showAlert('danger', 'La contraseña es requerida.');

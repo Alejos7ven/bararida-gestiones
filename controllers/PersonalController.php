@@ -15,13 +15,15 @@ if (session_status() === PHP_SESSION_NONE) {
 header("Content-Type: application/json; charset=UTF-8");
 
 // Incluimos las dependencias necesarias
+require_once __DIR__ . "/../config/Validator.php";
 require_once __DIR__ . "/../models/Personal.php";
+require_once __DIR__ . "/../models/Permiso.php";
 
 // =========================================================================
-// SEGURIDAD Y CONTROL DE ACCESO ESTRICTO (RBAC)
+// SEGURIDAD Y CONTROL DE ACCESO (RBAC SINCRONIZADO CON BD)
 // =========================================================================
 
-// Verificar que el personal esté autenticado
+// 1. Verificar que el personal esté autenticado
 if (!isset($_SESSION['personal'])) {
     http_response_code(401);
     echo json_encode([
@@ -31,12 +33,25 @@ if (!isset($_SESSION['personal'])) {
     exit;
 }
 
-// Verificar que el personal posea el rol de Super Administrador
-if ($_SESSION['personal']['rol'] !== 'superadmin') {
+$currentUser = $_SESSION['personal'];
+$userRolId   = isset($currentUser['rol_id']) ? (int)$currentUser['rol_id'] : 0;
+$userRol     = $currentUser['rol'] ?? '';
+
+// 2. Resolver rol_id y verificar permisos dinámicos contra la base de datos
+$permisoModel = new Permiso();
+if ($userRolId <= 0 && !empty($userRol)) {
+    $userRolId = $permisoModel->obtenerRolIdPorNombre($userRol) ?? 0;
+    if ($userRolId > 0) {
+        $_SESSION['personal']['rol_id'] = $userRolId;
+    }
+}
+
+// 3. Validar si el rol tiene permiso explícito sobre el módulo 'personal'
+if (!$permisoModel->tieneAccesoModulo($userRolId, 'personal', $userRol)) {
     http_response_code(403);
     echo json_encode([
         "status" => "error",
-        "message" => "Acceso denegado. Se requieren permisos de Super Administrador para este módulo."
+        "message" => "Acceso denegado. No posee permisos para interactuar con el módulo de personal."
     ]);
     exit;
 }
@@ -163,91 +178,42 @@ function obtenerAction() {
  * Registra un nuevo personal en el sistema
  */
 function crearAction() {
-    $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
-    $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
-    $nombre_completo = isset($_POST['nombre_completo']) ? trim($_POST['nombre_completo']) : '';
-    if (empty($nombre_completo) && isset($_POST['nombre'])) {
-        $nombre_completo = trim($_POST['nombre'] . ' ' . ($_POST['apellido'] ?? ''));
+    if (empty($_POST['nombre_completo']) && isset($_POST['nombre'])) {
+        $_POST['nombre_completo'] = trim($_POST['nombre'] . ' ' . ($_POST['apellido'] ?? ''));
     }
-    $rol = isset($_POST['rol']) ? trim($_POST['rol']) : '';
-    $password = isset($_POST['password']) ? trim($_POST['password']) : '';
 
-    // Validar campos requeridos en el controlador
-    if (empty($tipo_documento) || empty($cedula) || empty($nombre_completo) || empty($rol) || empty($password)) {
-        $missingField = empty($tipo_documento) ? "tipo_documento" : (empty($cedula) ? "cedula" : (empty($nombre_completo) ? "nombre_completo" : (empty($rol) ? "rol" : "password")));
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Todos los campos son obligatorios para el registro (Tipo, Documento, Nombre Completo, Rol y Contraseña).",
-            "field" => $missingField
-        ]);
+    $validator = Validator::make($_POST, [
+        'tipo_documento'  => ['required' => true, 'in' => ['V', 'E', 'J', 'G', 'P'], 'maxlength' => 10],
+        'cedula'          => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
+        'nombre_completo' => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'soloLetras' => true],
+        'rol'             => ['required' => true, 'maxlength' => 30],
+        'password'        => ['required' => true, 'minlength' => 6, 'maxlength' => 100]
+    ], [
+        'nombre_completo' => [
+            'soloLetras' => 'El nombre completo no puede contener números ni caracteres especiales.',
+            'maxlength'  => 'El nombre completo no puede superar los 50 caracteres.'
+        ],
+        'cedula' => [
+            'digits'    => 'El número de documento debe contener exclusivamente dígitos.',
+            'minlength' => 'El documento debe contener entre 6 y 15 dígitos.',
+            'maxlength' => 'El documento no puede exceder los 15 dígitos.'
+        ],
+        'password' => [
+            'minlength' => 'La contraseña debe tener al menos 6 caracteres.',
+            'maxlength' => 'La contraseña no puede exceder los 100 caracteres.'
+        ]
+    ]);
+
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
         return;
     }
 
-    // Validar formato de tipo de documento
-    $validTypes = ['V', 'E', 'J', 'G', 'P'];
-    if (!in_array($tipo_documento, $validTypes, true)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Tipo de documento no válido. Valores permitidos: V, E, J, G, P.",
-            "field" => "tipo_documento"
-        ]);
-        return;
-    }
-
-    // Validar cédula numérica
-    if (!ctype_digit($cedula)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El número de documento debe contener exclusivamente dígitos.",
-            "field" => "cedula"
-        ]);
-        return;
-    }
-
-    if (strlen($cedula) < 6 || strlen($cedula) > 10) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El documento debe contener entre 6 y 10 dígitos.",
-            "field" => "cedula"
-        ]);
-        return;
-    }
-
-    // Validar longitud y formato de nombre_completo
-    if (mb_strlen($nombre_completo) < 3 || mb_strlen($nombre_completo) > 100) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El nombre completo debe tener entre 3 y 100 caracteres.",
-            "field" => "nombre_completo"
-        ]);
-        return;
-    }
-
-    if (preg_match('/\d/', $nombre_completo)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El nombre no puede contener números.",
-            "field" => "nombre_completo"
-        ]);
-        return;
-    }
-
-    // Validar contraseña
-    if (strlen($password) < 6) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La contraseña debe tener al menos 6 caracteres.",
-            "field" => "password"
-        ]);
-        return;
-    }
+    $tipo_documento  = strtoupper($validator->getValue('tipo_documento'));
+    $cedula          = $validator->getValue('cedula');
+    $nombre_completo = $validator->getValue('nombre_completo');
+    $rol             = $validator->getValue('rol');
+    $password        = $validator->getValue('password');
 
     // Obtener roles válidos desde el modelo Personal
     $personalModel = new Personal();
@@ -326,97 +292,44 @@ function crearAction() {
  * Actualiza la información de un personal existente
  */
 function actualizarAction() {
-    $id = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : null;
-    $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
-    $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
-    $nombre_completo = isset($_POST['nombre_completo']) ? trim($_POST['nombre_completo']) : '';
-    if (empty($nombre_completo) && isset($_POST['nombre'])) {
-        $nombre_completo = trim($_POST['nombre'] . ' ' . ($_POST['apellido'] ?? ''));
+    if (empty($_POST['nombre_completo']) && isset($_POST['nombre'])) {
+        $_POST['nombre_completo'] = trim($_POST['nombre'] . ' ' . ($_POST['apellido'] ?? ''));
     }
-    $rol = isset($_POST['rol']) ? trim($_POST['rol']) : '';
-    $password = isset($_POST['password']) ? trim($_POST['password']) : '';
 
-    if ($id === null || $id < 0) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "ID de personal inválido para la actualización."
-        ]);
+    $validator = Validator::make($_POST, [
+        'id'              => ['required' => true, 'integer' => true, 'min' => 0],
+        'tipo_documento'  => ['required' => true, 'in' => ['V', 'E', 'J', 'G', 'P'], 'maxlength' => 10],
+        'cedula'          => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
+        'nombre_completo' => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'soloLetras' => true],
+        'rol'             => ['required' => true, 'maxlength' => 30],
+        'password'        => ['required' => false, 'minlength' => 6, 'maxlength' => 100]
+    ], [
+        'nombre_completo' => [
+            'soloLetras' => 'El nombre completo no puede contener números ni caracteres especiales.',
+            'maxlength'  => 'El nombre completo no puede superar los 50 caracteres.'
+        ],
+        'cedula' => [
+            'digits'    => 'El número de documento debe contener exclusivamente dígitos.',
+            'minlength' => 'El documento debe contener entre 6 y 15 dígitos.',
+            'maxlength' => 'El documento no puede exceder los 15 dígitos.'
+        ],
+        'password' => [
+            'minlength' => 'La contraseña debe tener al menos 6 caracteres.',
+            'maxlength' => 'La contraseña no puede exceder los 100 caracteres.'
+        ]
+    ]);
+
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
         return;
     }
 
-    // Validar campos obligatorios
-    if (empty($tipo_documento) || empty($cedula) || empty($nombre_completo) || empty($rol)) {
-        $missingField = empty($tipo_documento) ? "tipo_documento" : (empty($cedula) ? "cedula" : (empty($nombre_completo) ? "nombre_completo" : "rol"));
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los campos Tipo, Documento, Nombre Completo y Rol son obligatorios.",
-            "field" => $missingField
-        ]);
-        return;
-    }
-
-    $validTypes = ['V', 'E', 'J', 'G', 'P'];
-    if (!in_array($tipo_documento, $validTypes, true)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Tipo de documento no válido.",
-            "field" => "tipo_documento"
-        ]);
-        return;
-    }
-
-    if (!ctype_digit($cedula)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El número de documento debe contener exclusivamente dígitos.",
-            "field" => "cedula"
-        ]);
-        return;
-    }
-
-    if (strlen($cedula) < 6 || strlen($cedula) > 10) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El documento debe contener entre 6 y 10 dígitos.",
-            "field" => "cedula"
-        ]);
-        return;
-    }
-
-    if (mb_strlen($nombre_completo) < 3 || mb_strlen($nombre_completo) > 100) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El nombre completo debe tener entre 3 y 100 caracteres.",
-            "field" => "nombre_completo"
-        ]);
-        return;
-    }
-
-    if (preg_match('/\d/', $nombre_completo)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El nombre no puede contener números.",
-            "field" => "nombre_completo"
-        ]);
-        return;
-    }
-
-    if (!empty($password) && strlen($password) < 6) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La contraseña debe tener al menos 6 caracteres.",
-            "field" => "password"
-        ]);
-        return;
-    }
+    $id              = (int)$validator->getValue('id');
+    $tipo_documento  = strtoupper($validator->getValue('tipo_documento'));
+    $cedula          = $validator->getValue('cedula');
+    $nombre_completo = $validator->getValue('nombre_completo');
+    $rol             = $validator->getValue('rol');
+    $password        = $validator->getValue('password');
 
     // Verificar si el personal actual existe
     $personalModel = new Personal();

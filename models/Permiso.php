@@ -55,6 +55,85 @@ class Permiso extends Database {
         $this->rolNombre = $rolNombre;
     }
 
+    // Cache en memoria por petición para evitar consultas redundantes de permisos
+    private static array $cachePermisos = [];
+
+    /**
+     * Limpia la cache estática en memoria de permisos
+     */
+    public static function limpiarCache(): void {
+        self::$cachePermisos = [];
+    }
+
+    /**
+     * Verifica de forma dinámica y sincronizada con la BD si un rol tiene acceso a un módulo.
+     * El superadmin siempre posee acceso total a todos los módulos.
+     * Para cualquier otro rol, consulta la tabla de permisos en la base de datos.
+     *
+     * @param int|null    $rolId     ID del rol
+     * @param string      $modulo    Nombre del módulo a validar
+     * @param string|null $rolNombre Nombre del rol (opcional para fallback)
+     * @return bool True si tiene permiso, False si está denegado
+     */
+    public function tieneAccesoModulo(?int $rolId, string $modulo, ?string $rolNombre = null): bool {
+        $modulo = strtolower(trim($modulo));
+        if ($modulo === '') {
+            return false;
+        }
+
+        if (!$this->db) {
+            return false;
+        }
+
+        // Si no se tiene rolId pero sí rolNombre, resolverlo dinámicamente desde la BD
+        if (($rolId === null || $rolId <= 0) && !empty($rolNombre)) {
+            $rolId = $this->obtenerRolIdPorNombre($rolNombre);
+        }
+
+        if ($rolId === null || $rolId <= 0) {
+            return false;
+        }
+
+        // Consultar nombre del rol si no fue suministrado
+        if (empty($rolNombre)) {
+            try {
+                $stmtRol = $this->db->prepare("SELECT LOWER(nombre) FROM roles WHERE id = :rol_id LIMIT 1");
+                $stmtRol->bindParam(":rol_id", $rolId, PDO::PARAM_INT);
+                $stmtRol->execute();
+                $rolNombre = (string)$stmtRol->fetchColumn();
+            } catch (PDOException $e) {
+                error_log("Error al consultar nombre de rol en tieneAccesoModulo: " . $e->getMessage());
+            }
+        }
+
+        // Superadmin siempre tiene acceso irrestricto
+        if (strtolower((string)$rolNombre) === 'superadmin' || $rolId === 1) {
+            return true;
+        }
+
+        // Módulo 'dashboard' siempre está permitido a cualquier usuario autenticado
+        if ($modulo === 'dashboard') {
+            return true;
+        }
+
+        // Módulo de configuración 'app' es exclusivo para superadmin
+        if ($modulo === 'app') {
+            return false;
+        }
+
+        // Cargar y almacenar en cache de la petición los permisos del rol
+        if (!isset(self::$cachePermisos[$rolId])) {
+            try {
+                self::$cachePermisos[$rolId] = $this->getPermisosPorRol($rolId);
+            } catch (Exception $e) {
+                error_log("Error al cargar permisos en tieneAccesoModulo: " . $e->getMessage());
+                return false;
+            }
+        }
+
+        return !empty(self::$cachePermisos[$rolId][$modulo]);
+    }
+
     // =========================================================================
     // MÉTODOS DE BASE DE DATOS
     // =========================================================================
@@ -226,7 +305,9 @@ class Permiso extends Database {
             $stmt->bindValue(":modulo_id",         $this->moduloId,     PDO::PARAM_INT);
             $stmt->bindValue(":puede_acceder",     $this->puedeAcceder, PDO::PARAM_INT);
             $stmt->bindValue(":puede_acceder_upd", $this->puedeAcceder, PDO::PARAM_INT);
-            return $stmt->execute();
+            $resultado = $stmt->execute();
+            self::limpiarCache();
+            return $resultado;
         } catch (PDOException $e) {
             error_log("Excepción en Permiso::actualizarPermiso(): " . $e->getMessage());
             throw new Exception("Error al actualizar el permiso.");

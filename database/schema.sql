@@ -5,9 +5,9 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 -- USE bararida_gestiones;
 CREATE TABLE IF NOT EXISTS entidades (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `tipo_documento` varchar(20) NOT NULL,
-  `documento` varchar(50) NOT NULL UNIQUE,
-  `nombre_completo` varchar(150) NOT NULL,
+  `tipo_documento` varchar(10) NOT NULL,
+  `documento` varchar(15) NOT NULL UNIQUE,
+  `nombre_completo` varchar(50) NOT NULL,
   `tipo_entidad` varchar(20) NOT NULL DEFAULT 'persona'
 );
 
@@ -18,22 +18,22 @@ CREATE TABLE IF NOT EXISTS roles (
 
 CREATE TABLE IF NOT EXISTS recorrido (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `nombre` varchar(100) NOT NULL,
+  `nombre` varchar(50) NOT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT '1'
 );
 
 CREATE TABLE IF NOT EXISTS zonas (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `nombre` varchar(100) NOT NULL,
+  `nombre` varchar(50) NOT NULL,
   `coordenadas` varchar(255) NOT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT '1'
 );
 
 CREATE TABLE IF NOT EXISTS visitantes (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `cedula` varchar(30) DEFAULT NULL,
-  `nombres` varchar(100) NOT NULL,
-  `apellidos` varchar(100) NOT NULL,
+  `cedula` varchar(15) DEFAULT NULL,
+  `nombres` varchar(25) NOT NULL,
+  `apellidos` varchar(25) NOT NULL,
   `fecha_nacimiento` date NOT NULL,
   `activo` tinyint(1) NOT NULL DEFAULT '1',
   UNIQUE KEY `idx_visitantes_cedula` (`cedula`)
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS estados (
 
 CREATE TABLE IF NOT EXISTS modulos (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
-  `nombre` varchar(50) NOT NULL UNIQUE,
+  `nombre` varchar(25) NOT NULL UNIQUE,
   `label` varchar(100) NOT NULL
 );
 
@@ -80,8 +80,8 @@ CREATE TABLE IF NOT EXISTS rutas (
 CREATE TABLE IF NOT EXISTS instituciones (
   `id` int NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `entidad_id` int NOT NULL,
-  `tipo_organizacion` varchar(50) NOT NULL,
-  `tipo_gestion` varchar(50) NOT NULL DEFAULT 'publica',
+  `tipo_organizacion` varchar(20) NOT NULL,
+  `tipo_gestion` varchar(20) NOT NULL DEFAULT 'publica',
   `activo` tinyint(1) NOT NULL DEFAULT '1',
   CONSTRAINT fk_entidad_institucion 
     FOREIGN KEY (`entidad_id`) REFERENCES `entidades` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
@@ -155,9 +155,9 @@ CREATE TABLE IF NOT EXISTS citas (
   `fecha_solicitud` date NOT NULL,
   `fecha_visita` date NOT NULL,
   `hora_inicio` time NOT NULL,
-  `tipo` varchar(40) NOT NULL DEFAULT 'institucional',
+  `tipo` varchar(25) NOT NULL DEFAULT 'institucional',
   `estatus` varchar(20) NOT NULL DEFAULT 'pendiente',
-  `metodo_pago` varchar(50) NOT NULL,
+  `metodo_pago` varchar(25) NOT NULL,
   `pago_estado` varchar(20) NOT NULL DEFAULT 'pendiente',
   `activo` tinyint(1) NOT NULL DEFAULT '1',
   CONSTRAINT fk_instituciones_citas

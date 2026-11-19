@@ -23,8 +23,31 @@ if (!isset($_SESSION['personal'])) {
 }
 
 // Incluir dependencias
+require_once __DIR__ . "/../config/Validator.php";
 require_once __DIR__ . "/../models/Institucion.php";
 require_once __DIR__ . "/../models/Sede.php";
+require_once __DIR__ . "/../models/Permiso.php";
+
+$currentUser = $_SESSION['personal'];
+$userRolId   = isset($currentUser['rol_id']) ? (int)$currentUser['rol_id'] : 0;
+$userRol     = $currentUser['rol'] ?? '';
+
+$permisoModel = new Permiso();
+if ($userRolId <= 0 && !empty($userRol)) {
+    $userRolId = $permisoModel->obtenerRolIdPorNombre($userRol) ?? 0;
+    if ($userRolId > 0) {
+        $_SESSION['personal']['rol_id'] = $userRolId;
+    }
+}
+
+if (!$permisoModel->tieneAccesoModulo($userRolId, 'instituciones', $userRol)) {
+    http_response_code(403);
+    echo json_encode([
+        "status" => "error",
+        "message" => "Acceso denegado. No posee permisos para acceder al módulo de instituciones."
+    ]);
+    exit;
+}
 
 $action = isset($_GET['action']) ? trim($_GET['action']) : '';
 
@@ -153,11 +176,10 @@ function obtenerSedesAction() {
 }
 
 function crearInstitucionAction() {
-    $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'J';
-    $documento = isset($_POST['documento']) ? trim($_POST['documento']) : '';
-    $nombre_completo = isset($_POST['nombre_completo']) ? trim($_POST['nombre_completo']) : (isset($_POST['nombre']) ? trim($_POST['nombre']) : '');
-    $tipo_organizacion = isset($_POST['tipo_organizacion']) ? trim($_POST['tipo_organizacion']) : '';
-    $tipo_gestion = isset($_POST['tipo_gestion']) ? trim($_POST['tipo_gestion']) : 'publica';
+    if (empty($_POST['nombre_completo']) && isset($_POST['nombre'])) {
+        $_POST['nombre_completo'] = trim($_POST['nombre']);
+    }
+
     $sedesRaw = isset($_POST['sedes']) ? $_POST['sedes'] : [];
     $contactosRaw = isset($_POST['contactos']) ? $_POST['contactos'] : [];
 
@@ -169,57 +191,45 @@ function crearInstitucionAction() {
         ];
     }
 
-    // Validaciones en Controller
-    if (empty($documento) || empty($nombre_completo) || empty($tipo_organizacion) || empty($tipo_gestion)) {
-        $missingField = empty($documento) ? "documento" : (empty($nombre_completo) ? "nombre_completo" : (empty($tipo_organizacion) ? "tipo_organizacion" : "tipo_gestion"));
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Todos los datos identificativos de la institución son obligatorios (Tipo, RIF, Razón Social, Tipo de Org. y Gestión).",
-            "field" => $missingField
-        ]);
+    $validator = Validator::make($_POST, [
+        'tipo_documento'    => ['required' => true, 'in' => ['J', 'G', 'V', 'E', 'P'], 'maxlength' => 10],
+        'documento'         => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
+        'nombre_completo'   => ['required' => true, 'minlength' => 3, 'maxlength' => 50],
+        'tipo_organizacion' => ['required' => true, 'minlength' => 3, 'maxlength' => 20],
+        'tipo_gestion'      => ['required' => true, 'in' => ['publica', 'privada'], 'maxlength' => 20]
+    ], [
+        'documento' => [
+            'required'  => 'El RIF/Cédula es requerido.',
+            'digits'    => 'El RIF/Cédula debe contener solo números.',
+            'minlength' => 'El RIF/Cédula debe tener al menos 6 dígitos.',
+            'maxlength' => 'El RIF/Cédula no puede exceder los 15 dígitos.'
+        ],
+        'nombre_completo' => [
+            'required'  => 'La Razón Social / Nombre Oficial es requerida.',
+            'minlength' => 'La Razón Social debe tener al menos 3 caracteres.',
+            'maxlength' => 'La Razón Social no puede superar los 50 caracteres.'
+        ],
+        'tipo_organizacion' => [
+            'required'  => 'Debe seleccionar o especificar un tipo de organización.',
+            'maxlength' => 'El tipo de organización no puede exceder los 20 caracteres.'
+        ],
+        'tipo_gestion' => [
+            'required'  => 'Debe seleccionar el tipo de gestión.',
+            'in'        => 'El tipo de gestión proporcionado no es válido (pública o privada).',
+            'maxlength' => 'El tipo de gestión no puede exceder los 20 caracteres.'
+        ]
+    ]);
+
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
         return;
     }
 
-    if (!in_array($tipo_documento, ['J', 'G', 'V', 'E', 'P'], true)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Tipo de documento/RIF no válido.",
-            "field" => "tipo_documento"
-        ]);
-        return;
-    }
-
-    if (strlen($documento) < 3 || strlen($documento) > 50) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El número de documento/RIF no es válido.",
-            "field" => "documento"
-        ]);
-        return;
-    }
-
-    if (strlen($nombre_completo) < 3 || strlen($nombre_completo) > 150) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La razón social debe tener entre 3 y 150 caracteres.",
-            "field" => "nombre_completo"
-        ]);
-        return;
-    }
-
-    if (!in_array($tipo_gestion, ['publica', 'privada'], true)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El tipo de gestión proporcionado no es válido.",
-            "field" => "tipo_gestion"
-        ]);
-        return;
-    }
+    $tipo_documento    = strtoupper($validator->getValue('tipo_documento'));
+    $documento         = $validator->getValue('documento');
+    $nombre_completo   = $validator->getValue('nombre_completo');
+    $tipo_organizacion = $validator->getValue('tipo_organizacion');
+    $tipo_gestion      = $validator->getValue('tipo_gestion');
 
     // Validar sedes
     $sedesValidadas = [];
@@ -359,14 +369,12 @@ function actualizarInstitucionAction() {
     $sedesRaw = isset($_POST['sedes']) ? $_POST['sedes'] : [];
     $contactosRaw = isset($_POST['contactos']) ? $_POST['contactos'] : [];
 
-    if (!$id || !$entidad_id) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "ID de la institución o de la entidad inválido o no suministrado."
-        ]);
-        return;
+    if (empty($_POST['nombre_completo']) && isset($_POST['nombre'])) {
+        $_POST['nombre_completo'] = trim($_POST['nombre']);
     }
+
+    $sedesRaw = isset($_POST['sedes']) ? $_POST['sedes'] : [];
+    $contactosRaw = isset($_POST['contactos']) ? $_POST['contactos'] : [];
 
     // Fallback: si no viene el array de sedes pero viene parroquia_id directo
     if (empty($sedesRaw) && !empty($_POST['parroquia_id'])) {
@@ -377,56 +385,55 @@ function actualizarInstitucionAction() {
         ];
     }
 
-    if (empty($documento) || empty($nombre_completo) || empty($tipo_organizacion) || empty($tipo_gestion)) {
-        $missingField = empty($documento) ? "documento" : (empty($nombre_completo) ? "nombre_completo" : (empty($tipo_organizacion) ? "tipo_organizacion" : "tipo_gestion"));
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Todos los datos identificativos de la institución son obligatorios.",
-            "field" => $missingField
-        ]);
+    $validator = Validator::make($_POST, [
+        'id'                => ['required' => true, 'integer' => true, 'min' => 1],
+        'entidad_id'        => ['required' => true, 'integer' => true, 'min' => 1],
+        'tipo_documento'    => ['required' => true, 'in' => ['J', 'G', 'V', 'E', 'P'], 'maxlength' => 10],
+        'documento'         => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
+        'nombre_completo'   => ['required' => true, 'minlength' => 3, 'maxlength' => 50],
+        'tipo_organizacion' => ['required' => true, 'minlength' => 3, 'maxlength' => 20],
+        'tipo_gestion'      => ['required' => true, 'in' => ['publica', 'privada'], 'maxlength' => 20]
+    ], [
+        'id' => [
+            'required' => 'ID de la institución inválido o no suministrado.'
+        ],
+        'entidad_id' => [
+            'required' => 'ID de la entidad inválido o no suministrado.'
+        ],
+        'documento' => [
+            'required'  => 'El RIF/Cédula es requerido.',
+            'digits'    => 'El RIF/Cédula debe contener solo números.',
+            'minlength' => 'El RIF/Cédula debe tener al menos 6 dígitos.',
+            'maxlength' => 'El RIF/Cédula no puede exceder los 15 dígitos.'
+        ],
+        'nombre_completo' => [
+            'required'  => 'La Razón Social / Nombre Oficial es requerida.',
+            'minlength' => 'La Razón Social debe tener al menos 3 caracteres.',
+            'maxlength' => 'La Razón Social no puede superar los 50 caracteres.'
+        ],
+        'tipo_organizacion' => [
+            'required'  => 'Debe seleccionar o especificar un tipo de organización.',
+            'maxlength' => 'El tipo de organización no puede exceder los 20 caracteres.'
+        ],
+        'tipo_gestion' => [
+            'required'  => 'Debe seleccionar el tipo de gestión.',
+            'in'        => 'El tipo de gestión proporcionado no es válido (pública o privada).',
+            'maxlength' => 'El tipo de gestión no puede exceder los 20 caracteres.'
+        ]
+    ]);
+
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
         return;
     }
 
-    if (!in_array($tipo_documento, ['J', 'G', 'V', 'E', 'P'], true)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Tipo de documento/RIF no válido.",
-            "field" => "tipo_documento"
-        ]);
-        return;
-    }
-
-    if (strlen($documento) < 3 || strlen($documento) > 50) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El número de documento/RIF no es válido.",
-            "field" => "documento"
-        ]);
-        return;
-    }
-
-    if (strlen($nombre_completo) < 3 || strlen($nombre_completo) > 150) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La razón social debe tener entre 3 y 150 caracteres.",
-            "field" => "nombre_completo"
-        ]);
-        return;
-    }
-
-    if (!in_array($tipo_gestion, ['publica', 'privada'], true)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El tipo de gestión proporcionado no es válido.",
-            "field" => "tipo_gestion"
-        ]);
-        return;
-    }
+    $id                = (int)$validator->getValue('id');
+    $entidad_id        = (int)$validator->getValue('entidad_id');
+    $tipo_documento    = strtoupper($validator->getValue('tipo_documento'));
+    $documento         = $validator->getValue('documento');
+    $nombre_completo   = $validator->getValue('nombre_completo');
+    $tipo_organizacion = $validator->getValue('tipo_organizacion');
+    $tipo_gestion      = $validator->getValue('tipo_gestion');
 
     $sedesValidadas = [];
     if (is_array($sedesRaw)) {

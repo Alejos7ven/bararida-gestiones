@@ -72,15 +72,15 @@
                         <div id="alertCrearVisitanteFeedback" class="alert alert-toast alert-toast-danger" role="alert" style="display:none;"></div>
                         <div class="mb-3">
                             <label for="visitante_cedula" class="form-premium-label">Cédula / Documento <span class="text-muted" style="font-size:0.75rem;">(Dejar vacío para menor sin cédula)</span></label>
-                            <input type="text" class="form-control form-premium-control" id="visitante_cedula" name="cedula" placeholder="Ej. 28123456">
+                            <input type="text" class="form-control form-premium-control" id="visitante_cedula" name="cedula" placeholder="Ej. 28123456" maxlength="15">
                         </div>
                         <div class="mb-3">
                             <label for="visitante_nombres" class="form-premium-label">Nombres *</label>
-                            <input type="text" class="form-control form-premium-control" id="visitante_nombres" name="nombres" placeholder="Ej. Carlos Eduardo" required>
+                            <input type="text" class="form-control form-premium-control" id="visitante_nombres" name="nombres" placeholder="Ej. Carlos Eduardo" required maxlength="25">
                         </div>
                         <div class="mb-3">
                             <label for="visitante_apellidos" class="form-premium-label">Apellidos *</label>
-                            <input type="text" class="form-control form-premium-control" id="visitante_apellidos" name="apellidos" placeholder="Ej. Pérez Gómez" required>
+                            <input type="text" class="form-control form-premium-control" id="visitante_apellidos" name="apellidos" placeholder="Ej. Pérez Gómez" required maxlength="25">
                         </div>
                         <div class="mb-3">
                             <label for="visitante_fecha_nacimiento" class="form-premium-label">Fecha de Nacimiento *</label>
@@ -110,15 +110,15 @@
                         <div id="alertEditarVisitanteFeedback" class="alert alert-toast alert-toast-danger" role="alert" style="display:none;"></div>
                         <div class="mb-3">
                             <label for="edit_visitante_cedula" class="form-premium-label">Cédula / Documento <span class="text-muted" style="font-size:0.75rem;">(Dejar vacío para menor sin cédula)</span></label>
-                            <input type="text" class="form-control form-premium-control" id="edit_visitante_cedula" name="cedula" placeholder="Ej. 28123456">
+                            <input type="text" class="form-control form-premium-control" id="edit_visitante_cedula" name="cedula" placeholder="Ej. 28123456" maxlength="15">
                         </div>
                         <div class="mb-3">
                             <label for="edit_visitante_nombres" class="form-premium-label">Nombres *</label>
-                            <input type="text" class="form-control form-premium-control" id="edit_visitante_nombres" name="nombres" placeholder="Ej. Carlos Eduardo" required>
+                            <input type="text" class="form-control form-premium-control" id="edit_visitante_nombres" name="nombres" placeholder="Ej. Carlos Eduardo" required maxlength="25">
                         </div>
                         <div class="mb-3">
                             <label for="edit_visitante_apellidos" class="form-premium-label">Apellidos *</label>
-                            <input type="text" class="form-control form-premium-control" id="edit_visitante_apellidos" name="apellidos" placeholder="Ej. Pérez Gómez" required>
+                            <input type="text" class="form-control form-premium-control" id="edit_visitante_apellidos" name="apellidos" placeholder="Ej. Pérez Gómez" required maxlength="25">
                         </div>
                         <div class="mb-3">
                             <label for="edit_visitante_fecha_nacimiento" class="form-premium-label">Fecha de Nacimiento *</label>

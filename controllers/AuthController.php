@@ -14,6 +14,7 @@ if (session_status() === PHP_SESSION_NONE) {
 header("Content-Type: application/json; charset=UTF-8");
 
 // Incluimos las dependencias necesarias
+require_once __DIR__ . "/../config/Validator.php";
 require_once __DIR__ . "/../models/Personal.php";
 
 // Obtenemos la acción del request
@@ -51,38 +52,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
  * Procesa la acción de inicio de sesión
  */
 function loginAction() {
-    // Obtenemos los parámetros enviados vía POST
-    $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'V';
-    $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : null;
-    $password = isset($_POST['password']) ? trim($_POST['password']) : null;
+    $validator = Validator::make($_POST, [
+        'tipo_documento' => ['required' => true, 'in' => ['V', 'E', 'J', 'G', 'P'], 'maxlength' => 10],
+        'cedula'         => ['required' => true, 'digits' => true, 'minlength' => 5, 'maxlength' => 15],
+        'password'       => ['required' => true, 'minlength' => 6, 'maxlength' => 100]
+    ], [
+        'tipo_documento' => [
+            'required' => 'El tipo de documento es requerido.',
+            'in'       => 'El tipo de documento seleccionado no es válido (debe ser V, E, J, G o P).'
+        ],
+        'cedula' => [
+            'required'  => 'El número de documento es requerido.',
+            'digits'    => 'El número de documento debe contener solo dígitos.',
+            'minlength' => 'El número de documento debe tener al menos 5 dígitos.',
+            'maxlength' => 'El número de documento no puede exceder 15 dígitos.'
+        ],
+        'password' => [
+            'required'  => 'La contraseña es requerida.',
+            'minlength' => 'La contraseña debe tener al menos 6 caracteres.',
+            'maxlength' => 'La contraseña no puede exceder los 100 caracteres.'
+        ]
+    ]);
 
-    // Validación independiente de campos en el controlador
-    $errors = [];
-
-    if (empty($tipo_documento)) {
-        $errors[] = "El tipo de documento es requerido.";
-    } elseif (!in_array($tipo_documento, ['V', 'E', 'J', 'G', 'P'], true)) {
-        $errors[] = "El tipo de documento seleccionado no es válido (debe ser V, E, J, G o P).";
-    }
-
-    if (empty($cedula)) {
-        $errors[] = "El número de documento es requerido.";
-    } elseif (!ctype_digit($cedula)) {
-        $errors[] = "El número de documento debe contener solo dígitos.";
-    }
-
-    if (empty($password)) {
-        $errors[] = "La contraseña es requerida.";
-    }
-
-    if (!empty($errors)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => implode(" ", $errors)
-        ]);
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
         return;
     }
+
+    $tipo_documento = strtoupper($validator->getValue('tipo_documento'));
+    $cedula         = $validator->getValue('cedula');
+    $password       = $validator->getValue('password');
 
     try {
         // Instanciamos el modelo Personal (gestiona su conexión internamente)

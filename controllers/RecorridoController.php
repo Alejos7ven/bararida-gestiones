@@ -16,9 +16,11 @@ if (session_status() === PHP_SESSION_NONE) {
 header("Content-Type: application/json; charset=UTF-8");
 
 // Incluir dependencias necesarias
+require_once __DIR__ . "/../config/Validator.php";
 require_once __DIR__ . "/../models/Zona.php";
 require_once __DIR__ . "/../models/Recorrido.php";
 require_once __DIR__ . "/../models/Ruta.php";
+require_once __DIR__ . "/../models/Permiso.php";
 
 // =========================================================================
 // SEGURIDAD Y CONTROL DE ACCESO (RBAC)
@@ -35,7 +37,16 @@ if (!isset($_SESSION['personal'])) {
 }
 
 $currentUser = $_SESSION['personal'];
-$userRol = $currentUser['rol'] ?? '';
+$userRolId   = isset($currentUser['rol_id']) ? (int)$currentUser['rol_id'] : 0;
+$userRol     = $currentUser['rol'] ?? '';
+
+$permisoModel = new Permiso();
+if ($userRolId <= 0 && !empty($userRol)) {
+    $userRolId = $permisoModel->obtenerRolIdPorNombre($userRol) ?? 0;
+    if ($userRolId > 0) {
+        $_SESSION['personal']['rol_id'] = $userRolId;
+    }
+}
 
 // Capturar la acción solicitada
 $action = isset($_GET['action']) ? trim($_GET['action']) : '';
@@ -45,8 +56,8 @@ $action = isset($_GET['action']) ? trim($_GET['action']) : '';
 // =========================================================================
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Las operaciones de escritura están estrictamente reservadas para superadmin y admin
-    if ($userRol !== 'superadmin' && $userRol !== 'admin') {
+    // Validar permiso dinámico de recorridos según la BD
+    if (!$permisoModel->tieneAccesoModulo($userRolId, 'recorridos', $userRol)) {
         http_response_code(403);
         echo json_encode([
             "status" => "error",
@@ -121,38 +132,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
  * Crea una nueva zona en el mapa
  */
 function crearZonaAction() {
-    $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
-    $coordenadas = isset($_POST['coordenadas']) ? trim($_POST['coordenadas']) : '';
+    $validator = Validator::make($_POST, [
+        'nombre'      => ['required' => true, 'minlength' => 3, 'maxlength' => 50],
+        'coordenadas' => ['required' => true, 'coordenadas' => true, 'maxlength' => 255]
+    ], [
+        'nombre' => [
+            'required'  => 'El nombre de la zona es obligatorio.',
+            'minlength' => 'El nombre de la zona debe tener al menos 3 caracteres.',
+            'maxlength' => 'El nombre de la zona no puede exceder los 50 caracteres.'
+        ],
+        'coordenadas' => [
+            'required'    => 'Debe hacer clic en el mapa para marcar las coordenadas de la zona.',
+            'coordenadas' => "El formato de las coordenadas no es válido. Debe ser 'X,Y' (ej: 45.2,60.8).",
+            'maxlength'   => 'Las coordenadas no pueden superar los 255 caracteres.'
+        ]
+    ]);
 
-    if (empty($nombre) || empty($coordenadas)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El nombre de la zona y sus coordenadas son requeridos.",
-            "field" => empty($nombre) ? "nombre" : "coordenadas"
-        ]);
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
         return;
     }
 
-    if (strlen($nombre) > 100) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El nombre de la zona supera los 100 caracteres.",
-            "field" => "nombre"
-        ]);
-        return;
-    }
-
-    if (!preg_match('/^[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?$/', $coordenadas)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El formato de las coordenadas no es válido. Debe ser 'X,Y' (ej: 45.2,60.8).",
-            "field" => "coordenadas"
-        ]);
-        return;
-    }
+    $nombre      = $validator->getValue('nombre');
+    $coordenadas = $validator->getValue('coordenadas');
 
     try {
         $zona = new Zona();
@@ -236,28 +238,23 @@ function eliminarZonaAction() {
  * Registra un recorrido y sus paradas en orden usando transacciones seguras
  */
 function crearRecorridoAction() {
-    $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
-    $zonas = isset($_POST['zonas']) ? $_POST['zonas'] : null;
+    $validator = Validator::make($_POST, [
+        'nombre' => ['required' => true, 'minlength' => 3, 'maxlength' => 50]
+    ], [
+        'nombre' => [
+            'required'  => 'El nombre del recorrido es obligatorio.',
+            'minlength' => 'El nombre del recorrido debe tener al menos 3 caracteres.',
+            'maxlength' => 'El nombre del recorrido no puede exceder los 50 caracteres.'
+        ]
+    ]);
 
-    if (empty($nombre)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El nombre del recorrido es obligatorio.",
-            "field" => "nombre"
-        ]);
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
         return;
     }
 
-    if (strlen($nombre) > 100) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El nombre del recorrido no es válido o supera los 100 caracteres.",
-            "field" => "nombre"
-        ]);
-        return;
-    }
+    $nombre = $validator->getValue('nombre');
+    $zonas  = isset($_POST['zonas']) ? $_POST['zonas'] : null;
 
     if (empty($zonas) || !is_array($zonas) || count($zonas) < 2) {
         http_response_code(400);
@@ -369,36 +366,34 @@ function eliminarRecorridoAction() {
  * Actualiza las coordenadas y/o nombre de una zona
  */
 function actualizarZonaCoordsAction() {
-    $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
-    $coordenadas = isset($_POST['coordenadas']) ? trim($_POST['coordenadas']) : '';
-    $nombre = isset($_POST['nombre']) ? trim($_POST['nombre']) : '';
+    $validator = Validator::make($_POST, [
+        'id'          => ['required' => true, 'integer' => true, 'min' => 1],
+        'coordenadas' => ['required' => true, 'coordenadas' => true, 'maxlength' => 255],
+        'nombre'      => ['required' => false, 'minlength' => 3, 'maxlength' => 50]
+    ], [
+        'id' => [
+            'required' => 'El ID de la zona es requerido.',
+            'integer'  => 'El ID de la zona es inválido.'
+        ],
+        'coordenadas' => [
+            'required'    => 'Las coordenadas son requeridas.',
+            'coordenadas' => "El formato de las coordenadas no es válido. Debe ser 'X,Y' (ej: 45.2,60.8).",
+            'maxlength'   => 'Las coordenadas no pueden superar los 255 caracteres.'
+        ],
+        'nombre' => [
+            'minlength' => 'El nombre de la zona debe tener al menos 3 caracteres.',
+            'maxlength' => 'El nombre de la zona no puede superar los 50 caracteres.'
+        ]
+    ]);
 
-    if (!$id || empty($coordenadas)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El ID de la zona y las coordenadas son requeridos."
-        ]);
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
         return;
     }
 
-    if (!empty($nombre) && strlen($nombre) > 100) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El nombre de la zona supera los 100 caracteres."
-        ]);
-        return;
-    }
-
-    if (!preg_match('/^[0-9]+(\.[0-9]+)?,[0-9]+(\.[0-9]+)?$/', $coordenadas)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El formato de las coordenadas no es válido. Debe ser 'X,Y' (ej: 45.2,60.8)."
-        ]);
-        return;
-    }
+    $id          = (int)$validator->getValue('id');
+    $coordenadas = $validator->getValue('coordenadas');
+    $nombre      = $validator->getValue('nombre', '');
 
     try {
         $zona = new Zona();

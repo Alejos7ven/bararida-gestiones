@@ -157,7 +157,7 @@
                                         </div>
                                         <div class="col-12">
                                             <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Detalles de la Dirección</label>
-                                            <input type="text" class="form-control form-control-sm" id="nueva_sede_cita_detalles" name="nueva_sede_detalles" placeholder="Ej. Calle 5, Edif. Este">
+                                            <input type="text" class="form-control form-control-sm" id="nueva_sede_cita_detalles" name="nueva_sede_detalles" placeholder="Ej. Calle 5, Edif. Este" maxlength="150">
                                         </div>
                                     </div>
                                 </div>
@@ -183,14 +183,14 @@
                                  </div>
                                  <div class="col-md-8">
                                      <label for="documento_inst" class="form-premium-label">Número RIF / Cédula</label>
-                                     <input type="text" class="form-control form-premium-control" id="documento_inst" name="documento_inst" placeholder="Ej. 123456789 (solo números)">
+                                     <input type="text" class="form-control form-premium-control" id="documento_inst" name="documento_inst" placeholder="Ej. 123456789 (solo números)" maxlength="15">
                                  </div>
                              </div>
 
                              <div class="row g-3">
                                 <div class="col-md-5">
                                     <label for="nombre_institucion" class="form-premium-label">Razón Social / Nombre Oficial</label>
-                                    <input type="text" class="form-control form-premium-control" id="nombre_institucion" name="nombre" placeholder="Ej. Colegio La Salle" required>
+                                    <input type="text" class="form-control form-premium-control" id="nombre_institucion" name="nombre" placeholder="Ej. Colegio La Salle" required maxlength="50">
                                 </div>
                                 <div class="col-md-4">
                                     <label for="tipo_organizacion" class="form-premium-label">Tipo de Organización</label>
@@ -205,7 +205,7 @@
                                         <option value="Otro">Otro (Especificar)</option>
                                     </select>
                                     <div class="mt-2 custom-tipo-organizacion-container" id="cita_custom_tipo_org_container" style="display: none;">
-                                        <input type="text" class="form-control form-premium-control" id="cita_tipo_organizacion_custom" placeholder="Escriba el tipo de organización personalizado...">
+                                        <input type="text" class="form-control form-premium-control" id="cita_tipo_organizacion_custom" placeholder="Escriba el tipo de organización personalizado..." maxlength="20">
                                     </div>
                                 </div>
                                 <div class="col-md-3">
@@ -588,7 +588,7 @@
                                     <div class="row g-2">
                                         <div class="col-md-6">
                                             <label for="reg_visitante_cedula" class="form-premium-label" style="font-size: 0.75rem;">Cédula / Documento <span class="text-muted" style="font-size:0.7rem;">(Opcional)</span></label>
-                                            <input type="text" class="form-control form-premium-control" id="reg_visitante_cedula" name="cedula" placeholder="Ej. 28123456" style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
+                                            <input type="text" class="form-control form-premium-control" id="reg_visitante_cedula" name="cedula" placeholder="Ej. 28123456" maxlength="15" style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
                                         </div>
                                         <div class="col-md-6">
                                             <label for="reg_visitante_fecha_nac" class="form-premium-label" style="font-size: 0.75rem;">F. Nacimiento *</label>
@@ -598,11 +598,11 @@
                                     <div class="row g-2 mt-2">
                                         <div class="col-md-6">
                                             <label for="reg_visitante_nombres" class="form-premium-label" style="font-size: 0.75rem;">Nombres *</label>
-                                            <input type="text" class="form-control form-premium-control" id="reg_visitante_nombres" name="nombres" placeholder="Ej. Carlos Eduardo" required style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
+                                            <input type="text" class="form-control form-premium-control" id="reg_visitante_nombres" name="nombres" placeholder="Ej. Carlos Eduardo" required maxlength="25" style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
                                         </div>
                                         <div class="col-md-6">
                                             <label for="reg_visitante_apellidos" class="form-premium-label" style="font-size: 0.75rem;">Apellidos *</label>
-                                            <input type="text" class="form-control form-premium-control" id="reg_visitante_apellidos" name="apellidos" placeholder="Ej. Pérez Gómez" required style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
+                                            <input type="text" class="form-control form-premium-control" id="reg_visitante_apellidos" name="apellidos" placeholder="Ej. Pérez Gómez" required maxlength="25" style="font-size: 0.8rem; border-radius: 8px; padding: 6px 10px;">
                                         </div>
                                     </div>
                                     <div class="d-flex justify-content-end mt-3 gap-2">

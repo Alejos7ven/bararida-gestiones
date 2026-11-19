@@ -35,7 +35,7 @@
                     <div class="row">
                         <div class="col-md-4 mb-3">
                             <label for="nombreRecorrido" class="form-label" style="font-weight: 600; font-size: 0.85rem; color: var(--park-dark);">Nombre del Recorrido</label>
-                            <input type="text" class="form-control form-premium-control" id="nombreRecorrido" name="nombre" placeholder="Ej. Ruta de los Primates" required style="border-radius:10px;">
+                            <input type="text" class="form-control form-premium-control" id="nombreRecorrido" name="nombre" placeholder="Ej. Ruta de los Primates" required maxlength="50" style="border-radius:10px;">
                         </div>
                         <div class="col-md-8 mb-3">
                             <label class="form-label" style="font-weight: 600; font-size: 0.85rem; color: var(--park-dark);">Ruta Trazada</label>
@@ -109,7 +109,7 @@
                     <div class="modal-body" style="background:#ffffff; padding: 24px;">
                         <div class="mb-3">
                             <label for="nombreZona" class="form-premium-label" style="font-weight: 600; color: var(--park-dark);">Nombre de la Zona</label>
-                            <input type="text" class="form-control form-premium-control" id="nombreZona" name="nombre" placeholder="Ej. Área de Serpentario" required style="border-radius:10px;">
+                            <input type="text" class="form-control form-premium-control" id="nombreZona" name="nombre" placeholder="Ej. Área de Serpentario" required maxlength="50" style="border-radius:10px;">
                         </div>
                         <div class="mb-3">
                             <label for="nuevaZonaCoords" class="form-premium-label" style="font-weight: 600; color: var(--park-dark);">Coordenadas del Pin (%)</label>

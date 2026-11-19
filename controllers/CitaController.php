@@ -34,6 +34,7 @@ if (!isset($_SESSION['personal'])) {
 }
 
 // Incluir dependencias del modelo
+require_once __DIR__ . "/../config/Validator.php";
 require_once __DIR__ . "/../config/ExcelHelper.php";
 require_once __DIR__ . "/../models/Institucion.php";
 require_once __DIR__ . "/../models/Sede.php";
@@ -53,38 +54,16 @@ function usuarioTienePermisoCitas(): bool {
         return false;
     }
 
-    $rol = strtolower(trim((string)($personal['rol'] ?? '')));
-    if ($rol === 'superadmin') {
-        return true;
-    }
-
     $rolId = isset($personal['rol_id']) ? (int)$personal['rol_id'] : 0;
-    if ($rolId <= 0 && $rol !== '') {
-        try {
-            $permisoModel = new Permiso();
-            $rolId = $permisoModel->obtenerRolIdPorNombre($rol) ?? 0;
-            if ($rolId > 0) {
-                $_SESSION['personal']['rol_id'] = $rolId;
-            }
-        } catch (Exception $e) {
-            error_log("Error al consultar rol_id en usuarioTienePermisoCitas: " . $e->getMessage());
-        }
-    }
+    $rol   = strtolower(trim((string)($personal['rol'] ?? '')));
 
-    if ($rolId > 0) {
-        try {
-            $permisoModel = new Permiso();
-            $permisos = $permisoModel->getPermisosPorRol($rolId);
-            if (isset($permisos['citas'])) {
-                return (bool)$permisos['citas'];
-            }
-        } catch (Exception $e) {
-            error_log("Error al consultar permisos en usuarioTienePermisoCitas: " . $e->getMessage());
-        }
+    try {
+        $permisoModel = new Permiso();
+        return $permisoModel->tieneAccesoModulo($rolId, 'citas', $rol);
+    } catch (Exception $e) {
+        error_log("Error en usuarioTienePermisoCitas: " . $e->getMessage());
+        return false;
     }
-
-    // Fallback estándar según rol
-    return ($rol === 'admin' || $rol === 'guia' || $rol === 'guía');
 }
 
 // Procesar según método HTTP y acción
@@ -260,100 +239,100 @@ function crearCitaAction() {
         return;
     }
 
-    $institucion_id = (!empty($_POST['institucion_id']) && filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['institucion_id'] : null;
-    $sede_id = (!empty($_POST['sede_id']) && filter_var($_POST['sede_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['sede_id'] : null;
-    
-    // Datos de la Cita
-    $recorrido_id = (isset($_POST['recorrido_id']) && trim($_POST['recorrido_id']) !== '') ? trim($_POST['recorrido_id']) : null;
-    $fecha_visita = isset($_POST['fecha_visita']) ? trim($_POST['fecha_visita']) : '';
-    $hora_inicio = isset($_POST['hora_inicio']) ? trim($_POST['hora_inicio']) : '';
-    $tipo = isset($_POST['tipo']) ? trim(strtolower($_POST['tipo'])) : '';
-    $metodo_pago = isset($_POST['metodo_pago']) ? trim($_POST['metodo_pago']) : '';
-    $pago_estado = isset($_POST['pago_estado']) ? trim($_POST['pago_estado']) : 'pendiente';
-
     $tiposValidos = ['campamento nocturno', 'corporativo', 'evento', 'institucional', 'otro', 'particular'];
 
-    if (empty($fecha_visita) || empty($hora_inicio) || empty($tipo) || empty($metodo_pago)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los campos fecha de visita, hora de inicio, tipo de cita y método de pago son requeridos.",
-            "field" => empty($fecha_visita) ? "fecha_visita" : (empty($hora_inicio) ? "hora_inicio" : (empty($tipo) ? "tipo" : "metodo_pago"))
-        ]);
+    $validator = Validator::make($_POST, [
+        'tipo'         => ['required' => true, 'in_ci' => $tiposValidos, 'maxlength' => 25],
+        'fecha_visita' => ['required' => true, 'date' => true],
+        'hora_inicio'  => ['required' => true, 'time' => true],
+        'metodo_pago'  => ['required' => true, 'maxlength' => 25],
+        'pago_estado'  => ['required' => false, 'in' => ['pendiente', 'pagado'], 'maxlength' => 20],
+        'recorrido_id' => ['required' => false, 'integer' => true]
+    ], [
+        'tipo' => [
+            'required'  => 'El tipo de cita es obligatorio.',
+            'in_ci'     => 'El tipo de cita seleccionado no es válido.',
+            'maxlength' => 'El tipo de cita no puede exceder los 25 caracteres.'
+        ],
+        'fecha_visita' => [
+            'required' => 'La fecha de la visita es requerida.',
+            'date'     => 'La fecha de la visita debe tener el formato AAAA-MM-DD.'
+        ],
+        'hora_inicio' => [
+            'required' => 'La hora de inicio de la visita es obligatoria.',
+            'time'     => 'La hora de inicio de la visita no es válida (HH:MM).'
+        ],
+        'metodo_pago' => [
+            'required'  => 'El método de pago es requerido.',
+            'maxlength' => 'El método de pago no puede exceder los 25 caracteres.'
+        ],
+        'pago_estado' => [
+            'in'        => 'El estado de pago no es válido.',
+            'maxlength' => 'El estado de pago no puede exceder los 20 caracteres.'
+        ],
+        'recorrido_id' => [
+            'integer'   => 'El recorrido seleccionado no es válido.'
+        ]
+    ]);
+
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
         return;
     }
 
-    if (strlen($tipo) > 40 || !in_array($tipo, $tiposValidos, true)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El tipo de cita seleccionado no es válido.",
-            "field" => "tipo"
-        ]);
-        return;
-    }
-
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_visita)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La fecha de la visita debe tener el formato AAAA-MM-DD.",
-            "field" => "fecha_visita"
-        ]);
-        return;
-    }
-
-    if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $hora_inicio)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La hora de inicio de la visita no es válida.",
-            "field" => "hora_inicio"
-        ]);
-        return;
-    }
-
-    if (strlen($metodo_pago) > 50) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El método de pago no es válido.",
-            "field" => "metodo_pago"
-        ]);
-        return;
-    }
-
-    if (!in_array($pago_estado, ['pendiente', 'pagado'], true)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El estado de pago no es válido.",
-            "field" => "pago_estado"
-        ]);
-        return;
-    }
-
-    if ($recorrido_id !== null) {
-        if (!filter_var($recorrido_id, FILTER_VALIDATE_INT)) {
-            http_response_code(400);
-            echo json_encode([
-                "status" => "error",
-                "message" => "El recorrido seleccionado no es válido.",
-                "field" => "recorrido_id"
-            ]);
-            return;
-        }
-        $recorrido_id = (int)$recorrido_id;
-    }
+    $institucion_id = (!empty($_POST['institucion_id']) && filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['institucion_id'] : null;
+    $sede_id        = (!empty($_POST['sede_id']) && filter_var($_POST['sede_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['sede_id'] : null;
+    $recorrido_id   = (!empty($_POST['recorrido_id']) && filter_var($_POST['recorrido_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['recorrido_id'] : null;
+    $fecha_visita   = $validator->getValue('fecha_visita');
+    $hora_inicio    = $validator->getValue('hora_inicio');
+    $tipo           = strtolower($validator->getValue('tipo'));
+    $metodo_pago    = $validator->getValue('metodo_pago');
+    $pago_estado    = $validator->getValue('pago_estado', 'pendiente');
 
     try {
         // 1. Si no existe ID de institución, registrarla primero con sus sedes
         if (!$institucion_id) {
-            $tipo_documento = isset($_POST['tipo_documento']) ? strtoupper(trim($_POST['tipo_documento'])) : 'J';
-            $documento = isset($_POST['documento']) ? trim($_POST['documento']) : '';
-            $nombre_completo = isset($_POST['nombre_completo']) ? trim($_POST['nombre_completo']) : (isset($_POST['nombre']) ? trim($_POST['nombre']) : '');
-            $tipo_organizacion = isset($_POST['tipo_organizacion']) ? trim($_POST['tipo_organizacion']) : '';
-            $tipo_gestion = isset($_POST['tipo_gestion']) ? trim($_POST['tipo_gestion']) : 'publica';
+            if (empty($_POST['nombre_completo']) && isset($_POST['nombre'])) {
+                $_POST['nombre_completo'] = trim($_POST['nombre']);
+            }
+            $valInst = Validator::make($_POST, [
+                'tipo_documento'    => ['required' => true, 'in' => ['J', 'G', 'V', 'E', 'P'], 'maxlength' => 10],
+                'documento'         => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
+                'nombre_completo'   => ['required' => true, 'minlength' => 3, 'maxlength' => 50],
+                'tipo_organizacion' => ['required' => true, 'minlength' => 3, 'maxlength' => 20],
+                'tipo_gestion'      => ['required' => true, 'in' => ['publica', 'privada'], 'maxlength' => 20]
+            ], [
+                'documento' => [
+                    'required'  => 'El RIF/Cédula es requerido.',
+                    'digits'    => 'El RIF/Cédula debe contener solo números.',
+                    'minlength' => 'El RIF/Cédula debe tener al menos 6 dígitos.',
+                    'maxlength' => 'El RIF/Cédula no puede exceder los 15 dígitos.'
+                ],
+                'nombre_completo' => [
+                    'required'  => 'La Razón Social o Nombre Oficial es requerido.',
+                    'minlength' => 'La Razón Social debe tener al menos 3 caracteres.',
+                    'maxlength' => 'La Razón Social no puede superar los 50 caracteres.'
+                ],
+                'tipo_organizacion' => [
+                    'required'  => 'Debe seleccionar un tipo de organización.',
+                    'maxlength' => 'El tipo de organización no puede exceder los 20 caracteres.'
+                ],
+                'tipo_gestion' => [
+                    'required'  => 'Debe seleccionar el tipo de gestión.',
+                    'maxlength' => 'El tipo de gestión no puede exceder los 20 caracteres.'
+                ]
+            ]);
+
+            if ($valInst->fails()) {
+                $valInst->sendJsonResponse(400);
+                return;
+            }
+
+            $tipo_documento = strtoupper($valInst->getValue('tipo_documento'));
+            $documento = $valInst->getValue('documento');
+            $nombre_completo = $valInst->getValue('nombre_completo');
+            $tipo_organizacion = $valInst->getValue('tipo_organizacion');
+            $tipo_gestion = $valInst->getValue('tipo_gestion');
             $sedesRaw = isset($_POST['sedes']) ? $_POST['sedes'] : [];
             $contactosRaw = isset($_POST['contactos']) ? $_POST['contactos'] : [];
 
@@ -1137,102 +1116,68 @@ function editarCitaAction() {
         return;
     }
 
-    $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : null;
-    
-    if (!$id) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El ID de la cita es requerido para editar."
-        ]);
-        return;
-    }
-
-    $institucion_id = (!empty($_POST['institucion_id']) && filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['institucion_id'] : null;
-    $sede_id = (!empty($_POST['sede_id']) && filter_var($_POST['sede_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['sede_id'] : null;
-    $recorrido_id = (isset($_POST['recorrido_id']) && trim($_POST['recorrido_id']) !== '') ? trim($_POST['recorrido_id']) : null;
-    $fecha_visita = isset($_POST['fecha_visita']) ? trim($_POST['fecha_visita']) : '';
-    $hora_inicio = isset($_POST['hora_inicio']) ? trim($_POST['hora_inicio']) : '';
-    $tipo = isset($_POST['tipo']) ? trim(strtolower($_POST['tipo'])) : '';
-    $metodo_pago = isset($_POST['metodo_pago']) ? trim($_POST['metodo_pago']) : '';
-    $pago_estado = isset($_POST['pago_estado']) ? trim($_POST['pago_estado']) : 'pendiente';
-    $estatus = isset($_POST['estatus']) ? trim($_POST['estatus']) : 'pendiente';
-
     $tiposValidos = ['campamento nocturno', 'corporativo', 'evento', 'institucional', 'otro', 'particular'];
 
-    if (empty($fecha_visita) || empty($hora_inicio) || empty($tipo) || empty($metodo_pago) || empty($estatus)) {
-        $missingField = empty($fecha_visita) ? "fecha_visita" : (empty($hora_inicio) ? "hora_inicio" : (empty($tipo) ? "tipo" : (empty($metodo_pago) ? "metodo_pago" : "estatus")));
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los campos fecha de visita, hora de inicio, tipo de cita, método de pago y estado de la cita son requeridos.",
-            "field" => $missingField
-        ]);
+    $validator = Validator::make($_POST, [
+        'id'           => ['required' => true, 'integer' => true, 'min' => 1],
+        'tipo'         => ['required' => true, 'in_ci' => $tiposValidos, 'maxlength' => 25],
+        'fecha_visita' => ['required' => true, 'date' => true],
+        'hora_inicio'  => ['required' => true, 'time' => true],
+        'metodo_pago'  => ['required' => true, 'maxlength' => 25],
+        'pago_estado'  => ['required' => true, 'in' => ['pendiente', 'pagado'], 'maxlength' => 20],
+        'estatus'      => ['required' => true, 'maxlength' => 20],
+        'recorrido_id' => ['required' => false, 'integer' => true]
+    ], [
+        'id' => [
+            'required' => 'El ID de la cita es requerido para editar.',
+            'integer'  => 'El ID de la cita es inválido.'
+        ],
+        'tipo' => [
+            'required'  => 'El tipo de cita es obligatorio.',
+            'in_ci'     => 'El tipo de cita seleccionado no es válido.',
+            'maxlength' => 'El tipo de cita no puede exceder los 25 caracteres.'
+        ],
+        'fecha_visita' => [
+            'required' => 'La fecha de la visita es requerida.',
+            'date'     => 'La fecha de la visita debe tener el formato AAAA-MM-DD.'
+        ],
+        'hora_inicio' => [
+            'required' => 'La hora de inicio de la visita es obligatoria.',
+            'time'     => 'La hora de inicio de la visita no es válida (HH:MM).'
+        ],
+        'metodo_pago' => [
+            'required'  => 'El método de pago es requerido.',
+            'maxlength' => 'El método de pago no puede exceder los 25 caracteres.'
+        ],
+        'pago_estado' => [
+            'required'  => 'El estado del pago es requerido.',
+            'in'        => 'El estado de pago no es válido.',
+            'maxlength' => 'El estado de pago no puede exceder los 20 caracteres.'
+        ],
+        'estatus' => [
+            'required'  => 'El estatus de la cita es requerido.',
+            'maxlength' => 'El estatus no puede exceder los 20 caracteres.'
+        ],
+        'recorrido_id' => [
+            'integer'   => 'El recorrido seleccionado no es válido.'
+        ]
+    ]);
+
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
         return;
     }
 
-    if (strlen($tipo) > 40 || !in_array($tipo, $tiposValidos, true)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El tipo de cita seleccionado no es válido.",
-            "field" => "tipo"
-        ]);
-        return;
-    }
-
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_visita)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La fecha de la visita debe tener el formato AAAA-MM-DD.",
-            "field" => "fecha_visita"
-        ]);
-        return;
-    }
-
-    if (!preg_match('/^\d{2}:\d{2}(:\d{2})?$/', $hora_inicio)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La hora de inicio de la visita no es válida.",
-            "field" => "hora_inicio"
-        ]);
-        return;
-    }
-
-    if (strlen($metodo_pago) > 50) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El método de pago no es válido.",
-            "field" => "metodo_pago"
-        ]);
-        return;
-    }
-
-    if (!in_array($pago_estado, ['pendiente', 'pagado'], true)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El estado de pago no es válido.",
-            "field" => "pago_estado"
-        ]);
-        return;
-    }
-
-    if ($recorrido_id !== null) {
-        if (!filter_var($recorrido_id, FILTER_VALIDATE_INT)) {
-            http_response_code(400);
-            echo json_encode([
-                "status" => "error",
-                "message" => "El recorrido seleccionado no es válido.",
-                "field" => "recorrido_id"
-            ]);
-            return;
-        }
-        $recorrido_id = (int)$recorrido_id;
-    }
+    $id             = (int)$validator->getValue('id');
+    $institucion_id = (!empty($_POST['institucion_id']) && filter_var($_POST['institucion_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['institucion_id'] : null;
+    $sede_id        = (!empty($_POST['sede_id']) && filter_var($_POST['sede_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['sede_id'] : null;
+    $recorrido_id   = (!empty($_POST['recorrido_id']) && filter_var($_POST['recorrido_id'], FILTER_VALIDATE_INT)) ? (int)$_POST['recorrido_id'] : null;
+    $fecha_visita   = $validator->getValue('fecha_visita');
+    $hora_inicio    = $validator->getValue('hora_inicio');
+    $tipo           = strtolower($validator->getValue('tipo'));
+    $metodo_pago    = $validator->getValue('metodo_pago');
+    $pago_estado    = $validator->getValue('pago_estado', 'pendiente');
+    $estatus        = $validator->getValue('estatus', 'pendiente');
 
     if (!in_array($estatus, ['pendiente', 'aprobado', 'completado', 'cancelado'], true)) {
         http_response_code(400);

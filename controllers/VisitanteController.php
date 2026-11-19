@@ -23,7 +23,30 @@ if (!isset($_SESSION['personal'])) {
 }
 
 // Incluir dependencias
+require_once __DIR__ . "/../config/Validator.php";
 require_once __DIR__ . "/../models/Visitante.php";
+require_once __DIR__ . "/../models/Permiso.php";
+
+$currentUser = $_SESSION['personal'];
+$userRolId   = isset($currentUser['rol_id']) ? (int)$currentUser['rol_id'] : 0;
+$userRol     = $currentUser['rol'] ?? '';
+
+$permisoModel = new Permiso();
+if ($userRolId <= 0 && !empty($userRol)) {
+    $userRolId = $permisoModel->obtenerRolIdPorNombre($userRol) ?? 0;
+    if ($userRolId > 0) {
+        $_SESSION['personal']['rol_id'] = $userRolId;
+    }
+}
+
+if (!$permisoModel->tieneAccesoModulo($userRolId, 'visitantes', $userRol)) {
+    http_response_code(403);
+    echo json_encode([
+        "status" => "error",
+        "message" => "Acceso denegado. No posee permisos para acceder al módulo de visitantes."
+    ]);
+    exit;
+}
 
 $action = isset($_GET['action']) ? trim($_GET['action']) : '';
 
@@ -138,124 +161,47 @@ function obtenerVisitanteAction() {
  * Crea un nuevo visitante manualmente
  */
 function crearVisitanteAction() {
-    $nombres = isset($_POST['nombres']) ? trim($_POST['nombres']) : '';
-    $apellidos = isset($_POST['apellidos']) ? trim($_POST['apellidos']) : '';
-    $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
-    $fecha_nacimiento = isset($_POST['fecha_nacimiento']) ? trim($_POST['fecha_nacimiento']) : '';
+    $validator = Validator::make($_POST, [
+        'nombres'          => ['required' => true, 'minlength' => 2, 'maxlength' => 25, 'soloLetras' => true],
+        'apellidos'        => ['required' => true, 'minlength' => 2, 'maxlength' => 25, 'soloLetras' => true],
+        'cedula'           => ['required' => false, 'digits' => true, 'minlength' => 5, 'maxlength' => 15],
+        'fecha_nacimiento' => ['required' => true, 'date' => true, 'fechaNoFutura' => true]
+    ], [
+        'nombres' => [
+            'required'   => 'Los nombres son obligatorios.',
+            'minlength'  => 'Los nombres deben tener al menos 2 caracteres.',
+            'maxlength'  => 'Los nombres no pueden exceder los 25 caracteres.',
+            'soloLetras' => 'Los nombres solo deben contener letras (sin números ni caracteres especiales).'
+        ],
+        'apellidos' => [
+            'required'   => 'Los apellidos son obligatorios.',
+            'minlength'  => 'Los apellidos deben tener al menos 2 caracteres.',
+            'maxlength'  => 'Los apellidos no pueden exceder los 25 caracteres.',
+            'soloLetras' => 'Los apellidos solo deben contener letras (sin números ni caracteres especiales).'
+        ],
+        'cedula' => [
+            'digits'    => 'La cédula debe contener exclusivamente dígitos numéricos.',
+            'minlength' => 'La cédula debe contener entre 5 y 15 dígitos numéricos.',
+            'maxlength' => 'La cédula no puede exceder los 15 dígitos numéricos.'
+        ],
+        'fecha_nacimiento' => [
+            'required'      => 'La fecha de nacimiento es obligatoria.',
+            'date'          => 'La fecha de nacimiento debe tener el formato AAAA-MM-DD.',
+            'fechaNoFutura' => 'La fecha de nacimiento no puede ser una fecha futura (máximo hoy: ' . date('d/m/Y') . ').'
+        ]
+    ]);
 
-    if (empty($nombres) || empty($apellidos) || empty($fecha_nacimiento)) {
-        $missingField = empty($nombres) ? "nombres" : (empty($apellidos) ? "apellidos" : "fecha_nacimiento");
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los nombres, apellidos y fecha de nacimiento son obligatorios.",
-            "field" => $missingField
-        ]);
-        exit;
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
+        return;
     }
 
-    if (mb_strlen($nombres) < 2 || mb_strlen($nombres) > 100) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El nombre del visitante debe tener entre 2 y 100 caracteres.",
-            "field" => "nombres"
-        ]);
-        exit;
-    }
-
-    if (preg_match('/\d/', $nombres)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los nombres no pueden contener números.",
-            "field" => "nombres"
-        ]);
-        exit;
-    }
-
-    if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $nombres)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los nombres solo deben contener letras.",
-            "field" => "nombres"
-        ]);
-        exit;
-    }
-
-    if (mb_strlen($apellidos) < 2 || mb_strlen($apellidos) > 100) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El apellido del visitante debe tener entre 2 y 100 caracteres.",
-            "field" => "apellidos"
-        ]);
-        exit;
-    }
-
-    if (preg_match('/\d/', $apellidos)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los apellidos no pueden contener números.",
-            "field" => "apellidos"
-        ]);
-        exit;
-    }
-
-    if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $apellidos)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los apellidos solo deben contener letras.",
-            "field" => "apellidos"
-        ]);
-        exit;
-    }
-
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_nacimiento)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La fecha de nacimiento debe tener el formato AAAA-MM-DD.",
-            "field" => "fecha_nacimiento"
-        ]);
-        exit;
-    }
-
-    $hoy = date('Y-m-d');
-    if ($fecha_nacimiento > $hoy) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La fecha de nacimiento no puede ser una fecha futura (máximo hoy: " . date('d/m/Y') . ").",
-            "field" => "fecha_nacimiento"
-        ]);
-        exit;
-    }
+    $nombres          = $validator->getValue('nombres');
+    $apellidos        = $validator->getValue('apellidos');
+    $cedula           = $validator->getValue('cedula');
+    $fecha_nacimiento = $validator->getValue('fecha_nacimiento');
 
     if (!empty($cedula)) {
-        if (!ctype_digit($cedula)) {
-            http_response_code(400);
-            echo json_encode([
-                "status" => "error",
-                "message" => "La cédula debe contener exclusivamente dígitos numéricos.",
-                "field" => "cedula"
-            ]);
-            exit;
-        }
-
-        if (strlen($cedula) < 5 || strlen($cedula) > 12) {
-            http_response_code(400);
-            echo json_encode([
-                "status" => "error",
-                "message" => "La cédula debe contener entre 5 y 12 dígitos numéricos.",
-                "field" => "cedula"
-            ]);
-            exit;
-        }
-
         $visitanteCheck = new Visitante();
         $visitanteCheck->setCedula($cedula);
         $existente = $visitanteCheck->buscarPorCedula();
@@ -316,125 +262,53 @@ function crearVisitanteAction() {
  * Actualiza los datos de un visitante existente
  */
 function actualizarVisitanteAction() {
-    $id = isset($_POST['id']) ? filter_var($_POST['id'], FILTER_VALIDATE_INT) : 0;
-    $nombres = isset($_POST['nombres']) ? trim($_POST['nombres']) : '';
-    $apellidos = isset($_POST['apellidos']) ? trim($_POST['apellidos']) : '';
-    $cedula = isset($_POST['cedula']) ? trim($_POST['cedula']) : '';
-    $fecha_nacimiento = isset($_POST['fecha_nacimiento']) ? trim($_POST['fecha_nacimiento']) : '';
+    $validator = Validator::make($_POST, [
+        'id'               => ['required' => true, 'integer' => true, 'min' => 1],
+        'nombres'          => ['required' => true, 'minlength' => 2, 'maxlength' => 25, 'soloLetras' => true],
+        'apellidos'        => ['required' => true, 'minlength' => 2, 'maxlength' => 25, 'soloLetras' => true],
+        'cedula'           => ['required' => false, 'digits' => true, 'minlength' => 5, 'maxlength' => 15],
+        'fecha_nacimiento' => ['required' => true, 'date' => true, 'fechaNoFutura' => true]
+    ], [
+        'id' => [
+            'required' => 'El ID del visitante es obligatorio.',
+            'integer'  => 'El ID del visitante es inválido.'
+        ],
+        'nombres' => [
+            'required'   => 'Los nombres son obligatorios.',
+            'minlength'  => 'Los nombres deben tener al menos 2 caracteres.',
+            'maxlength'  => 'Los nombres no pueden exceder los 25 caracteres.',
+            'soloLetras' => 'Los nombres solo deben contener letras (sin números ni caracteres especiales).'
+        ],
+        'apellidos' => [
+            'required'   => 'Los apellidos son obligatorios.',
+            'minlength'  => 'Los apellidos deben tener al menos 2 caracteres.',
+            'maxlength'  => 'Los apellidos no pueden exceder los 25 caracteres.',
+            'soloLetras' => 'Los apellidos solo deben contener letras (sin números ni caracteres especiales).'
+        ],
+        'cedula' => [
+            'digits'    => 'La cédula debe contener exclusivamente dígitos numéricos.',
+            'minlength' => 'La cédula debe contener entre 5 y 15 dígitos numéricos.',
+            'maxlength' => 'La cédula no puede exceder los 15 dígitos numéricos.'
+        ],
+        'fecha_nacimiento' => [
+            'required'      => 'La fecha de nacimiento es obligatoria.',
+            'date'          => 'La fecha de nacimiento debe tener el formato AAAA-MM-DD.',
+            'fechaNoFutura' => 'La fecha de nacimiento no puede ser una fecha futura (máximo hoy: ' . date('d/m/Y') . ').'
+        ]
+    ]);
 
-    if ($id <= 0 || empty($nombres) || empty($apellidos) || empty($fecha_nacimiento)) {
-        $missingField = empty($nombres) ? "nombres" : (empty($apellidos) ? "apellidos" : "fecha_nacimiento");
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Todos los campos obligatorios (*) son requeridos.",
-            "field" => $missingField
-        ]);
-        exit;
+    if ($validator->fails()) {
+        $validator->sendJsonResponse(400);
+        return;
     }
 
-    if (mb_strlen($nombres) < 2 || mb_strlen($nombres) > 100) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El nombre del visitante debe tener entre 2 y 100 caracteres.",
-            "field" => "nombres"
-        ]);
-        exit;
-    }
-
-    if (preg_match('/\d/', $nombres)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los nombres no pueden contener números.",
-            "field" => "nombres"
-        ]);
-        exit;
-    }
-
-    if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $nombres)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los nombres solo deben contener letras.",
-            "field" => "nombres"
-        ]);
-        exit;
-    }
-
-    if (mb_strlen($apellidos) < 2 || mb_strlen($apellidos) > 100) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "El apellido del visitante debe tener entre 2 y 100 caracteres.",
-            "field" => "apellidos"
-        ]);
-        exit;
-    }
-
-    if (preg_match('/\d/', $apellidos)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los apellidos no pueden contener números.",
-            "field" => "apellidos"
-        ]);
-        exit;
-    }
-
-    if (!preg_match('/^[\p{L}\s\.\'\-]+$/u', $apellidos)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Los apellidos solo deben contener letras.",
-            "field" => "apellidos"
-        ]);
-        exit;
-    }
-
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha_nacimiento)) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La fecha de nacimiento debe tener el formato AAAA-MM-DD.",
-            "field" => "fecha_nacimiento"
-        ]);
-        exit;
-    }
-
-    $hoy = date('Y-m-d');
-    if ($fecha_nacimiento > $hoy) {
-        http_response_code(400);
-        echo json_encode([
-            "status" => "error",
-            "message" => "La fecha de nacimiento no puede ser una fecha futura (máximo hoy: " . date('d/m/Y') . ").",
-            "field" => "fecha_nacimiento"
-        ]);
-        exit;
-    }
+    $id               = (int)$validator->getValue('id');
+    $nombres          = $validator->getValue('nombres');
+    $apellidos        = $validator->getValue('apellidos');
+    $cedula           = $validator->getValue('cedula');
+    $fecha_nacimiento = $validator->getValue('fecha_nacimiento');
 
     if (!empty($cedula)) {
-        if (!ctype_digit($cedula)) {
-            http_response_code(400);
-            echo json_encode([
-                "status" => "error",
-                "message" => "La cédula debe contener exclusivamente dígitos numéricos.",
-                "field" => "cedula"
-            ]);
-            exit;
-        }
-
-        if (strlen($cedula) < 5 || strlen($cedula) > 12) {
-            http_response_code(400);
-            echo json_encode([
-                "status" => "error",
-                "message" => "La cédula debe contener entre 5 y 12 dígitos numéricos.",
-                "field" => "cedula"
-            ]);
-            exit;
-        }
-
         $visitanteCheck = new Visitante();
         $visitanteCheck->setCedula($cedula);
         $visitanteCheck->setExcluirId($id);

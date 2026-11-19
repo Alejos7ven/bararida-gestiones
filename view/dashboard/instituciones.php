@@ -84,11 +84,11 @@
                             </div>
                             <div class="col-md-8">
                                 <label for="create_documento" class="form-premium-label">Número RIF / Cédula</label>
-                                <input type="text" class="form-control form-premium-control" id="create_documento" name="documento" placeholder="Ej. 123456789 (solo números)" required>
+                                <input type="text" class="form-control form-premium-control" id="create_documento" name="documento" placeholder="Ej. 123456789 (solo números)" required maxlength="15">
                             </div>
                             <div class="col-md-5">
                                  <label for="create_nombre_completo" class="form-premium-label">Razón Social / Nombre Oficial</label>
-                                 <input type="text" class="form-control form-premium-control" id="create_nombre_completo" name="nombre_completo" placeholder="Ej. Colegio San Vicente" required>
+                                 <input type="text" class="form-control form-premium-control" id="create_nombre_completo" name="nombre_completo" placeholder="Ej. Colegio San Vicente" required maxlength="50">
                              </div>
                              <div class="col-md-4">
                                  <label for="create_tipo_organizacion_select" class="form-premium-label">Tipo de Organización</label>
@@ -103,7 +103,7 @@
                                      <option value="Otro">Otro (Especificar)</option>
                                  </select>
                                  <div class="mt-2 custom-tipo-organizacion-container" id="create_custom_tipo_org_container" style="display: none;">
-                                     <input type="text" class="form-control form-premium-control" id="create_tipo_organizacion" placeholder="Escriba el tipo de organización personalizado...">
+                                     <input type="text" class="form-control form-premium-control" id="create_tipo_organizacion" placeholder="Escriba el tipo de organización personalizado..." maxlength="20">
                                  </div>
                              </div>
                              <div class="col-md-3">
@@ -196,11 +196,11 @@
                             </div>
                             <div class="col-md-8">
                                 <label for="edit_documento" class="form-premium-label">Número RIF / Cédula</label>
-                                <input type="text" class="form-control form-premium-control" id="edit_documento" name="documento" placeholder="Ej. 123456789" required>
+                                <input type="text" class="form-control form-premium-control" id="edit_documento" name="documento" placeholder="Ej. 123456789" required maxlength="15">
                             </div>
                             <div class="col-md-5">
                                  <label for="edit_nombre_completo" class="form-premium-label">Razón Social / Nombre Oficial</label>
-                                 <input type="text" class="form-control form-premium-control" id="edit_nombre_completo" name="nombre_completo" placeholder="Ej. Colegio San Vicente" required>
+                                 <input type="text" class="form-control form-premium-control" id="edit_nombre_completo" name="nombre_completo" placeholder="Ej. Colegio San Vicente" required maxlength="50">
                              </div>
                              <div class="col-md-4">
                                  <label for="edit_tipo_organizacion_select" class="form-premium-label">Tipo de Organización</label>
@@ -215,7 +215,7 @@
                                      <option value="Otro">Otro (Especificar)</option>
                                  </select>
                                  <div class="mt-2 custom-tipo-organizacion-container" id="edit_custom_tipo_org_container" style="display: none;">
-                                     <input type="text" class="form-control form-premium-control" id="edit_tipo_organizacion" placeholder="Escriba el tipo de organización personalizado...">
+                                     <input type="text" class="form-control form-premium-control" id="edit_tipo_organizacion" placeholder="Escriba el tipo de organización personalizado..." maxlength="20">
                                  </div>
                              </div>
                              <div class="col-md-3">

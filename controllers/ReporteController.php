@@ -35,13 +35,15 @@ $userRolId   = isset($currentUser['rol_id']) ? (int)$currentUser['rol_id'] : 0;
 $userRol     = $currentUser['rol'] ?? '';
 
 $permisoModel = new Permiso();
-$permisos = [];
-if ($userRolId > 0) {
-    $permisoModel->setRolId($userRolId);
-    $permisos = $permisoModel->getPermisosPorRol();
+if ($userRolId <= 0 && !empty($userRol)) {
+    $userRolId = $permisoModel->obtenerRolIdPorNombre($userRol) ?? 0;
+    if ($userRolId > 0) {
+        $_SESSION['personal']['rol_id'] = $userRolId;
+    }
 }
-// Si el rol es guía o no tiene permiso explícito para 'reportes'
-if ($userRol === 'guia' && empty($permisos['reportes'])) {
+
+// Validar permiso dinámico para 'reportes' según la BD
+if (!$permisoModel->tieneAccesoModulo($userRolId, 'reportes', $userRol)) {
     http_response_code(403);
     echo json_encode([
         "status" => "error",
