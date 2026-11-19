@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function loginAction() {
     $validator = Validator::make($_POST, [
         'tipo_documento' => ['required' => true, 'in' => ['V', 'E', 'J', 'G', 'P'], 'maxlength' => 10],
-        'cedula'         => ['required' => true, 'digits' => true, 'minlength' => 5, 'maxlength' => 15],
+        'cedula'         => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
         'password'       => ['required' => true, 'minlength' => 6, 'maxlength' => 100]
     ], [
         'tipo_documento' => [
@@ -64,7 +64,7 @@ function loginAction() {
         'cedula' => [
             'required'  => 'El número de documento es requerido.',
             'digits'    => 'El número de documento debe contener solo dígitos.',
-            'minlength' => 'El número de documento debe tener al menos 5 dígitos.',
+            'minlength' => 'El número de documento debe tener al menos 6 dígitos.',
             'maxlength' => 'El número de documento no puede exceder 15 dígitos.'
         ],
         'password' => [

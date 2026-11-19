@@ -214,7 +214,7 @@ INSERT INTO `zonas` (`nombre`, `coordenadas`) VALUES
 ('Entrada Morán', '82.54,50.90');
 
 INSERT INTO `entidades` (`id`, `tipo_documento`, `documento`, `nombre_completo`, `tipo_entidad`) VALUES
-(1, 'V', '0000', 'Admin Maestro', 'persona'),
+(1, 'V', '000000', 'Admin Maestro', 'persona'),
 (2, 'J', '123456780', 'Institución Central', 'organizacion');
 
 INSERT INTO `roles` (`nombre`) VALUES

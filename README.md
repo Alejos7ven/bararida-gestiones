@@ -228,7 +228,7 @@ El script de instalación inserta cuentas de prueba listas para evaluar los dife
 
 | Rol de Usuario | Documento | Contraseña | Alcance de Permisos |
 | :--- | :--- | :--- | :--- |
-| **Super Administrador** | `V-0000` | `admin123` | Acceso irrestricto a todos los módulos y matriz de configuración. |
+| **Super Administrador** | `V-000000` | `admin123` | Acceso irrestricto a todos los módulos y matriz de configuración. |
 | **Administrador** | `V-28286982` | *(creable en Personal)* | Acceso a Citas, Instituciones, Recorridos, Visitantes y Reportes. |
 | **Guía de Campo** | `V-28356357` | *(creable en Personal)* | Acceso delimitado exclusivamente a Dashboard y Citas asignadas. |
 

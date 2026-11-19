@@ -49,7 +49,7 @@
                             <option value="G">G</option>
                             <option value="P">P</option>
                         </select>
-                        <input type="text" class="form-control" id="cedula" name="cedula" placeholder="Ej. 12345678" style="border-top-left-radius: 0; border-bottom-left-radius: 0;" required autocomplete="username" maxlength="15">
+                        <input type="text" class="form-control" id="cedula" name="cedula" placeholder="Ej. 12345678" style="border-top-left-radius: 0; border-bottom-left-radius: 0;" required autocomplete="username" minlength="6" maxlength="15">
                     </div>
                 </div>
                 
