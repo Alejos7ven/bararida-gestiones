@@ -213,6 +213,20 @@ body {
     border-left: 4px solid var(--secondary-color);
 }
 
+/* Feedback de errores de validación */
+.invalid-feedback {
+    display: none;
+    width: 100%;
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    color: #ef4444;
+    font-weight: 500;
+    text-align: left;
+}
+.invalid-feedback:not(:empty) {
+    display: block;
+}
+
 /* Spinner de carga */
 .spinner-border-sm {
     width: 1.2rem;
@@ -221,3 +235,5 @@ body {
     vertical-align: middle;
     margin-right: 8px;
 }
+
+

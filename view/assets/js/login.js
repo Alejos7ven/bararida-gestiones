@@ -33,45 +33,56 @@ $(document).ready(function() {
         const $btnText = $btnSubmit.find('span:not(.spinner-border)');
         const $alert = $('#alertFeedback');
 
-        // Ocultar alerta previa y limpiar feedback
+        // Ocultar alerta previa
         $alert.fadeOut(150);
-        $form.find('.is-invalid').removeClass('is-invalid');
-        $form.find('.invalid-feedback').hide().text('');
+
+        // Si jquery-validate está disponible, validar antes de proceder
+        if (typeof $form.valid === 'function' && !$form.valid()) {
+            return;
+        }
 
         // Obtener datos
         const tipo_documento = $('#tipo_documento').val();
         const cedula = $('#cedula').val().trim();
         const password = $('#password').val();
 
-        // Validaciones en cliente
-        if (!tipo_documento || !['V', 'E', 'J', 'G', 'P'].includes(tipo_documento)) {
-            markInputError($('#tipo_documento'), 'El tipo de documento seleccionado no es válido.');
-            showAlert('danger', 'El tipo de documento seleccionado no es válido.');
-            return;
-        }
+        // Si no está disponible $.validator (fallback)
+        if (typeof $form.valid !== 'function') {
+            if (!tipo_documento || !['V', 'E', 'J', 'G', 'P'].includes(tipo_documento)) {
+                markInputError($('#tipo_documento'), 'El tipo de documento seleccionado no es válido.');
+                showAlert('danger', 'El tipo de documento seleccionado no es válido.');
+                return;
+            }
 
-        if (cedula === '') {
-            markInputError($('#cedula'), 'El número de documento es requerido.');
-            showAlert('danger', 'El número de documento es requerido.');
-            return;
-        }
+            if (cedula === '') {
+                markInputError($('#cedula'), 'El número de documento es obligatorio.');
+                showAlert('danger', 'El número de documento es obligatorio.');
+                return;
+            }
 
-        if (!/^\d+$/.test(cedula)) {
-            markInputError($('#cedula'), 'El número de documento debe contener solo dígitos.');
-            showAlert('danger', 'El número de documento debe contener solo dígitos.');
-            return;
-        }
+            if (!/^\d+$/.test(cedula)) {
+                markInputError($('#cedula'), 'Por favor, ingrese solo números para la cédula.');
+                showAlert('danger', 'Por favor, ingrese solo números para la cédula.');
+                return;
+            }
 
-        if (cedula.length < 6 || cedula.length > 15) {
-            markInputError($('#cedula'), 'El número de documento debe tener entre 6 y 15 dígitos.');
-            showAlert('danger', 'El número de documento debe tener entre 6 y 15 dígitos.');
-            return;
-        }
+            if (cedula.length < 6 || cedula.length > 15) {
+                markInputError($('#cedula'), 'La cédula debe tener al menos 6 dígitos.');
+                showAlert('danger', 'La cédula debe tener al menos 6 dígitos.');
+                return;
+            }
 
-        if (password === '') {
-            markInputError($('#password'), 'La contraseña es requerida.');
-            showAlert('danger', 'La contraseña es requerida.');
-            return;
+            if (password === '') {
+                markInputError($('#password'), 'La contraseña es requerida.');
+                showAlert('danger', 'La contraseña es requerida.');
+                return;
+            }
+
+            if (password.length < 6) {
+                markInputError($('#password'), 'La contraseña debe tener al menos 6 caracteres.');
+                showAlert('danger', 'La contraseña debe tener al menos 6 caracteres.');
+                return;
+            }
         }
 
         // Deshabilitar botón e iniciar spinner
@@ -92,29 +103,37 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.status === 'success') {
                     showAlert('success', response.message + ' Redirigiendo...');
-                    // Esperar un momento para la animación y redirigir
                     setTimeout(function() {
                         window.location.href = 'index.php';
-                    }, 1000);
+                    }, 800);
                 }
             },
             error: function(xhr) {
                 let errorMessage = 'Ocurrió un error inesperado. Intente de nuevo.';
-                
+                let field = null;
+
                 // Parsear el error si viene en JSON
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMessage = xhr.responseJSON.message;
-                }
-                
-                const msgLower = errorMessage.toLowerCase();
-                if (msgLower.includes('contraseña') || msgLower.includes('password') || msgLower.includes('clave')) {
-                    markInputError($('#password'), errorMessage);
-                } else if (msgLower.includes('documento') || msgLower.includes('cédula') || msgLower.includes('cedula') || msgLower.includes('usuario') || msgLower.includes('personal')) {
-                    markInputError($('#cedula'), errorMessage);
+                if (xhr.responseJSON) {
+                    if (xhr.responseJSON.message) {
+                        errorMessage = xhr.responseJSON.message;
+                    }
+                    if (xhr.responseJSON.field) {
+                        field = xhr.responseJSON.field;
+                    }
                 }
 
-                showAlert('danger', errorMessage);
-                
+                if (typeof window.mapearErrorServidorAFormulario === 'function') {
+                    window.mapearErrorServidorAFormulario('#formLogin', errorMessage, field, $alert);
+                } else {
+                    const msgLower = errorMessage.toLowerCase();
+                    if (msgLower.includes('contraseña') || msgLower.includes('password') || msgLower.includes('clave')) {
+                        markInputError($('#password'), errorMessage);
+                    } else if (msgLower.includes('documento') || msgLower.includes('cédula') || msgLower.includes('cedula') || msgLower.includes('usuario') || msgLower.includes('personal')) {
+                        markInputError($('#cedula'), errorMessage);
+                    }
+                    showAlert('danger', errorMessage);
+                }
+
                 // Reactivar el botón
                 $btnSubmit.prop('disabled', false);
                 $spinner.hide();
@@ -128,7 +147,7 @@ $(document).ready(function() {
         const $passwordInput = $('#password');
         const type = $passwordInput.attr('type') === 'password' ? 'text' : 'password';
         $passwordInput.attr('type', type);
-        
+
         // Cambiar icono SVG
         const $eyeIcon = $('#eyeIcon');
         if (type === 'text') {
@@ -144,13 +163,13 @@ $(document).ready(function() {
     function showAlert(type, message) {
         const $alert = $('#alertFeedback');
         $alert.removeClass('alert-danger alert-success');
-        
+
         if (type === 'danger') {
             $alert.addClass('alert-danger');
         } else if (type === 'success') {
             $alert.addClass('alert-success');
         }
-        
+
         $alert.text(message).fadeIn(300);
     }
 });
