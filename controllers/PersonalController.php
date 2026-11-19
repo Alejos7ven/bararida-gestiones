@@ -190,7 +190,7 @@ function crearAction() {
         'password'        => ['required' => true, 'minlength' => 6, 'maxlength' => 100]
     ], [
         'nombre_completo' => [
-            'soloLetras' => 'El nombre completo no puede contener números ni caracteres especiales.',
+            'soloLetras' => 'El nombre completo debe contener solo letras y no puede iniciar con espacios ni contener números.',
             'maxlength'  => 'El nombre completo no puede superar los 50 caracteres.'
         ],
         'cedula' => [
@@ -305,7 +305,7 @@ function actualizarAction() {
         'password'        => ['required' => false, 'minlength' => 6, 'maxlength' => 100]
     ], [
         'nombre_completo' => [
-            'soloLetras' => 'El nombre completo no puede contener números ni caracteres especiales.',
+            'soloLetras' => 'El nombre completo debe contener solo letras y no puede iniciar con espacios ni contener números.',
             'maxlength'  => 'El nombre completo no puede superar los 50 caracteres.'
         ],
         'cedula' => [

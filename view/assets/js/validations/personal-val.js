@@ -1,11 +1,15 @@
 $(document).ready(function() {
 
-    // Método para validar que no contenga números en el nombre de persona si no está registrado
+    // Método para validar que no contenga números ni inicie con espacios en el nombre
     if (!$.validator.methods.soloLetras) {
         $.validator.addMethod("soloLetras", function(value, element) {
             if (this.optional(element)) return true;
-            return /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(value);
-        }, "Solo se permiten letras (sin números ni caracteres especiales).");
+            if (typeof value !== 'string') return false;
+            if ($.trim(value) === '') return false;
+            if (/^\s/.test(value)) return false;
+            if (/\d/.test(value)) return false;
+            return /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ][a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]*$/.test(value);
+        }, "Solo se permiten letras (no puede iniciar con espacios ni contener números).");
     }
 
     // Formulario de Creación
@@ -47,7 +51,7 @@ $(document).ready(function() {
                     required: "El nombre completo es requerido.",
                     minlength: "El nombre completo debe tener al menos 3 caracteres.",
                     maxlength: "El nombre completo no puede superar los 50 caracteres.",
-                    soloLetras: "El nombre completo no puede contener números."
+                    soloLetras: "El nombre completo debe contener solo letras y no puede iniciar con espacios."
                 },
                 password: {
                     required: "La contraseña es requerida.",
@@ -97,7 +101,7 @@ $(document).ready(function() {
                     required: "El nombre completo es requerido.",
                     minlength: "El nombre completo debe tener al menos 3 caracteres.",
                     maxlength: "El nombre completo no puede superar los 50 caracteres.",
-                    soloLetras: "El nombre completo no puede contener números."
+                    soloLetras: "El nombre completo debe contener solo letras y no puede iniciar con espacios."
                 },
                 password: {
                     minlength: "La contraseña debe tener al menos 6 caracteres.",

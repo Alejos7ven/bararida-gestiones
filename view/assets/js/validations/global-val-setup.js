@@ -163,9 +163,52 @@
     };
 
     // =========================================================================
-    // 2. CONFIGURACIÓN GLOBAL DE JQUERY VALIDATE CON FOCO AUTOMÁTICO
+    // 2. CONFIGURACIÓN GLOBAL DE JQUERY VALIDATE CON FOCO AUTOMÁTICO Y MÉTODOS
     // =========================================================================
     if (typeof jQuery !== 'undefined' && typeof jQuery.validator !== 'undefined') {
+
+        // 2.1. MEJORAR REGLA REQUIRED: No permitir campos de texto que contengan únicamente espacios
+        const originalRequired = $.validator.methods.required;
+        $.validator.addMethod("required", function(value, element, param) {
+            if (element && (element.type === 'text' || element.type === 'password' || element.type === 'textarea')) {
+                if (typeof value === 'string' && $.trim(value) === '') {
+                    return false;
+                }
+            }
+            return originalRequired.call(this, value, element, param);
+        }, $.validator.messages.required);
+
+        // 2.2. MEJORAR REGLA MINLENGTH: Contar caracteres útiles sin contar solo espacios en blanco
+        const originalMinlength = $.validator.methods.minlength;
+        $.validator.addMethod("minlength", function(value, element, param) {
+            if (element && (element.type === 'text' || element.type === 'textarea')) {
+                return this.optional(element) || (typeof value === 'string' && $.trim(value).length >= param);
+            }
+            return originalMinlength.call(this, value, element, param);
+        }, $.validator.messages.minlength);
+
+        // 2.3. MÉTODO GLOBAL soloLetras: Solo letras, no inicia con espacio, permite espacios intermedios
+        $.validator.addMethod("soloLetras", function(value, element) {
+            if (this.optional(element)) return true;
+            if (typeof value !== 'string') return false;
+            // No puede ser solo espacios
+            if ($.trim(value) === '') return false;
+            // No puede iniciar con espacios
+            if (/^\s/.test(value)) return false;
+            // No puede contener números
+            if (/\d/.test(value)) return false;
+            // Debe iniciar con letra y permitir letras, acentos, espacios intermedios, puntos, apóstrofes y guiones
+            return /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ][a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]*$/.test(value);
+        }, "No puede iniciar con espacios ni contener solo espacios, números o caracteres especiales.");
+
+        // 2.4. MÉTODO GLOBAL noInicioEspacio: Prohíbe que el valor comience con espacios o sea puro espacios
+        $.validator.addMethod("noInicioEspacio", function(value, element) {
+            if (this.optional(element)) return true;
+            if (typeof value !== 'string') return false;
+            if ($.trim(value) === '') return false;
+            return !/^\s/.test(value);
+        }, "El campo no puede iniciar con espacios ni contener solo espacios.");
+
         $.validator.setDefaults({
             errorElement: 'div',
             errorClass: 'invalid-feedback',

@@ -2167,15 +2167,19 @@ $(document).ready(function() {
     });
 
     $(document).on('input change', '.input-preview-nombres', function() {
-        const val = $(this).val().trim();
+        const rawVal = $(this).val();
+        const val = rawVal.trim();
         const $fb = $(this).siblings('.invalid-feedback');
         if (!val) {
             $(this).addClass('is-invalid');
-            $fb.text('Nombre requerido').show();
+            $fb.text('Nombre requerido (no solo espacios)').show();
+        } else if (/^\s/.test(rawVal)) {
+            $(this).addClass('is-invalid');
+            $fb.text('No puede iniciar con espacios').show();
         } else if (/\d/.test(val)) {
             $(this).addClass('is-invalid');
             $fb.text('No puede contener números').show();
-        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(val) || val.length < 2) {
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ][a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]*$/.test(val) || val.length < 2) {
             $(this).addClass('is-invalid');
             $fb.text('Solo letras permitidas').show();
         } else {
@@ -2186,15 +2190,19 @@ $(document).ready(function() {
     });
 
     $(document).on('input change', '.input-preview-apellidos', function() {
-        const val = $(this).val().trim();
+        const rawVal = $(this).val();
+        const val = rawVal.trim();
         const $fb = $(this).siblings('.invalid-feedback');
         if (!val) {
             $(this).addClass('is-invalid');
-            $fb.text('Apellido requerido').show();
+            $fb.text('Apellido requerido (no solo espacios)').show();
+        } else if (/^\s/.test(rawVal)) {
+            $(this).addClass('is-invalid');
+            $fb.text('No puede iniciar con espacios').show();
         } else if (/\d/.test(val)) {
             $(this).addClass('is-invalid');
             $fb.text('No puede contener números').show();
-        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(val) || val.length < 2) {
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ][a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]*$/.test(val) || val.length < 2) {
             $(this).addClass('is-invalid');
             $fb.text('Solo letras permitidas').show();
         } else {
@@ -2269,9 +2277,18 @@ $(document).ready(function() {
                 }
             }
 
+            const rawNom = $inputNom.val() || '';
+            const rawApe = $inputApe.val() || '';
+
             if (!nom) {
                 $inputNom.addClass('is-invalid');
-                $inputNom.siblings('.invalid-feedback').text('Nombre requerido').show();
+                $inputNom.siblings('.invalid-feedback').text('Nombre requerido (no solo espacios)').show();
+                isValid = false;
+                errorCount++;
+                if (!$firstInvalid) $firstInvalid = $inputNom;
+            } else if (/^\s/.test(rawNom)) {
+                $inputNom.addClass('is-invalid');
+                $inputNom.siblings('.invalid-feedback').text('No puede iniciar con espacios').show();
                 isValid = false;
                 errorCount++;
                 if (!$firstInvalid) $firstInvalid = $inputNom;
@@ -2281,7 +2298,7 @@ $(document).ready(function() {
                 isValid = false;
                 errorCount++;
                 if (!$firstInvalid) $firstInvalid = $inputNom;
-            } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(nom) || nom.length < 2) {
+            } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ][a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]*$/.test(nom) || nom.length < 2) {
                 $inputNom.addClass('is-invalid');
                 $inputNom.siblings('.invalid-feedback').text('Solo letras permitidas').show();
                 isValid = false;
@@ -2291,7 +2308,13 @@ $(document).ready(function() {
 
             if (!ape) {
                 $inputApe.addClass('is-invalid');
-                $inputApe.siblings('.invalid-feedback').text('Apellido requerido').show();
+                $inputApe.siblings('.invalid-feedback').text('Apellido requerido (no solo espacios)').show();
+                isValid = false;
+                errorCount++;
+                if (!$firstInvalid) $firstInvalid = $inputApe;
+            } else if (/^\s/.test(rawApe)) {
+                $inputApe.addClass('is-invalid');
+                $inputApe.siblings('.invalid-feedback').text('No puede iniciar con espacios').show();
                 isValid = false;
                 errorCount++;
                 if (!$firstInvalid) $firstInvalid = $inputApe;
@@ -2301,7 +2324,7 @@ $(document).ready(function() {
                 isValid = false;
                 errorCount++;
                 if (!$firstInvalid) $firstInvalid = $inputApe;
-            } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]+$/.test(ape) || ape.length < 2) {
+            } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ][a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s\.\'\-]*$/.test(ape) || ape.length < 2) {
                 $inputApe.addClass('is-invalid');
                 $inputApe.siblings('.invalid-feedback').text('Solo letras permitidas').show();
                 isValid = false;

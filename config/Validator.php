@@ -146,14 +146,17 @@ class Validator {
                 }
             }
 
-            // Si está vacío y no es obligatorio, saltar el resto de las reglas para este campo
-            $isEmpty = $this->isEmptyValue($value);
-            if (!$isRequired && $isEmpty) {
+            // Determinar si el valor es verdaderamente nulo/vacío o son solo espacios
+            $isTrulyEmpty = ($value === null || (is_string($value) && $value === '') || (is_array($value) && empty($value)));
+            $isOnlyWhitespace = is_string($value) && $value !== '' && trim($value) === '';
+
+            // Si está verdaderamente vacío (null o "") y no es obligatorio, saltar el resto de las reglas
+            if (!$isRequired && $isTrulyEmpty) {
                 continue;
             }
 
-            // Si es obligatorio y está vacío, registrar error y pasar al siguiente
-            if ($isRequired && $isEmpty) {
+            // Si es obligatorio y está vacío o compuesto únicamente por espacios, registrar error required
+            if ($isRequired && ($isTrulyEmpty || $isOnlyWhitespace)) {
                 $this->addError($field, 'required', null);
                 continue;
             }
@@ -314,7 +317,8 @@ class Validator {
      * Ejecuta una regla individual
      */
     private function executeRule(string $rule, $value, $param, string $field): bool {
-        $strVal = is_scalar($value) ? trim((string)$value) : '';
+        $rawStr = is_scalar($value) ? (string)$value : '';
+        $strVal = trim($rawStr);
 
         // Comprobar métodos personalizados registrados dinámicamente
         if (isset(self::$customMethods[$rule])) {
@@ -388,11 +392,28 @@ class Validator {
                 return $strVal >= date('Y-m-d');
 
             case 'soloLetras':
-                // Coincide con regex de jQuery Validate: solo letras, acentos, espacios, apóstrofes, puntos y guiones (sin números)
-                if (preg_match('/\d/', $strVal)) {
+                // No puede ser solo espacios
+                if ($strVal === '') {
                     return false;
                 }
-                return (bool)preg_match('/^[\p{L}\s\.\'\-]+$/u', $strVal);
+                // No puede iniciar con espacios
+                if (preg_match('/^\s/', $rawStr)) {
+                    return false;
+                }
+                // No puede contener números
+                if (preg_match('/\d/', $rawStr)) {
+                    return false;
+                }
+                // Debe iniciar con letra y contener solo letras, acentos, espacios intermedios, apóstrofes, puntos y guiones
+                return (bool)preg_match('/^\p{L}[\p{L}\s\.\'\-]*$/u', $rawStr);
+
+            case 'noLeadingSpaces':
+            case 'no_leading_spaces':
+            case 'noInicioEspacio':
+                if ($rawStr === '') {
+                    return true;
+                }
+                return !preg_match('/^\s/', $rawStr) && $strVal !== '';
 
             case 'formatoTelefono':
                 // 7 a 15 dígitos numéricos sin letras
@@ -521,7 +542,12 @@ class Validator {
                 return "La fecha de {$label} no puede ser anterior a hoy.";
 
             case 'soloLetras':
-                return "El campo {$label} solo debe contener letras (sin números ni caracteres especiales).";
+                return "El campo {$label} debe contener solo letras y no puede iniciar con espacios ni estar vacío.";
+
+            case 'noLeadingSpaces':
+            case 'no_leading_spaces':
+            case 'noInicioEspacio':
+                return "El campo {$label} no puede iniciar con espacios ni contener solo espacios.";
 
             case 'formatoTelefono':
                 return "El teléfono debe contener solo números (entre 7 y 15 dígitos).";

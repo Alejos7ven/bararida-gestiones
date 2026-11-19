@@ -133,13 +133,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
  */
 function crearZonaAction() {
     $validator = Validator::make($_POST, [
-        'nombre'      => ['required' => true, 'minlength' => 3, 'maxlength' => 50],
+        'nombre'      => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'noLeadingSpaces' => true],
         'coordenadas' => ['required' => true, 'coordenadas' => true, 'maxlength' => 255]
     ], [
         'nombre' => [
-            'required'  => 'El nombre de la zona es obligatorio.',
-            'minlength' => 'El nombre de la zona debe tener al menos 3 caracteres.',
-            'maxlength' => 'El nombre de la zona no puede exceder los 50 caracteres.'
+            'required'        => 'El nombre de la zona es obligatorio.',
+            'minlength'       => 'El nombre de la zona debe tener al menos 3 caracteres.',
+            'maxlength'       => 'El nombre de la zona no puede exceder los 50 caracteres.',
+            'noLeadingSpaces' => 'El nombre de la zona no puede iniciar con espacios ni contener solo espacios.'
         ],
         'coordenadas' => [
             'required'    => 'Debe hacer clic en el mapa para marcar las coordenadas de la zona.',
@@ -239,12 +240,13 @@ function eliminarZonaAction() {
  */
 function crearRecorridoAction() {
     $validator = Validator::make($_POST, [
-        'nombre' => ['required' => true, 'minlength' => 3, 'maxlength' => 50]
+        'nombre' => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'noLeadingSpaces' => true]
     ], [
         'nombre' => [
-            'required'  => 'El nombre del recorrido es obligatorio.',
-            'minlength' => 'El nombre del recorrido debe tener al menos 3 caracteres.',
-            'maxlength' => 'El nombre del recorrido no puede exceder los 50 caracteres.'
+            'required'        => 'El nombre del recorrido es obligatorio.',
+            'minlength'       => 'El nombre del recorrido debe tener al menos 3 caracteres.',
+            'maxlength'       => 'El nombre del recorrido no puede exceder los 50 caracteres.',
+            'noLeadingSpaces' => 'El nombre del recorrido no puede iniciar con espacios ni contener solo espacios.'
         ]
     ]);
 
@@ -369,7 +371,7 @@ function actualizarZonaCoordsAction() {
     $validator = Validator::make($_POST, [
         'id'          => ['required' => true, 'integer' => true, 'min' => 1],
         'coordenadas' => ['required' => true, 'coordenadas' => true, 'maxlength' => 255],
-        'nombre'      => ['required' => false, 'minlength' => 3, 'maxlength' => 50]
+        'nombre'      => ['required' => false, 'minlength' => 3, 'maxlength' => 50, 'noLeadingSpaces' => true]
     ], [
         'id' => [
             'required' => 'El ID de la zona es requerido.',
@@ -381,8 +383,9 @@ function actualizarZonaCoordsAction() {
             'maxlength'   => 'Las coordenadas no pueden superar los 255 caracteres.'
         ],
         'nombre' => [
-            'minlength' => 'El nombre de la zona debe tener al menos 3 caracteres.',
-            'maxlength' => 'El nombre de la zona no puede superar los 50 caracteres.'
+            'minlength'       => 'El nombre de la zona debe tener al menos 3 caracteres.',
+            'maxlength'       => 'El nombre de la zona no puede superar los 50 caracteres.',
+            'noLeadingSpaces' => 'El nombre de la zona no puede iniciar con espacios ni contener solo espacios.'
         ]
     ]);
 

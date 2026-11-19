@@ -171,13 +171,13 @@ function crearVisitanteAction() {
             'required'   => 'Los nombres son obligatorios.',
             'minlength'  => 'Los nombres deben tener al menos 2 caracteres.',
             'maxlength'  => 'Los nombres no pueden exceder los 25 caracteres.',
-            'soloLetras' => 'Los nombres solo deben contener letras (sin números ni caracteres especiales).'
+            'soloLetras' => 'Los nombres solo deben contener letras y no pueden iniciar con espacios ni estar vacíos.'
         ],
         'apellidos' => [
             'required'   => 'Los apellidos son obligatorios.',
             'minlength'  => 'Los apellidos deben tener al menos 2 caracteres.',
             'maxlength'  => 'Los apellidos no pueden exceder los 25 caracteres.',
-            'soloLetras' => 'Los apellidos solo deben contener letras (sin números ni caracteres especiales).'
+            'soloLetras' => 'Los apellidos solo deben contener letras y no pueden iniciar con espacios ni estar vacíos.'
         ],
         'cedula' => [
             'digits'    => 'La cédula debe contener exclusivamente dígitos numéricos.',
@@ -277,13 +277,13 @@ function actualizarVisitanteAction() {
             'required'   => 'Los nombres son obligatorios.',
             'minlength'  => 'Los nombres deben tener al menos 2 caracteres.',
             'maxlength'  => 'Los nombres no pueden exceder los 25 caracteres.',
-            'soloLetras' => 'Los nombres solo deben contener letras (sin números ni caracteres especiales).'
+            'soloLetras' => 'Los nombres solo deben contener letras y no pueden iniciar con espacios ni estar vacíos.'
         ],
         'apellidos' => [
             'required'   => 'Los apellidos son obligatorios.',
             'minlength'  => 'Los apellidos deben tener al menos 2 caracteres.',
             'maxlength'  => 'Los apellidos no pueden exceder los 25 caracteres.',
-            'soloLetras' => 'Los apellidos solo deben contener letras (sin números ni caracteres especiales).'
+            'soloLetras' => 'Los apellidos solo deben contener letras y no pueden iniciar con espacios ni estar vacíos.'
         ],
         'cedula' => [
             'digits'    => 'La cédula debe contener exclusivamente dígitos numéricos.',

@@ -56,12 +56,14 @@ $(document).ready(function() {
                 nombre: {
                     required: true,
                     minlength: 3,
-                    maxlength: 50
+                    maxlength: 50,
+                    noInicioEspacio: true
                 },
                 nombre_completo: {
                     required: true,
                     minlength: 3,
-                    maxlength: 50
+                    maxlength: 50,
+                    noInicioEspacio: true
                 },
                 tipo_organizacion: {
                     required: true,
@@ -112,12 +114,14 @@ $(document).ready(function() {
                 nombre: {
                     required: "La Razón Social o Nombre Oficial es requerido.",
                     minlength: "La Razón Social debe tener al menos 3 caracteres.",
-                    maxlength: "La Razón Social no puede superar los 50 caracteres."
+                    maxlength: "La Razón Social no puede superar los 50 caracteres.",
+                    noInicioEspacio: "No puede iniciar con espacios ni estar vacío."
                 },
                 nombre_completo: {
                     required: "La Razón Social o Nombre Oficial es requerido.",
                     minlength: "La Razón Social debe tener al menos 3 caracteres.",
-                    maxlength: "La Razón Social no puede superar los 50 caracteres."
+                    maxlength: "La Razón Social no puede superar los 50 caracteres.",
+                    noInicioEspacio: "No puede iniciar con espacios ni estar vacío."
                 },
                 tipo_organizacion: {
                     required: "Debe seleccionar un tipo de organización.",

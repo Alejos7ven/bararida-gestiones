@@ -46,7 +46,8 @@ $(document).ready(function() {
                 nombre_completo: {
                     required: true,
                     minlength: 3,
-                    maxlength: 50
+                    maxlength: 50,
+                    noInicioEspacio: true
                 },
                 tipo_organizacion: {
                     required: true,
@@ -67,7 +68,8 @@ $(document).ready(function() {
                 nombre_completo: {
                     required: "La Razón Social / Nombre Oficial es requerida.",
                     minlength: "La Razón Social debe tener al menos 3 caracteres.",
-                    maxlength: "La Razón Social no puede superar los 50 caracteres."
+                    maxlength: "La Razón Social no puede superar los 50 caracteres.",
+                    noInicioEspacio: "La Razón Social no puede iniciar con espacios ni estar vacía."
                 },
                 tipo_organizacion: {
                     required: "Debe seleccionar o especificar un tipo de organización.",
@@ -98,7 +100,8 @@ $(document).ready(function() {
                 nombre_completo: {
                     required: true,
                     minlength: 3,
-                    maxlength: 50
+                    maxlength: 50,
+                    noInicioEspacio: true
                 },
                 tipo_organizacion: {
                     required: true,
@@ -119,7 +122,8 @@ $(document).ready(function() {
                 nombre_completo: {
                     required: "La Razón Social / Nombre Oficial es requerida.",
                     minlength: "La Razón Social debe tener al menos 3 caracteres.",
-                    maxlength: "La Razón Social no puede superar los 50 caracteres."
+                    maxlength: "La Razón Social no puede superar los 50 caracteres.",
+                    noInicioEspacio: "La Razón Social no puede iniciar con espacios ni estar vacía."
                 },
                 tipo_organizacion: {
                     required: "Debe seleccionar o especificar un tipo de organización.",

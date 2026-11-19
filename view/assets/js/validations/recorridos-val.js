@@ -6,14 +6,16 @@ $(document).ready(function() {
                 nombre: {
                     required: true,
                     minlength: 3,
-                    maxlength: 50
+                    maxlength: 50,
+                    noInicioEspacio: true
                 }
             },
             messages: {
                 nombre: {
                     required: "El nombre del recorrido es obligatorio.",
                     minlength: "El nombre del recorrido debe tener al menos 3 caracteres.",
-                    maxlength: "El nombre del recorrido no puede exceder los 50 caracteres."
+                    maxlength: "El nombre del recorrido no puede exceder los 50 caracteres.",
+                    noInicioEspacio: "El nombre no puede iniciar con espacios ni estar vacío."
                 }
             }
         });
@@ -26,7 +28,8 @@ $(document).ready(function() {
                 nombre: {
                     required: true,
                     minlength: 3,
-                    maxlength: 50
+                    maxlength: 50,
+                    noInicioEspacio: true
                 },
                 coordenadas: {
                     required: true,
@@ -37,7 +40,8 @@ $(document).ready(function() {
                 nombre: {
                     required: "El nombre de la zona es obligatorio.",
                     minlength: "El nombre de la zona debe tener al menos 3 caracteres.",
-                    maxlength: "El nombre de la zona no puede exceder los 50 caracteres."
+                    maxlength: "El nombre de la zona no puede exceder los 50 caracteres.",
+                    noInicioEspacio: "El nombre de la zona no puede iniciar con espacios ni estar vacío."
                 },
                 coordenadas: {
                     required: "Debe hacer clic en el mapa para marcar las coordenadas de la zona.",

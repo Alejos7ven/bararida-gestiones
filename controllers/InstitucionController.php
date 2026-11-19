@@ -194,8 +194,8 @@ function crearInstitucionAction() {
     $validator = Validator::make($_POST, [
         'tipo_documento'    => ['required' => true, 'in' => ['J', 'G', 'V', 'E', 'P'], 'maxlength' => 10],
         'documento'         => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
-        'nombre_completo'   => ['required' => true, 'minlength' => 3, 'maxlength' => 50],
-        'tipo_organizacion' => ['required' => true, 'minlength' => 3, 'maxlength' => 20],
+        'nombre_completo'   => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'noLeadingSpaces' => true],
+        'tipo_organizacion' => ['required' => true, 'minlength' => 3, 'maxlength' => 20, 'noLeadingSpaces' => true],
         'tipo_gestion'      => ['required' => true, 'in' => ['publica', 'privada'], 'maxlength' => 20]
     ], [
         'documento' => [
@@ -205,9 +205,10 @@ function crearInstitucionAction() {
             'maxlength' => 'El RIF/Cédula no puede exceder los 15 dígitos.'
         ],
         'nombre_completo' => [
-            'required'  => 'La Razón Social / Nombre Oficial es requerida.',
-            'minlength' => 'La Razón Social debe tener al menos 3 caracteres.',
-            'maxlength' => 'La Razón Social no puede superar los 50 caracteres.'
+            'required'        => 'La Razón Social / Nombre Oficial es requerida.',
+            'minlength'       => 'La Razón Social debe tener al menos 3 caracteres.',
+            'maxlength'       => 'La Razón Social no puede superar los 50 caracteres.',
+            'noLeadingSpaces' => 'La Razón Social no puede iniciar con espacios ni estar compuesta solo por espacios.'
         ],
         'tipo_organizacion' => [
             'required'  => 'Debe seleccionar o especificar un tipo de organización.',
@@ -390,8 +391,8 @@ function actualizarInstitucionAction() {
         'entidad_id'        => ['required' => true, 'integer' => true, 'min' => 1],
         'tipo_documento'    => ['required' => true, 'in' => ['J', 'G', 'V', 'E', 'P'], 'maxlength' => 10],
         'documento'         => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
-        'nombre_completo'   => ['required' => true, 'minlength' => 3, 'maxlength' => 50],
-        'tipo_organizacion' => ['required' => true, 'minlength' => 3, 'maxlength' => 20],
+        'nombre_completo'   => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'noLeadingSpaces' => true],
+        'tipo_organizacion' => ['required' => true, 'minlength' => 3, 'maxlength' => 20, 'noLeadingSpaces' => true],
         'tipo_gestion'      => ['required' => true, 'in' => ['publica', 'privada'], 'maxlength' => 20]
     ], [
         'id' => [
@@ -407,9 +408,10 @@ function actualizarInstitucionAction() {
             'maxlength' => 'El RIF/Cédula no puede exceder los 15 dígitos.'
         ],
         'nombre_completo' => [
-            'required'  => 'La Razón Social / Nombre Oficial es requerida.',
-            'minlength' => 'La Razón Social debe tener al menos 3 caracteres.',
-            'maxlength' => 'La Razón Social no puede superar los 50 caracteres.'
+            'required'        => 'La Razón Social / Nombre Oficial es requerida.',
+            'minlength'       => 'La Razón Social debe tener al menos 3 caracteres.',
+            'maxlength'       => 'La Razón Social no puede superar los 50 caracteres.',
+            'noLeadingSpaces' => 'La Razón Social no puede iniciar con espacios ni estar compuesta solo por espacios.'
         ],
         'tipo_organizacion' => [
             'required'  => 'Debe seleccionar o especificar un tipo de organización.',
