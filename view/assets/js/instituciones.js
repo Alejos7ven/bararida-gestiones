@@ -234,19 +234,19 @@ $(document).ready(function() {
                 <div class="row g-2">
                     <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Estado</label>
-                        <select class="form-select form-select-sm select-estado" required>
+                        <select class="form-select form-select-sm select-estado">
                             <option value="">Seleccione Estado</option>
                         </select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Municipio</label>
-                        <select class="form-select form-select-sm select-municipio" required disabled>
+                        <select class="form-select form-select-sm select-municipio" disabled>
                             <option value="">Seleccione Municipio</option>
                         </select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Parroquia</label>
-                        <select class="form-select form-select-sm select-parroquia" required disabled>
+                        <select class="form-select form-select-sm select-parroquia" disabled>
                             <option value="">Seleccione Parroquia</option>
                         </select>
                     </div>
@@ -293,6 +293,15 @@ $(document).ready(function() {
             const $selectMun = $card.find('.select-municipio');
             const $selectPar = $card.find('.select-parroquia');
 
+            // Limpiar errores previos en cascada
+            if (typeof window.limpiarErrorInput === 'function') {
+                if (estadoId) {
+                    window.limpiarErrorInput($selectEstado);
+                }
+                window.limpiarErrorInput($selectMun);
+                window.limpiarErrorInput($selectPar);
+            }
+
             $selectMun.empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
             $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
 
@@ -318,7 +327,17 @@ $(document).ready(function() {
         // Event listener: cambio de municipio en esta tarjeta
         $card.find('.select-municipio').on('change', function() {
             const munId = $(this).val();
+            const $selectMun = $(this);
             const $selectPar = $card.find('.select-parroquia');
+
+            // Limpiar errores previos en cascada
+            if (typeof window.limpiarErrorInput === 'function') {
+                if (munId) {
+                    window.limpiarErrorInput($selectMun);
+                }
+                window.limpiarErrorInput($selectPar);
+            }
+
             $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
 
             if (!munId) return;
@@ -337,6 +356,14 @@ $(document).ready(function() {
                     }
                 }
             });
+        });
+
+        // Event listener: cambio de parroquia en esta tarjeta
+        $card.find('.select-parroquia').on('change', function() {
+            const parId = $(this).val();
+            if (parId && typeof window.limpiarErrorInput === 'function') {
+                window.limpiarErrorInput($(this));
+            }
         });
 
         actualizarBotonesEliminarSedes(containerSelector);

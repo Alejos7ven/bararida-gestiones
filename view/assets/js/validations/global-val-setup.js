@@ -17,7 +17,39 @@
         const $form = $(formSelector);
         if (!$form.length) return;
         $form.find('.is-invalid').removeClass('is-invalid');
-        $form.find('.invalid-feedback').hide().text('');
+        $form.find('.invalid-feedback').hide().text('').removeClass('d-block');
+    };
+
+    /**
+     * Limpia completamente el estado de error de un input o select específico y su mensaje asociado
+     * @param {string|jQuery|HTMLElement} element Selector o elemento
+     */
+    window.limpiarErrorInput = function(element) {
+        if (typeof jQuery === 'undefined') return;
+        const $el = $(element);
+        if (!$el.length) return;
+
+        $el.removeClass('is-invalid');
+
+        let $targetContainer = $el;
+        if ($el.parent('.input-group').length) {
+            $targetContainer = $el.parent('.input-group');
+        } else if ($el.closest('.custom-tipo-organizacion-container').length) {
+            $targetContainer = $el.closest('.custom-tipo-organizacion-container');
+        }
+
+        // Limpiar feedbacks adyacentes y hermanos
+        $targetContainer.siblings('.invalid-feedback').hide().text('').removeClass('d-block');
+        $targetContainer.nextAll('.invalid-feedback').hide().text('').removeClass('d-block');
+
+        const elId = $el.attr('id');
+        const elName = $el.attr('name');
+        if (elId) {
+            $(`#${elId}-error, label[for="${elId}"].invalid-feedback`).hide().text('').removeClass('d-block');
+        }
+        if (elName) {
+            $(`[id="${elName}-error"], label[for="${elName}"].invalid-feedback`).hide().text('').removeClass('d-block');
+        }
     };
 
     /**
@@ -54,16 +86,29 @@
         // Buscar o crear el contenedor .invalid-feedback
         let $feedback = $targetContainer.next('.invalid-feedback');
         if (!$feedback.length) {
+            $feedback = $targetContainer.siblings('.invalid-feedback').first();
+        }
+        if (!$feedback.length) {
             $feedback = $('<div class="invalid-feedback animate__animated animate__fadeIn"></div>');
             $feedback.insertAfter($targetContainer);
         }
 
-        $feedback.text(mensaje).show();
+        // Eliminar otros feedbacks duplicados que hayan quedado huérfanos
+        $targetContainer.siblings('.invalid-feedback').not($feedback).remove();
 
-        // Al comenzar a escribir o interactuar, limpiar el error de este campo
+        $feedback.text(mensaje).show().addClass('d-block');
+
+        // Al comenzar a escribir o interactuar, limpiar el error solo cuando haya un valor válido
         $el.off('input.cleanErr change.cleanErr').on('input.cleanErr change.cleanErr', function() {
-            $el.removeClass('is-invalid');
-            $feedback.hide().text('');
+            if ($el.is('select')) {
+                if ($el.val() && $el.val() !== '') {
+                    window.limpiarErrorInput($el);
+                }
+            } else {
+                if ($.trim($el.val()) !== '') {
+                    window.limpiarErrorInput($el);
+                }
+            }
         });
 
         if (doFocus) {
@@ -221,7 +266,16 @@
                 const $container = $(element).parent('.input-group').length 
                     ? $(element).parent('.input-group') 
                     : $(element);
-                $container.siblings('.invalid-feedback').hide().text('');
+                $container.siblings('.invalid-feedback').hide().text('').removeClass('d-block');
+                $container.nextAll('.invalid-feedback').hide().text('').removeClass('d-block');
+                const elId = $(element).attr('id');
+                const elName = $(element).attr('name');
+                if (elId) {
+                    $(`#${elId}-error, label[for="${elId}"].invalid-feedback`).hide().text('').removeClass('d-block');
+                }
+                if (elName) {
+                    $(`[id="${elName}-error"], label[for="${elName}"].invalid-feedback`).hide().text('').removeClass('d-block');
+                }
             },
             errorPlacement: function(error, element) {
                 if (element.parent('.input-group').length) {
@@ -272,20 +326,33 @@
         const style = document.createElement('style');
         style.innerHTML = `
             .invalid-feedback {
-                display: block !important;
+                display: none;
                 color: #ef4444 !important;
                 font-size: 0.8rem !important;
                 font-weight: 500 !important;
                 margin-top: 0.35rem !important;
                 transition: all 0.2s ease-in-out;
             }
-            .is-invalid {
+            .invalid-feedback:empty {
+                display: none !important;
+            }
+            .is-invalid ~ .invalid-feedback,
+            .input-group:has(.is-invalid) ~ .invalid-feedback,
+            .custom-tipo-organizacion-container:has(.is-invalid) ~ .invalid-feedback {
+                display: block;
+            }
+            input.is-invalid:not([type="checkbox"]):not([type="radio"]),
+            textarea.is-invalid {
                 border-color: #ef4444 !important;
                 box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
                 background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23ef4444'%3e%3ccircle cx='6' cy='6' r='4.5' stroke-width='1.2'/%3e%3cpath stroke-linejoin='round' stroke-linecap='round' d='M6 3.8v2.8M6 8.2h.01'/%3e%3c/svg%3e") !important;
                 background-repeat: no-repeat !important;
                 background-position: right calc(0.4em + 0.2rem) center !important;
                 background-size: calc(0.8em + 0.3rem) calc(0.8em + 0.3rem) !important;
+            }
+            select.is-invalid {
+                border-color: #ef4444 !important;
+                box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.12) !important;
             }
             .is-invalid:focus {
                 border-color: #dc2626 !important;

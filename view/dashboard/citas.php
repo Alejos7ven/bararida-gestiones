@@ -131,13 +131,13 @@
                                         </div>
                                         <div class="col-md-4">
                                             <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Parroquia</label>
-                                            <select class="form-select form-select-sm" id="nueva_sede_cita_parroquia" name="nueva_sede_parroquia_id" disabled>
+                                            <select class="form-select form-select-sm" id="nueva_sede_cita_parroquia" disabled>
                                                 <option value="">Seleccione Parroquia</option>
                                             </select>
                                         </div>
                                         <div class="col-12">
                                             <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Detalles de la Dirección</label>
-                                            <input type="text" class="form-control form-control-sm" id="nueva_sede_cita_detalles" name="nueva_sede_detalles" placeholder="Ej. Calle 5, Edif. Este" maxlength="150">
+                                            <input type="text" class="form-control form-control-sm" id="nueva_sede_cita_detalles" placeholder="Ej. Calle 5, Edif. Este" maxlength="150">
                                         </div>
                                     </div>
                                 </div>

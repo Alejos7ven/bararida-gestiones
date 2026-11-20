@@ -349,19 +349,19 @@ $(document).ready(function() {
                 <div class="row g-2">
                     <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Estado</label>
-                        <select class="form-select form-select-sm select-estado" ${disabledAttr} required>
+                        <select class="form-select form-select-sm select-estado" ${disabledAttr}>
                             <option value="">Seleccione Estado</option>
                         </select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Municipio</label>
-                        <select class="form-select form-select-sm select-municipio" required disabled>
+                        <select class="form-select form-select-sm select-municipio" ${disabledAttr} disabled>
                             <option value="">Seleccione Municipio</option>
                         </select>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label mb-1" style="font-size:0.8rem; font-weight:600;">Parroquia</label>
-                        <select class="form-select form-select-sm select-parroquia" required disabled>
+                        <select class="form-select form-select-sm select-parroquia" ${disabledAttr} disabled>
                             <option value="">Seleccione Parroquia</option>
                         </select>
                     </div>
@@ -410,6 +410,14 @@ $(document).ready(function() {
                 const $selectMun = $card.find('.select-municipio');
                 const $selectPar = $card.find('.select-parroquia');
 
+                if (typeof window.limpiarErrorInput === 'function') {
+                    if (estadoId) {
+                        window.limpiarErrorInput($selectEstado);
+                    }
+                    window.limpiarErrorInput($selectMun);
+                    window.limpiarErrorInput($selectPar);
+                }
+
                 $selectMun.empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
                 $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
 
@@ -433,7 +441,16 @@ $(document).ready(function() {
 
             $card.find('.select-municipio').on('change', function() {
                 const munId = $(this).val();
+                const $selectMun = $(this);
                 const $selectPar = $card.find('.select-parroquia');
+
+                if (typeof window.limpiarErrorInput === 'function') {
+                    if (munId) {
+                        window.limpiarErrorInput($selectMun);
+                    }
+                    window.limpiarErrorInput($selectPar);
+                }
+
                 $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
 
                 if (!munId) return;
@@ -452,6 +469,13 @@ $(document).ready(function() {
                         }
                     }
                 });
+            });
+
+            $card.find('.select-parroquia').on('change', function() {
+                const parId = $(this).val();
+                if (parId && typeof window.limpiarErrorInput === 'function') {
+                    window.limpiarErrorInput($(this));
+                }
             });
         }
 
@@ -599,6 +623,12 @@ $(document).ready(function() {
         $('#wizardSedesSelectionBox').hide();
         $('#wizardSedesRadioList').empty();
         $('#wizardNuevaSedeForm').hide();
+        if (typeof window.limpiarErrorInput === 'function') {
+            window.limpiarErrorInput('#nueva_sede_cita_estado');
+            window.limpiarErrorInput('#nueva_sede_cita_municipio');
+            window.limpiarErrorInput('#nueva_sede_cita_parroquia');
+            window.limpiarErrorInput('#nueva_sede_cita_detalles');
+        }
         $('#nueva_institucion_rif_row').hide();
         
         // Ocultar alerta de capacidad
@@ -874,6 +904,11 @@ $(document).ready(function() {
                 firstRadio.prop('checked', true);
                 $('#final_sede_id').val(firstRadio.val());
             }
+            if (typeof window.limpiarErrorInput === 'function') {
+                window.limpiarErrorInput('#nueva_sede_cita_estado');
+                window.limpiarErrorInput('#nueva_sede_cita_municipio');
+                window.limpiarErrorInput('#nueva_sede_cita_parroquia');
+            }
             actualizarPrevisualizacionSedeEnPaso2();
         } else {
             $form.slideDown(200);
@@ -907,6 +942,14 @@ $(document).ready(function() {
         const $selectMun = $('#nueva_sede_cita_municipio');
         const $selectPar = $('#nueva_sede_cita_parroquia');
 
+        if (typeof window.limpiarErrorInput === 'function') {
+            if (estadoId) {
+                window.limpiarErrorInput('#nueva_sede_cita_estado');
+            }
+            window.limpiarErrorInput('#nueva_sede_cita_municipio');
+            window.limpiarErrorInput('#nueva_sede_cita_parroquia');
+        }
+
         $selectMun.empty().append('<option value="">Seleccione Municipio</option>').prop('disabled', true);
         $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
 
@@ -931,6 +974,14 @@ $(document).ready(function() {
     $('#nueva_sede_cita_municipio').on('change', function() {
         const munId = $(this).val();
         const $selectPar = $('#nueva_sede_cita_parroquia');
+
+        if (typeof window.limpiarErrorInput === 'function') {
+            if (munId) {
+                window.limpiarErrorInput('#nueva_sede_cita_municipio');
+            }
+            window.limpiarErrorInput('#nueva_sede_cita_parroquia');
+        }
+
         $selectPar.empty().append('<option value="">Seleccione Parroquia</option>').prop('disabled', true);
 
         if (!munId) return;
@@ -950,8 +1001,13 @@ $(document).ready(function() {
             }
         });
     });
+
     $('#nueva_sede_cita_parroquia').on('change', function() {
-        $('#final_nueva_sede_parroquia_id').val($(this).val());
+        const parId = $(this).val();
+        if (parId && typeof window.limpiarErrorInput === 'function') {
+            window.limpiarErrorInput('#nueva_sede_cita_parroquia');
+        }
+        $('#final_nueva_sede_parroquia_id').val(parId);
         if ($('#final_crear_nueva_sede').val() === '1') {
             actualizarPrevisualizacionSedeEnPaso2();
         }

@@ -131,9 +131,6 @@ $(document).ready(function() {
                     required: "Debe seleccionar el tipo de gestión.",
                     maxlength: "El tipo de gestión no puede superar los 20 caracteres."
                 },
-                parroquia_id: {
-                    required: "Debe seleccionar la parroquia."
-                },
                 tipo: {
                     required: "Debe seleccionar el tipo de cita.",
                     maxlength: "El tipo de cita no puede exceder los 25 caracteres."
