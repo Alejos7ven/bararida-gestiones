@@ -194,12 +194,16 @@ function crearAction() {
     }
 
     $validator = Validator::make($_POST, [
-        'tipo_documento'  => ['required' => true, 'in' => ['V', 'E', 'J', 'G', 'P'], 'maxlength' => 10],
+        'tipo_documento'  => ['required' => true, 'in' => ['V', 'E'], 'maxlength' => 10],
         'cedula'          => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
         'nombre_completo' => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'soloLetras' => true],
         'rol'             => ['required' => true, 'maxlength' => 30],
         'password'        => ['required' => true, 'minlength' => 6, 'maxlength' => 20, 'noInicioEspacio' => true]
     ], [
+        'tipo_documento' => [
+            'required' => 'El tipo de documento es obligatorio.',
+            'in'       => 'El tipo de documento del personal solo puede ser Venezolano (V) o Extranjero (E).'
+        ],
         'nombre_completo' => [
             'soloLetras' => 'El nombre completo debe contener solo letras y no puede iniciar con espacios ni contener números.',
             'maxlength'  => 'El nombre completo no puede superar los 50 caracteres.'
@@ -330,12 +334,16 @@ function actualizarAction() {
 
     $validator = Validator::make($_POST, [
         'id'              => ['required' => true, 'integer' => true, 'min' => 0],
-        'tipo_documento'  => ['required' => true, 'in' => ['V', 'E', 'J', 'G', 'P'], 'maxlength' => 10],
+        'tipo_documento'  => ['required' => true, 'in' => ['V', 'E'], 'maxlength' => 10],
         'cedula'          => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
         'nombre_completo' => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'soloLetras' => true],
         'rol'             => ['required' => true, 'maxlength' => 30],
         'password'        => ['required' => false, 'minlength' => 6, 'maxlength' => 20, 'noInicioEspacio' => true]
     ], [
+        'tipo_documento' => [
+            'required' => 'El tipo de documento es obligatorio.',
+            'in'       => 'El tipo de documento del personal solo puede ser Venezolano (V) o Extranjero (E).'
+        ],
         'nombre_completo' => [
             'soloLetras' => 'El nombre completo debe contener solo letras y no puede iniciar con espacios ni contener números.',
             'maxlength'  => 'El nombre completo no puede superar los 50 caracteres.'

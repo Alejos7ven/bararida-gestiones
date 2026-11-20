@@ -235,6 +235,7 @@ $(document).ready(function() {
 
     $('#modalCrearPersonal').on('show.bs.modal', function() {
         resetPasswordToggle($(this));
+        $('#tipo_documento').val('V');
         $('#alertCrearFeedback').hide();
         if (typeof window.limpiarErroresFormulario === 'function') {
             window.limpiarErroresFormulario('#formCrearPersonal');
@@ -338,7 +339,7 @@ $(document).ready(function() {
                     const u = response.data;
                     
                     $('#edit_id').val(u.id);
-                    $('#edit_tipo_documento').val(u.tipo_documento || 'V');
+                    $('#edit_tipo_documento').val((u.tipo_documento === 'E') ? 'E' : 'V');
                     $('#edit_cedula').val(u.cedula);
                     $('#edit_nombre_completo').val(u.nombre_completo || `${u.nombre || ''} ${u.apellido || ''}`.trim());
 

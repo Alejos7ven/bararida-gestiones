@@ -61,9 +61,6 @@
                                 <select class="form-select form-premium-control" id="tipo_documento" name="tipo_documento" style="max-width: 90px; border-top-right-radius: 0; border-bottom-right-radius: 0;" required>
                                     <option value="V" selected>V</option>
                                     <option value="E">E</option>
-                                    <option value="J">J</option>
-                                    <option value="G">G</option>
-                                    <option value="P">P</option>
                                 </select>
                                 <input type="text" class="form-control form-premium-control" id="cedula" name="cedula" placeholder="Ej. 25123456" style="border-top-left-radius: 0; border-bottom-left-radius: 0;" required maxlength="15">
                             </div>
@@ -119,9 +116,6 @@
                                 <select class="form-select form-premium-control" id="edit_tipo_documento" name="tipo_documento" style="max-width: 90px; border-top-right-radius: 0; border-bottom-right-radius: 0;" required>
                                     <option value="V">V</option>
                                     <option value="E">E</option>
-                                    <option value="J">J</option>
-                                    <option value="G">G</option>
-                                    <option value="P">P</option>
                                 </select>
                                 <input type="text" class="form-control form-premium-control" id="edit_cedula" name="cedula" style="border-top-left-radius: 0; border-bottom-left-radius: 0;" required maxlength="15">
                             </div>

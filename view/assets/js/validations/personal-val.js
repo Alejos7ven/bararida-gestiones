@@ -42,6 +42,9 @@ $(document).ready(function() {
                 }
             },
             messages: {
+                tipo_documento: {
+                    required: "Seleccione el tipo de documento (V o E)."
+                },
                 cedula: {
                     required: "El número de documento es obligatorio.",
                     digits: "Por favor, ingrese solo números para la cédula.",
@@ -94,6 +97,9 @@ $(document).ready(function() {
                 }
             },
             messages: {
+                tipo_documento: {
+                    required: "Seleccione el tipo de documento (V o E)."
+                },
                 cedula: {
                     required: "El número de documento es obligatorio.",
                     digits: "Por favor, ingrese solo números para la cédula.",
