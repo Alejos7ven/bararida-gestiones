@@ -49,8 +49,9 @@ if (!isset($viewPath) || !function_exists('obtenerEtiquetaRol')) {
     <!-- Overlay para cerrar sidebar en mobile -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- Input oculto para que el JS sepa quién es el personal logueado -->
+    <!-- Input oculto para que el JS sepa quién es el personal logueado y su rol -->
     <input type="hidden" id="currentLoggedUserId" value="<?php echo $currentUser['id']; ?>">
+    <input type="hidden" id="currentLoggedUserRol" value="<?php echo htmlspecialchars($userRol); ?>">
 
     <div class="wrapper">
         <!-- Sidebar -->

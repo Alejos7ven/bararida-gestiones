@@ -153,6 +153,17 @@ function obtenerAction() {
         $personalData = $personalModel->obtenerPorId();
         
         if ($personalData) {
+            // Proteger datos de superadmin: solo un superadmin puede consultarlos para editar
+            $currentUserRole = $_SESSION['personal']['rol'] ?? '';
+            if (($personalData['rol'] ?? '') === 'superadmin' && $currentUserRole !== 'superadmin') {
+                http_response_code(403);
+                echo json_encode([
+                    "status" => "error",
+                    "message" => "Acceso denegado: solo un Super Administrador puede consultar o modificar datos de un Super Administrador."
+                ]);
+                return;
+            }
+
             http_response_code(200);
             echo json_encode([
                 "status" => "success",
@@ -344,6 +355,17 @@ function actualizarAction() {
         return;
     }
 
+    // Proteger las cuentas de superadmin: un administrador no puede editar sobre superadmins
+    $currentUserRole = $_SESSION['personal']['rol'] ?? '';
+    if ($personalActual['rol'] === 'superadmin' && $currentUserRole !== 'superadmin') {
+        http_response_code(403);
+        echo json_encode([
+            "status" => "error",
+            "message" => "No posee permisos para modificar información de un Super Administrador."
+        ]);
+        return;
+    }
+
     // Proteger el rol de superadmin de degradaciones accidentales
     if ($personalActual['rol'] === 'superadmin' && $rol !== 'superadmin') {
         http_response_code(400);
@@ -459,7 +481,7 @@ function eliminarAction() {
         }
 
         if ($personalActual['rol'] === 'superadmin') {
-            http_response_code(400);
+            http_response_code(403);
             echo json_encode([
                 "status" => "error",
                 "message" => "Un Super Administrador no puede ser eliminado del sistema."

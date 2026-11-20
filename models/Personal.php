@@ -216,7 +216,7 @@ class Personal extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
+        if (!$this->db || $this->id === null) {
             return null;
         }
 
@@ -351,7 +351,7 @@ class Personal extends Database {
      * Actualiza la información de un personal existente.
      */
     public function actualizar(): bool {
-        if (!$this->db || $this->id === null || $this->id === 0) {
+        if (!$this->db || $this->id === null) {
             throw new Exception("Conexión de base de datos o ID de personal no configurados.");
         }
 
@@ -418,12 +418,12 @@ class Personal extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
+        if (!$this->db || $this->id === null) {
             throw new Exception("Conexión de base de datos o ID no inicializado.");
         }
 
-        // Proteger usuario superadmin (ID 1 o 0)
-        if ($this->id === 1) {
+        // Proteger usuario superadmin principal (ID 0 o 1)
+        if ($this->id === 0 || $this->id === 1) {
             throw new Exception("No es posible eliminar al Super Administrador principal.");
         }
 

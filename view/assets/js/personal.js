@@ -113,6 +113,8 @@ $(document).ready(function() {
             return;
         }
 
+        const loggedUserRol = ($('#currentLoggedUserRol').val() || '').toLowerCase().trim();
+
         data.forEach(function(u) {
             let badgeRol = '';
             if (u.rol === 'superadmin') {
@@ -123,7 +125,15 @@ $(document).ready(function() {
                 badgeRol = '<span class="badge-premium badge-premium-guia">Guía de Campo</span>';
             }
 
-            const deleteDisabled = (u.rol === 'superadmin') ? 'disabled' : '';
+            const isTargetSuperadmin = (u.rol === 'superadmin');
+            const deleteDisabled = isTargetSuperadmin ? 'disabled' : '';
+            const deleteTitle = isTargetSuperadmin ? 'Un Super Administrador no puede ser eliminado' : 'Eliminar Personal';
+
+            const editDisabled = (isTargetSuperadmin && loggedUserRol !== 'superadmin') ? 'disabled' : '';
+            const editTitle = (isTargetSuperadmin && loggedUserRol !== 'superadmin')
+                ? 'No posee permisos para editar a un Super Administrador'
+                : 'Editar Personal';
+
             const nameFull = u.nombre_completo || `${u.nombre || ''} ${u.apellido || ''}`.trim();
 
             const rowHtml = `
@@ -135,10 +145,10 @@ $(document).ready(function() {
                     <td>${u.created_at}</td>
                     <td class="text-center">
                         <div class="table-actions justify-content-center">
-                            <button class="btn-action btn-action-edit btn-editar-personal" data-id="${u.id}" title="Editar Personal">
+                            <button class="btn-action btn-action-edit btn-editar-personal" data-id="${u.id}" ${editDisabled} title="${editTitle}">
                                 <svg viewBox="0 0 24 24"><path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/></svg>
                             </button>
-                            <button class="btn-action btn-action-delete btn-eliminar-personal" data-id="${u.id}" data-name="${nameFull}" ${deleteDisabled} title="Eliminar Personal">
+                            <button class="btn-action btn-action-delete btn-eliminar-personal" data-id="${u.id}" data-name="${nameFull}" ${deleteDisabled} title="${deleteTitle}">
                                 <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
                             </button>
                         </div>
@@ -261,7 +271,12 @@ $(document).ready(function() {
     // =========================================================================
     // OBTENER DATOS PARA EDICIÓN
     // =========================================================================
-    $(document).on('click', '.btn-editar-personal', function() {
+    $(document).on('click', '.btn-editar-personal', function(e) {
+        if ($(this).is(':disabled') || $(this).prop('disabled')) {
+            e.preventDefault();
+            return false;
+        }
+
         const id = $(this).data('id');
         const $modal = $('#modalEditarPersonal');
         const $alert = $('#alertEditarFeedback');
@@ -314,7 +329,11 @@ $(document).ready(function() {
                 }
             },
             error: function(xhr) {
-                showGlobalAlert('No se pudieron recuperar los datos del personal para editar.', 'danger');
+                let msg = 'No se pudieron recuperar los datos del personal para editar.';
+                if (xhr.responseJSON && xhr.responseJSON.message) {
+                    msg = xhr.responseJSON.message;
+                }
+                showGlobalAlert(msg, 'danger');
             }
         });
     });
@@ -389,7 +408,12 @@ $(document).ready(function() {
     // =========================================================================
     // ABRIR CONFIRMACIÓN DE ELIMINACIÓN
     // =========================================================================
-    $(document).on('click', '.btn-eliminar-personal', function() {
+    $(document).on('click', '.btn-eliminar-personal', function(e) {
+        if ($(this).is(':disabled') || $(this).prop('disabled')) {
+            e.preventDefault();
+            return false;
+        }
+
         const id = $(this).data('id');
         const name = $(this).data('name');
 
