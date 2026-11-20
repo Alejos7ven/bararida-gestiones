@@ -250,11 +250,24 @@ function crearAction() {
     // Validar unicidad del documento en la BD mediante el modelo
     $personalModel->setTipoDocumento($tipo_documento);
     $personalModel->setCedula($cedula);
-    if ($personalModel->existeDocumento()) {
+    $entidadExistente = $personalModel->buscarEntidadPorDocumento($cedula);
+    if ($entidadExistente) {
+        $tipoDocExistente = $entidadExistente['tipo_documento'] ?? $tipo_documento;
+        $docCompleto = "{$tipoDocExistente}-{$cedula}";
+        $nombreEntidad = $entidadExistente['nombre_completo'] ?? '';
+
+        if (!empty($entidadExistente['personal_id'])) {
+            $mensaje = "El documento {$docCompleto} ya se encuentra registrado por otro personal ({$nombreEntidad}).";
+        } elseif (!empty($entidadExistente['institucion_activa_id'])) {
+            $mensaje = "El documento {$docCompleto} ya se encuentra registrado en el sistema y pertenece a la institución: \"{$nombreEntidad}\".";
+        } else {
+            $mensaje = "El documento {$docCompleto} ya se encuentra registrado en el sistema a nombre de: \"{$nombreEntidad}\".";
+        }
+
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El documento {$tipo_documento}-{$cedula} ya se encuentra registrado en el sistema.",
+            "message" => $mensaje,
             "field" => "cedula"
         ]);
         return;
@@ -288,13 +301,19 @@ function crearAction() {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => $e->getMessage()
+            "message" => $e->getMessage(),
+            "field" => "cedula"
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
+        error_log("Error en crearAction Personal: " . $e->getMessage());
+        $isDuplicate = (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '23000') !== false || stripos($e->getMessage(), '1062') !== false);
+        http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error inesperado al registrar el personal: " . $e->getMessage()
+            "message" => $isDuplicate 
+                ? "El documento ingresado ya se encuentra registrado en el sistema. Por favor verifique el número ingresado." 
+                : "Ocurrió un error en el servidor al registrar el personal.",
+            "field" => $isDuplicate ? "cedula" : null
         ]);
     }
 }
@@ -403,11 +422,24 @@ function actualizarAction() {
     $personalModel->setTipoDocumento($tipo_documento);
     $personalModel->setCedula($cedula);
     $personalModel->setExcluirId($id);
-    if ($personalModel->existeDocumento()) {
+    $entidadExistente = $personalModel->buscarEntidadPorDocumento($cedula, $id);
+    if ($entidadExistente) {
+        $tipoDocExistente = $entidadExistente['tipo_documento'] ?? $tipo_documento;
+        $docCompleto = "{$tipoDocExistente}-{$cedula}";
+        $nombreEntidad = $entidadExistente['nombre_completo'] ?? '';
+
+        if (!empty($entidadExistente['personal_id'])) {
+            $mensaje = "El documento {$docCompleto} ya se encuentra registrado por otro personal ({$nombreEntidad}).";
+        } elseif (!empty($entidadExistente['institucion_activa_id'])) {
+            $mensaje = "El documento {$docCompleto} ya se encuentra registrado en el sistema y pertenece a la institución: \"{$nombreEntidad}\".";
+        } else {
+            $mensaje = "El documento {$docCompleto} ya se encuentra registrado en el sistema a nombre de: \"{$nombreEntidad}\".";
+        }
+
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El documento {$tipo_documento}-{$cedula} ya se encuentra registrado por otro usuario.",
+            "message" => $mensaje,
             "field" => "cedula"
         ]);
         return;
@@ -441,13 +473,19 @@ function actualizarAction() {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => $e->getMessage()
+            "message" => $e->getMessage(),
+            "field" => "cedula"
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
+        error_log("Error en actualizarAction Personal: " . $e->getMessage());
+        $isDuplicate = (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '23000') !== false || stripos($e->getMessage(), '1062') !== false);
+        http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error inesperado al actualizar el personal: " . $e->getMessage()
+            "message" => $isDuplicate 
+                ? "El documento ingresado ya se encuentra registrado en el sistema. Por favor verifique el número ingresado." 
+                : "Ocurrió un error en el servidor al actualizar el personal.",
+            "field" => $isDuplicate ? "cedula" : null
         ]);
     }
 }

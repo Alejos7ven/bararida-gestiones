@@ -305,22 +305,35 @@ function crearInstitucionAction() {
         return;
     }
 
-    // Validar unicidad del RIF/documento mediante el modelo Institucion
+    // Validar unicidad del RIF/documento en el sistema mediante el modelo Institucion
     $instModel = new Institucion();
-    $instModel->setTipoDocumento($tipo_documento);
-    $instModel->setDocumento($documento);
-    $existente = $instModel->buscarPorDocumento();
-    if ($existente) {
+    $entidadExistente = $instModel->buscarEntidadPorDocumento($documento);
+    if ($entidadExistente) {
+        $tipoDocExistente = $entidadExistente['tipo_documento'] ?? $tipo_documento;
+        $docCompleto = "{$tipoDocExistente}-{$documento}";
+        $nombreEntidad = $entidadExistente['nombre_completo'] ?? '';
+
+        if (!empty($entidadExistente['rol_personal'])) {
+            $rolPersonal = ucfirst($entidadExistente['rol_personal']);
+            $mensaje = "El documento {$docCompleto} ya se encuentra registrado por un personal del parque: \"{$nombreEntidad}\" ({$rolPersonal}). Por favor, ingrese un número de documento diferente.";
+        } elseif (!empty($entidadExistente['institucion_activa_id'])) {
+            $mensaje = "El RIF/documento {$docCompleto} ya se encuentra registrado con la institución: \"{$nombreEntidad}\".";
+        } else {
+            $mensaje = "El documento {$docCompleto} ya se encuentra registrado en el sistema a nombre de: \"{$nombreEntidad}\". Por favor, verifique el número ingresado.";
+        }
+
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El RIF/documento {$tipo_documento}-{$documento} ya se encuentra registrado con la institución: " . $existente['nombre_completo'],
+            "message" => $mensaje,
             "field" => "documento"
         ]);
         return;
     }
 
     try {
+        $instModel->setTipoDocumento($tipo_documento);
+        $instModel->setDocumento($documento);
         $instModel->setNombreCompleto($nombre_completo);
         $instModel->setTipoOrganizacion($tipo_organizacion);
         $instModel->setTipoGestion($tipo_gestion);
@@ -348,13 +361,19 @@ function crearInstitucionAction() {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => $e->getMessage()
+            "message" => $e->getMessage(),
+            "field" => "documento"
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
+        error_log("Error en crearInstitucionAction: " . $e->getMessage());
+        $isDuplicate = (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '23000') !== false || stripos($e->getMessage(), '1062') !== false);
+        http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error inesperado al registrar la institución: " . $e->getMessage()
+            "message" => $isDuplicate 
+                ? "El documento ingresado ya se encuentra registrado en el sistema. Por favor verifique el número de RIF/Cédula." 
+                : "No fue posible registrar la institución debido a un inconveniente en el servidor. Por favor intente más tarde.",
+            "field" => $isDuplicate ? "documento" : null
         ]);
     }
 }
@@ -510,16 +529,27 @@ function actualizarInstitucionAction() {
         return;
     }
 
-    // Validar si el RIF/documento ya pertenece a otra institución mediante el modelo
+    // Validar si el RIF/documento ya pertenece a otra entidad o institución mediante el modelo
     $instModel = new Institucion();
-    $instModel->setTipoDocumento($tipo_documento);
-    $instModel->setDocumento($documento);
-    $instModel->setEntidadId($entidad_id);
-    if ($instModel->existeDocumentoEnOtraEntidad()) {
+    $entidadExistente = $instModel->buscarEntidadPorDocumento($documento, $entidad_id);
+    if ($entidadExistente) {
+        $tipoDocExistente = $entidadExistente['tipo_documento'] ?? $tipo_documento;
+        $docCompleto = "{$tipoDocExistente}-{$documento}";
+        $nombreEntidad = $entidadExistente['nombre_completo'] ?? '';
+
+        if (!empty($entidadExistente['rol_personal'])) {
+            $rolPersonal = ucfirst($entidadExistente['rol_personal']);
+            $mensaje = "El documento {$docCompleto} ya se encuentra registrado por un personal del parque: \"{$nombreEntidad}\" ({$rolPersonal}). Por favor, ingrese un número de documento diferente.";
+        } elseif (!empty($entidadExistente['institucion_activa_id'])) {
+            $mensaje = "El RIF/documento {$docCompleto} ya se encuentra registrado con la institución: \"{$nombreEntidad}\".";
+        } else {
+            $mensaje = "El documento {$docCompleto} ya se encuentra registrado en el sistema a nombre de: \"{$nombreEntidad}\". Por favor, verifique el número ingresado.";
+        }
+
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "El RIF/documento ingresado ya pertenece a otra entidad o institución.",
+            "message" => $mensaje,
             "field" => "documento"
         ]);
         return;
@@ -550,13 +580,19 @@ function actualizarInstitucionAction() {
         http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => $e->getMessage()
+            "message" => $e->getMessage(),
+            "field" => "documento"
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
+        error_log("Error en actualizarInstitucionAction: " . $e->getMessage());
+        $isDuplicate = (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '23000') !== false || stripos($e->getMessage(), '1062') !== false);
+        http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Ocurrió un error inesperado al actualizar la institución: " . $e->getMessage()
+            "message" => $isDuplicate 
+                ? "El documento ingresado ya se encuentra registrado en el sistema. Por favor verifique el número de RIF/Cédula." 
+                : "No fue posible actualizar la institución debido a un inconveniente en el servidor. Por favor intente más tarde.",
+            "field" => $isDuplicate ? "documento" : null
         ]);
     }
 }

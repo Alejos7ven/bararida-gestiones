@@ -250,10 +250,15 @@ function crearVisitanteAction() {
             "field" => $field
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
+        error_log("Error en crearVisitanteAction: " . $e->getMessage());
+        $isDuplicate = (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '23000') !== false || stripos($e->getMessage(), '1062') !== false);
+        http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Error interno al crear visitante: " . $e->getMessage()
+            "message" => $isDuplicate 
+                ? "La cédula ingresada ya se encuentra registrada para otro visitante en el sistema." 
+                : "No fue posible registrar al visitante debido a un inconveniente en el servidor.",
+            "field" => $isDuplicate ? "cedula" : null
         ]);
     }
 }
@@ -355,10 +360,15 @@ function actualizarVisitanteAction() {
             "field" => $field
         ]);
     } catch (Exception $e) {
-        http_response_code(500);
+        error_log("Error en actualizarVisitanteAction: " . $e->getMessage());
+        $isDuplicate = (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '23000') !== false || stripos($e->getMessage(), '1062') !== false);
+        http_response_code(400);
         echo json_encode([
             "status" => "error",
-            "message" => "Error interno al actualizar visitante: " . $e->getMessage()
+            "message" => $isDuplicate 
+                ? "La cédula ingresada ya se encuentra registrada para otro visitante en el sistema." 
+                : "No fue posible actualizar los datos del visitante debido a un inconveniente en el servidor.",
+            "field" => $isDuplicate ? "cedula" : null
         ]);
     }
 }

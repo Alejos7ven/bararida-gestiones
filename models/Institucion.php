@@ -139,30 +139,58 @@ class Institucion extends Database {
     }
 
     /**
+     * Busca si un documento ya existe en la tabla de entidades y obtiene sus detalles,
+     * identificando si pertenece a personal, a una institución o a otra entidad.
+     *
+     * @param string|null $documento Documento a verificar
+     * @param int|null $excluirEntidadId ID de la entidad a excluir (útil en actualización)
+     * @return array|null Datos de la entidad coincidente o null si está libre
+     */
+    public function buscarEntidadPorDocumento(?string $documento = null, ?int $excluirEntidadId = null): ?array {
+        if ($documento !== null) {
+            $this->documento = trim($documento);
+        }
+        if ($excluirEntidadId !== null) {
+            $this->entidad_id = $excluirEntidadId;
+        }
+
+        if (!$this->db || empty($this->documento)) {
+            return null;
+        }
+
+        try {
+            $query = "SELECT e.id, e.tipo_documento, e.documento, e.nombre_completo, e.tipo_entidad,
+                             (SELECT r.nombre FROM personal p INNER JOIN roles r ON p.rol_id = r.id WHERE p.entidad_id = e.id AND p.activo = 1 LIMIT 1) AS rol_personal,
+                             (SELECT i.id FROM instituciones i WHERE i.entidad_id = e.id AND i.activo = 1 LIMIT 1) AS institucion_activa_id
+                      FROM entidades e
+                      WHERE e.documento = :documento";
+
+            if ($this->entidad_id !== null && $this->entidad_id > 0) {
+                $query .= " AND e.id != :excluirEntidadId";
+            }
+            $query .= " LIMIT 1";
+
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(":documento", $this->documento, PDO::PARAM_STR);
+            if ($this->entidad_id !== null && $this->entidad_id > 0) {
+                $stmt->bindParam(":excluirEntidadId", $this->entidad_id, PDO::PARAM_INT);
+            }
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ?: null;
+        } catch (PDOException $e) {
+            error_log("Error en Institucion::buscarEntidadPorDocumento: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Valida si un documento ya pertenece a otra entidad distinta de $this->entidad_id
      */
     public function existeDocumentoEnOtraEntidad(?string $tipo_documento = null, ?string $documento = null, ?int $entidad_id = null): bool {
-        if ($tipo_documento !== null) $this->tipo_documento = strtoupper(trim($tipo_documento));
         if ($documento !== null) $this->documento = trim($documento);
         if ($entidad_id !== null) $this->entidad_id = $entidad_id;
-
-        if (!$this->db || empty($this->tipo_documento) || empty($this->documento)) {
-            return false;
-        }
-
-        $query = "SELECT COUNT(*) FROM entidades WHERE tipo_documento = :tipo_documento AND documento = :documento";
-        if ($this->entidad_id !== null && $this->entidad_id > 0) {
-            $query .= " AND id != :entidad_id";
-        }
-
-        $stmtCheck = $this->db->prepare($query);
-        $stmtCheck->bindValue(":tipo_documento", $this->tipo_documento, PDO::PARAM_STR);
-        $stmtCheck->bindValue(":documento", $this->documento, PDO::PARAM_STR);
-        if ($this->entidad_id !== null && $this->entidad_id > 0) {
-            $stmtCheck->bindValue(":entidad_id", $this->entidad_id, PDO::PARAM_INT);
-        }
-        $stmtCheck->execute();
-        return (int)$stmtCheck->fetchColumn() > 0;
+        return $this->buscarEntidadPorDocumento($this->documento, $this->entidad_id) !== null;
     }
 
     /**

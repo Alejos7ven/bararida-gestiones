@@ -240,6 +240,53 @@ class Personal extends Database {
     }
 
     /**
+     * Busca si una cédula/documento ya existe en la tabla entidades y obtiene información
+     * de a quién pertenece (institución, otro personal o entidad general).
+     *
+     * @param string|null $cedula Cédula/documento a verificar
+     * @param int|null $excluirPersonalId ID del personal a excluir (en actualización)
+     * @return array|null Datos de la entidad coincidente o null si está libre
+     */
+    public function buscarEntidadPorDocumento(?string $cedula = null, ?int $excluirPersonalId = null): ?array {
+        if ($cedula !== null) {
+            $this->setCedula($cedula);
+        }
+        $cleanExcluir = $excluirPersonalId !== null ? $excluirPersonalId : ($this->excluirId ?? $this->id);
+
+        if (!$this->db || empty($this->cedula)) {
+            return null;
+        }
+
+        try {
+            $query = "SELECT e.id, e.tipo_documento, e.documento, e.nombre_completo, e.tipo_entidad,
+                             p.id AS personal_id, r.nombre AS rol_personal,
+                             i.id AS institucion_activa_id
+                      FROM entidades e
+                      LEFT JOIN personal p ON p.entidad_id = e.id AND p.activo = 1
+                      LEFT JOIN roles r ON p.rol_id = r.id
+                      LEFT JOIN instituciones i ON i.entidad_id = e.id AND i.activo = 1
+                      WHERE e.documento = :cedula";
+
+            if ($cleanExcluir !== null) {
+                $query .= " AND (p.id IS NULL OR p.id != :excluirId)";
+            }
+            $query .= " LIMIT 1";
+
+            $stmt = $this->db->prepare($query);
+            $stmt->bindParam(":cedula", $this->cedula, PDO::PARAM_STR);
+            if ($cleanExcluir !== null) {
+                $stmt->bindParam(":excluirId", $cleanExcluir, PDO::PARAM_INT);
+            }
+            $stmt->execute();
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            return $row ?: null;
+        } catch (PDOException $e) {
+            error_log("Error en Personal::buscarEntidadPorDocumento: " . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Verifica de forma segura si un documento ya existe en la base de datos.
      * Utiliza $this->tipo_documento, $this->cedula y $this->excluirId (o $this->id)
      */
@@ -297,10 +344,9 @@ class Personal extends Database {
                 throw new Exception("Rol especificado no encontrado en el sistema.");
             }
 
-            // Verificar si la entidad ya existe
-            $queryEntidad = "SELECT id FROM entidades WHERE tipo_documento = :tipo_documento AND documento = :cedula LIMIT 1";
+            // Verificar si la entidad ya existe por su documento único
+            $queryEntidad = "SELECT id FROM entidades WHERE documento = :cedula LIMIT 1";
             $stmtEntidad = $this->db->prepare($queryEntidad);
-            $stmtEntidad->bindParam(":tipo_documento", $this->tipo_documento, PDO::PARAM_STR);
             $stmtEntidad->bindParam(":cedula", $this->cedula, PDO::PARAM_STR);
             $stmtEntidad->execute();
             $entidadId = $stmtEntidad->fetchColumn();
@@ -316,10 +362,11 @@ class Personal extends Database {
                 $stmtInsertEntidad->execute();
                 $entidadId = (int)$this->db->lastInsertId();
             } else {
-                // Si ya existe la entidad, actualizamos su nombre_completo
-                $queryUpdateEntidad = "UPDATE entidades SET nombre_completo = :nombre_completo, tipo_entidad = 'persona' 
+                // Si ya existe la entidad, actualizamos sus datos
+                $queryUpdateEntidad = "UPDATE entidades SET tipo_documento = :tipo_documento, nombre_completo = :nombre_completo, tipo_entidad = 'persona' 
                                        WHERE id = :entidadId";
                 $stmtUpdateEntidad = $this->db->prepare($queryUpdateEntidad);
+                $stmtUpdateEntidad->bindParam(":tipo_documento", $this->tipo_documento, PDO::PARAM_STR);
                 $stmtUpdateEntidad->bindParam(":nombre_completo", $this->nombre_completo, PDO::PARAM_STR);
                 $stmtUpdateEntidad->bindParam(":entidadId", $entidadId, PDO::PARAM_INT);
                 $stmtUpdateEntidad->execute();

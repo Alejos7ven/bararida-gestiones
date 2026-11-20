@@ -660,7 +660,7 @@ $(document).ready(function() {
                     $searchInst.val('');
                     listarInstituciones();
                 } else {
-                    window.mapearErrorServidorAFormulario('#formCrearInstitucion', response.message, null, $alert);
+                    window.mapearErrorServidorAFormulario('#formCrearInstitucion', response.message, response.field || null, $alert);
                 }
             },
             error: function(xhr) {
@@ -931,7 +931,7 @@ $(document).ready(function() {
                     showGlobalAlert(response.message, 'success');
                     listarInstituciones();
                 } else {
-                    window.mapearErrorServidorAFormulario('#formEditarInstitucion', response.message, null, $alert);
+                    window.mapearErrorServidorAFormulario('#formEditarInstitucion', response.message, response.field || null, $alert);
                 }
             },
             error: function(xhr) {
