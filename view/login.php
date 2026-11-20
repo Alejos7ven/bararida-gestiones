@@ -56,7 +56,7 @@
                 <div class="mb-4">
                     <label for="password" class="form-label">Contraseña</label>
                     <div class="input-group">
-                        <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" style="border-top-right-radius: 0; border-bottom-right-radius: 0;" required autocomplete="current-password" minlength="6" maxlength="100">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" style="border-top-right-radius: 0; border-bottom-right-radius: 0;" required autocomplete="current-password" minlength="6" maxlength="20">
                         <button class="btn btn-outline-secondary" type="button" id="togglePassword" style="border-top-left-radius: 0; border-bottom-left-radius: 0; border-color: #ced4da; background-color: #fff; display: flex; align-items: center; justify-content: center;">
                             <svg id="eyeIcon" viewBox="0 0 24 24" width="20" height="20" fill="#6c757d">
                                 <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>

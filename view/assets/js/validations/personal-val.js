@@ -37,7 +37,7 @@ $(document).ready(function() {
                 password: {
                     required: true,
                     minlength: 6,
-                    maxlength: 100
+                    maxlength: 20
                 }
             },
             messages: {
@@ -56,7 +56,7 @@ $(document).ready(function() {
                 password: {
                     required: "La contraseña es requerida.",
                     minlength: "La contraseña debe tener al menos 6 caracteres.",
-                    maxlength: "La contraseña no puede exceder los 100 caracteres."
+                    maxlength: "La contraseña no puede exceder los 20 caracteres."
                 }
             }
         });
@@ -87,7 +87,7 @@ $(document).ready(function() {
                 password: {
                     required: false,
                     minlength: 6,
-                    maxlength: 100
+                    maxlength: 20
                 }
             },
             messages: {
@@ -105,7 +105,7 @@ $(document).ready(function() {
                 },
                 password: {
                     minlength: "La contraseña debe tener al menos 6 caracteres.",
-                    maxlength: "La contraseña no puede exceder los 100 caracteres."
+                    maxlength: "La contraseña no puede exceder los 20 caracteres."
                 }
             }
         });

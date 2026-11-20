@@ -198,7 +198,7 @@ function crearAction() {
         'cedula'          => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
         'nombre_completo' => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'soloLetras' => true],
         'rol'             => ['required' => true, 'maxlength' => 30],
-        'password'        => ['required' => true, 'minlength' => 6, 'maxlength' => 100]
+        'password'        => ['required' => true, 'minlength' => 6, 'maxlength' => 20]
     ], [
         'nombre_completo' => [
             'soloLetras' => 'El nombre completo debe contener solo letras y no puede iniciar con espacios ni contener números.',
@@ -211,7 +211,7 @@ function crearAction() {
         ],
         'password' => [
             'minlength' => 'La contraseña debe tener al menos 6 caracteres.',
-            'maxlength' => 'La contraseña no puede exceder los 100 caracteres.'
+            'maxlength' => 'La contraseña no puede exceder los 20 caracteres.'
         ]
     ]);
 
@@ -313,7 +313,7 @@ function actualizarAction() {
         'cedula'          => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
         'nombre_completo' => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'soloLetras' => true],
         'rol'             => ['required' => true, 'maxlength' => 30],
-        'password'        => ['required' => false, 'minlength' => 6, 'maxlength' => 100]
+        'password'        => ['required' => false, 'minlength' => 6, 'maxlength' => 20]
     ], [
         'nombre_completo' => [
             'soloLetras' => 'El nombre completo debe contener solo letras y no puede iniciar con espacios ni contener números.',
@@ -326,7 +326,7 @@ function actualizarAction() {
         ],
         'password' => [
             'minlength' => 'La contraseña debe tener al menos 6 caracteres.',
-            'maxlength' => 'La contraseña no puede exceder los 100 caracteres.'
+            'maxlength' => 'La contraseña no puede exceder los 20 caracteres.'
         ]
     ]);
 

@@ -55,7 +55,7 @@ function loginAction() {
     $validator = Validator::make($_POST, [
         'tipo_documento' => ['required' => true, 'in' => ['V', 'E', 'J', 'G', 'P'], 'maxlength' => 10],
         'cedula'         => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
-        'password'       => ['required' => true, 'minlength' => 6, 'maxlength' => 100]
+        'password'       => ['required' => true, 'minlength' => 6, 'maxlength' => 20]
     ], [
         'tipo_documento' => [
             'required' => 'El tipo de documento es requerido.',
@@ -70,7 +70,7 @@ function loginAction() {
         'password' => [
             'required'  => 'La contraseña es requerida.',
             'minlength' => 'La contraseña debe tener al menos 6 caracteres.',
-            'maxlength' => 'La contraseña no puede exceder los 100 caracteres.'
+            'maxlength' => 'La contraseña no puede exceder los 20 caracteres.'
         ]
     ]);
 
