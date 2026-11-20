@@ -244,7 +244,7 @@ function obtenerMenuUsuario($currentView, $userRol, array $userPermissions) {
     } catch (Exception $e) {
         error_log("Error en obtenerMenuUsuario(): " . $e->getMessage());
         $modulos = [
-            ['id' => 1, 'nombre' => 'dashboard',     'label' => 'Dashboard'],
+            ['id' => 1, 'nombre' => 'dashboard',     'label' => 'Inicio'],
             ['id' => 2, 'nombre' => 'citas',         'label' => 'Citas'],
             ['id' => 3, 'nombre' => 'instituciones', 'label' => 'Instituciones'],
             ['id' => 4, 'nombre' => 'recorridos',    'label' => 'Recorridos'],

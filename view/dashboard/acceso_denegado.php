@@ -5,6 +5,6 @@
         </div>
         <h4>Acceso Restringido</h4>
         <p>Su rol actual no cuenta con permisos autorizados para interactuar con este módulo. Si requiere visualizar esta sección, solicítelo al Super Administrador.</p>
-        <a href="index.php?view=dashboard" class="btn-premium-danger">Volver al Dashboard</a>
+        <a href="index.php?view=dashboard" class="btn-premium-danger">Volver al Inicio</a>
     </div>
 </div>

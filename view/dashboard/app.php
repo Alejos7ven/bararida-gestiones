@@ -15,7 +15,7 @@
         </svg>
         <div>
             <strong>Matriz de Acceso por Rol</strong>
-            <p>Activa o desactiva el acceso a cada módulo usando los toggles. Los cambios se guardan automáticamente en tiempo real. El módulo <em>Dashboard</em> y <em>Configuración</em> no son editables. El <em>Super Admin</em> siempre tiene acceso total.</p>
+            <p>Activa o desactiva el acceso a cada módulo usando los toggles. Los cambios se guardan automáticamente en tiempo real. Los módulos <em>Inicio</em> y <em>Configuración</em> no son editables. El <em>Super Admin</em> siempre tiene acceso total.</p>
         </div>
     </div>
 
