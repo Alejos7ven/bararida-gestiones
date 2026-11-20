@@ -198,7 +198,7 @@ function crearAction() {
         'cedula'          => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
         'nombre_completo' => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'soloLetras' => true],
         'rol'             => ['required' => true, 'maxlength' => 30],
-        'password'        => ['required' => true, 'minlength' => 6, 'maxlength' => 20]
+        'password'        => ['required' => true, 'minlength' => 6, 'maxlength' => 20, 'noInicioEspacio' => true]
     ], [
         'nombre_completo' => [
             'soloLetras' => 'El nombre completo debe contener solo letras y no puede iniciar con espacios ni contener números.',
@@ -210,8 +210,10 @@ function crearAction() {
             'maxlength' => 'El documento no puede exceder los 15 dígitos.'
         ],
         'password' => [
-            'minlength' => 'La contraseña debe tener al menos 6 caracteres.',
-            'maxlength' => 'La contraseña no puede exceder los 20 caracteres.'
+            'required'        => 'La contraseña es obligatoria.',
+            'minlength'       => 'La contraseña debe tener al menos 6 caracteres.',
+            'maxlength'       => 'La contraseña no puede exceder los 20 caracteres.',
+            'noInicioEspacio' => 'La contraseña no puede iniciar con espacios ni estar compuesta únicamente por espacios.'
         ]
     ]);
 
@@ -332,7 +334,7 @@ function actualizarAction() {
         'cedula'          => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
         'nombre_completo' => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'soloLetras' => true],
         'rol'             => ['required' => true, 'maxlength' => 30],
-        'password'        => ['required' => false, 'minlength' => 6, 'maxlength' => 20]
+        'password'        => ['required' => false, 'minlength' => 6, 'maxlength' => 20, 'noInicioEspacio' => true]
     ], [
         'nombre_completo' => [
             'soloLetras' => 'El nombre completo debe contener solo letras y no puede iniciar con espacios ni contener números.',
@@ -344,8 +346,9 @@ function actualizarAction() {
             'maxlength' => 'El documento no puede exceder los 15 dígitos.'
         ],
         'password' => [
-            'minlength' => 'La contraseña debe tener al menos 6 caracteres.',
-            'maxlength' => 'La contraseña no puede exceder los 20 caracteres.'
+            'minlength'       => 'La nueva contraseña debe tener al menos 6 caracteres.',
+            'maxlength'       => 'La nueva contraseña no puede exceder los 20 caracteres.',
+            'noInicioEspacio' => 'La nueva contraseña no puede iniciar con espacios ni estar compuesta únicamente por espacios.'
         ]
     ]);
 

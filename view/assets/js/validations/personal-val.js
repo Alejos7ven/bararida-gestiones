@@ -37,7 +37,8 @@ $(document).ready(function() {
                 password: {
                     required: true,
                     minlength: 6,
-                    maxlength: 20
+                    maxlength: 20,
+                    noInicioEspacio: true
                 }
             },
             messages: {
@@ -56,7 +57,8 @@ $(document).ready(function() {
                 password: {
                     required: "La contraseña es requerida.",
                     minlength: "La contraseña debe tener al menos 6 caracteres.",
-                    maxlength: "La contraseña no puede exceder los 20 caracteres."
+                    maxlength: "La contraseña no puede exceder los 20 caracteres.",
+                    noInicioEspacio: "La contraseña no puede iniciar con espacios ni estar compuesta únicamente por espacios."
                 }
             }
         });
@@ -87,7 +89,8 @@ $(document).ready(function() {
                 password: {
                     required: false,
                     minlength: 6,
-                    maxlength: 20
+                    maxlength: 20,
+                    noInicioEspacio: true
                 }
             },
             messages: {
@@ -105,7 +108,8 @@ $(document).ready(function() {
                 },
                 password: {
                     minlength: "La contraseña debe tener al menos 6 caracteres.",
-                    maxlength: "La contraseña no puede exceder los 20 caracteres."
+                    maxlength: "La contraseña no puede exceder los 20 caracteres.",
+                    noInicioEspacio: "La contraseña no puede iniciar con espacios ni estar compuesta únicamente por espacios."
                 }
             }
         });

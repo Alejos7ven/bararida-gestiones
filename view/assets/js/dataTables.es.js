@@ -35,7 +35,7 @@ if (typeof jQuery !== 'undefined' && jQuery.fn.dataTable) {
         lengthMenu: [[5, 10, 25, 50, 100], [5, 10, 25, 50, 100]],
         autoWidth: false,
         dom: "<'row align-items-center mb-3'<'col-12 col-md-6 d-flex align-items-center gap-2 mb-2 mb-md-0'l><'col-12 col-md-6 d-flex justify-content-md-end justify-content-start'f>>" +
-             "<'row'<'col-12'tr>>" +
+             "<'row'<'col-12 table-responsive-premium-table'tr>>" +
              "<'row align-items-center mt-3'<'col-12 col-md-5 mb-2 mb-md-0'i><'col-12 col-md-7 d-flex justify-content-md-end justify-content-center'p>>"
     });
 }

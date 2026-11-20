@@ -172,6 +172,7 @@ $(document).ready(function() {
         });
 
         dtCitas = $('#tablaCitas').DataTable({
+            responsive: true,
             order: [[0, 'desc']],
             columnDefs: [
                 { targets: 'no-sort', orderable: false, searchable: false }
@@ -2392,6 +2393,7 @@ $(document).ready(function() {
         });
 
         dtModalVisitantes = $('#tablaVerVisitantesModal').DataTable({
+            responsive: true,
             pageLength: 5,
             lengthMenu: [[5, 10, 25], [5, 10, 25]],
             order: [[0, 'asc']],

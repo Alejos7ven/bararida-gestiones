@@ -195,6 +195,7 @@ $(document).ready(function() {
         });
 
         dtInstituciones = $('#tablaInstituciones').DataTable({
+            responsive: true,
             order: [[1, 'asc']], // Ordenar por Razón Social alfabéticamente
             columnDefs: [
                 { targets: 'no-sort', orderable: false, searchable: false }

@@ -15,7 +15,7 @@
 
         <!-- Tabla de Visitantes con DataTables -->
         <div class="table-responsive-premium">
-            <table class="table table-premium w-100" id="tablaVisitantes">
+            <table class="table table-premium w-100 dt-responsive nowrap" id="tablaVisitantes">
                 <thead>
                     <tr>
                         <th># ID</th>

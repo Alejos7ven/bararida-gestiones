@@ -119,6 +119,7 @@ $(document).ready(function() {
         });
 
         dtVisitantes = $('#tablaVisitantes').DataTable({
+            responsive: true,
             order: [[0, 'desc']],
             columnDefs: [
                 { targets: 'no-sort', orderable: false, searchable: false }

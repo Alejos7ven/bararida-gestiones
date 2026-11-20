@@ -14,7 +14,7 @@
 
         <!-- Tabla de Instituciones con DataTables -->
         <div class="table-responsive-premium">
-            <table class="table table-premium w-100" id="tablaInstituciones">
+            <table class="table table-premium w-100 dt-responsive nowrap" id="tablaInstituciones">
                 <thead>
                     <tr>
                         <th>Código RIF</th>

@@ -14,7 +14,7 @@
 
         <!-- Tabla de Citas Agendadas con DataTables -->
         <div class="table-responsive-premium">
-            <table class="table table-premium w-100" id="tablaCitas">
+            <table class="table table-premium w-100 dt-responsive nowrap" id="tablaCitas">
                 <thead>
                     <tr>
                         <th>Código</th>

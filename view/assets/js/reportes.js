@@ -595,6 +595,7 @@ $(document).ready(function() {
 
         // Inicializar DataTables para la tabla analítica del reporte
         $('#tablaReportes').DataTable({
+            responsive: true,
             pageLength: 10,
             order: []
         });

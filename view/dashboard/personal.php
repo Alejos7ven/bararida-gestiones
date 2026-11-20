@@ -14,7 +14,7 @@
 
         <!-- Tabla de Personal con DataTables -->
         <div class="table-responsive-premium">
-            <table class="table table-premium w-100" id="tablaPersonal">
+            <table class="table table-premium w-100 dt-responsive nowrap" id="tablaPersonal">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -51,7 +51,7 @@
                     <h5 class="modal-title" id="modalCrearPersonalLabel">Registrar Nuevo Personal</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form id="formCrearPersonal">
+                <form id="formCrearPersonal" novalidate>
                     <div class="modal-body">
                         <div id="alertCrearFeedback" class="alert alert-toast alert-toast-danger" role="alert" style="display:none;"></div>
                         
@@ -79,7 +79,7 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="password" class="form-premium-label">Contraseña</label>
+                            <label for="password" class="form-premium-label">Contraseña <span class="text-danger">*</span></label>
                             <div class="input-group">
                                 <input type="password" class="form-control form-premium-control" id="password" name="password" placeholder="Entre 6 y 20 caracteres" required autocomplete="new-password" minlength="6" maxlength="20">
                                 <button class="btn btn-outline-secondary btn-toggle-password" type="button" id="togglePasswordPersonal" aria-label="Mostrar u ocultar contraseña">
@@ -88,6 +88,7 @@
                                     </svg>
                                 </button>
                             </div>
+                            <small class="text-muted d-block mt-1" style="font-size: 0.76rem;">Debe contener entre 6 y 20 caracteres (sin espacios al inicio).</small>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -107,7 +108,7 @@
                     <h5 class="modal-title" id="modalEditarPersonalLabel">Modificar Personal</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
-                <form id="formEditarPersonal">
+                <form id="formEditarPersonal" novalidate>
                     <input type="hidden" id="edit_id" name="id">
                     <div class="modal-body">
                         <div id="alertEditarFeedback" class="alert alert-toast alert-toast-danger" role="alert" style="display:none;"></div>
@@ -136,7 +137,7 @@
                             </select>
                         </div>
                         <div class="mb-3">
-                            <label for="edit_password" class="form-premium-label">Nueva Contraseña (Opcional)</label>
+                            <label for="edit_password" class="form-premium-label">Nueva Contraseña <span class="text-muted" style="font-weight: 400; font-size: 0.75rem;">(Opcional)</span></label>
                             <div class="input-group">
                                 <input type="password" class="form-control form-premium-control" id="edit_password" name="password" placeholder="Dejar en blanco para mantener la actual" autocomplete="new-password" minlength="6" maxlength="20">
                                 <button class="btn btn-outline-secondary btn-toggle-password" type="button" id="toggleEditPasswordPersonal" aria-label="Mostrar u ocultar contraseña">
@@ -145,6 +146,7 @@
                                     </svg>
                                 </button>
                             </div>
+                            <small class="text-muted d-block mt-1" style="font-size: 0.76rem;">Si desea cambiarla, ingrese entre 6 y 20 caracteres (sin espacios al inicio).</small>
                         </div>
                     </div>
                     <div class="modal-footer">

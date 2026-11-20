@@ -159,12 +159,49 @@ $(document).ready(function() {
         });
 
         dtPersonal = $('#tablaPersonal').DataTable({
+            responsive: true,
             order: [[0, 'desc']],
             columnDefs: [
                 { targets: 'no-sort', orderable: false, searchable: false }
             ]
         });
     }
+
+    // =========================================================================
+    // VALIDACIÓN INTERACTIVA EN TIEMPO REAL PARA CONTRASEÑAS
+    // =========================================================================
+    $('#password').on('input keyup blur', function() {
+        let val = $(this).val();
+        if (/^\s/.test(val)) {
+            val = val.replace(/^\s+/, '');
+            $(this).val(val);
+        }
+        if (val.length > 20) {
+            $(this).val(val.substring(0, 20));
+        }
+        if ($('#formCrearPersonal').data('validator')) {
+            $('#formCrearPersonal').validate().element('#password');
+        }
+    });
+
+    $('#edit_password').on('input keyup blur', function() {
+        let val = $(this).val();
+        if (/^\s/.test(val)) {
+            val = val.replace(/^\s+/, '');
+            $(this).val(val);
+        }
+        if (val.length > 20) {
+            $(this).val(val.substring(0, 20));
+        }
+        if ($('#formEditarPersonal').data('validator')) {
+            if (val === '') {
+                $(this).removeClass('is-invalid');
+                $(this).closest('.input-group').siblings('.invalid-feedback').hide().text('');
+            } else {
+                $('#formEditarPersonal').validate().element('#edit_password');
+            }
+        }
+    });
 
     // =========================================================================
     // REVELAR / OCULTAR CONTRASEÑA EN FORMULARIOS DE PERSONAL
@@ -219,6 +256,13 @@ $(document).ready(function() {
 
     $('#modalEditarPersonal').on('show.bs.modal', function() {
         resetPasswordToggle($(this));
+        $('#alertEditarFeedback').hide();
+        if (typeof window.limpiarErroresFormulario === 'function') {
+            window.limpiarErroresFormulario('#formEditarPersonal');
+        } else {
+            $('#formEditarPersonal').find('.is-invalid').removeClass('is-invalid');
+            $('#formEditarPersonal').find('.invalid-feedback').hide().text('');
+        }
     });
 
     $('#modalEditarPersonal').on('hidden.bs.modal', function() {
