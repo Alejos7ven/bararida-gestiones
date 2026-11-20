@@ -13,24 +13,18 @@
             </div>
         </div>
 
-        <div class="search-filter-row">
-            <div class="search-input-group">
-                <svg class="search-icon-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                <input type="text" id="searchVisitantes" placeholder="Filtrar por Cédula, Nombres, Apellidos o Procedencia...">
-            </div>
-        </div>
-
+        <!-- Tabla de Visitantes con DataTables -->
         <div class="table-responsive-premium">
-            <table class="table-premium">
+            <table class="table table-premium w-100" id="tablaVisitantes">
                 <thead>
                     <tr>
                         <th># ID</th>
-                        <th>Cédula / Documento</th>
+                        <th>Cédula / Doc.</th>
                         <th>Nombres</th>
                         <th>Apellidos</th>
-                        <th>Fecha de Nacimiento</th>
+                        <th>Fecha Nac.</th>
                         <th>Procedencia</th>
-                        <th>Acciones</th>
+                        <th class="no-sort text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tablaVisitantesBody">
@@ -44,18 +38,6 @@
                     </tr>
                 </tbody>
             </table>
-        </div>
-
-        <!-- Controles de Paginación -->
-        <div id="paginacionVisitantes" class="d-flex justify-content-between align-items-center mt-3 px-2 flex-wrap gap-2" style="display: none !important;">
-            <div class="pagination-info-text">
-                Mostrando <span id="pagStartVisitantes">0</span> - <span id="pagEndVisitantes">0</span> de <span id="pagTotalVisitantes">0</span> registros
-            </div>
-            <nav>
-                <ul class="pagination pagination-premium mb-0" id="paginationControlsVisitantes">
-                    <!-- Botones de paginación dinámicos -->
-                </ul>
-            </nav>
         </div>
     </div>
 

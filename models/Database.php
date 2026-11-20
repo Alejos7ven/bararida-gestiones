@@ -38,13 +38,14 @@ class Database {
         try {
             self::loadEnv();
 
-            $host     = $_ENV['DB_HOST']    ?? 'localhost';
-            $db_name  = $_ENV['DB_NAME']    ?? '';
-            $username = $_ENV['DB_USER']    ?? '';
+            $host     = $_ENV['DB_HOST']    ?? '127.0.0.1';
+            $port     = $_ENV['DB_PORT']    ?? '3306';
+            $db_name  = $_ENV['DB_NAME']    ?? 'bararida_gestiones';
+            $username = $_ENV['DB_USER']    ?? 'root';
             $password = $_ENV['DB_PASS']    ?? '';
             $charset  = $_ENV['DB_CHARSET'] ?? 'utf8mb4';
 
-            $dsn = "mysql:host={$host};dbname={$db_name};charset={$charset}";
+            $dsn = "mysql:host={$host};port={$port};dbname={$db_name};charset={$charset}";
 
             $options = [
                 PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,

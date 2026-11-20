@@ -11,11 +11,9 @@ $(document).ready(function() {
     
     let DB_ROLES = [];
     
-    // Variables de paginación
+    // Variables y caché de Personal
     let cachePersonal = [];
-    let filteredPersonal = [];
-    let currentPagePersonal = 1;
-    const itemsPerPage = 10;
+    let dtPersonal = null;
 
     // Cargar listado al iniciar
     listarPersonal();
@@ -61,9 +59,13 @@ $(document).ready(function() {
     }
 
     // =========================================================================
-    // LISTAR PERSONAL (AJAX)
+    // LISTAR PERSONAL (AJAX & DataTables)
     // =========================================================================
     function listarPersonal() {
+        if ($.fn.DataTable.isDataTable('#tablaPersonal')) {
+            $('#tablaPersonal').DataTable().destroy();
+        }
+
         $tablaPersonal.html(`
             <tr id="loaderPersonal">
                 <td colspan="6" class="text-center py-5">
@@ -74,7 +76,6 @@ $(document).ready(function() {
                 </td>
             </tr>
         `);
-        $('#paginacionPersonal').hide();
 
         $.ajax({
             url: 'controllers/PersonalController.php?action=listar',
@@ -83,56 +84,36 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.status === 'success') {
                     cachePersonal = response.data || [];
-                    
-                    // Al recargar, intentar mantener la búsqueda actual
-                    const query = $('#searchUser').val().toLowerCase().trim();
-                    if (query === '') {
-                        filteredPersonal = cachePersonal;
-                    } else {
-                        filteredPersonal = cachePersonal.filter(function(u) {
-                            const name = (u.nombre_completo || `${u.nombre || ''} ${u.apellido || ''}`).toLowerCase();
-                            const searchString = `${u.cedula} ${name} ${u.tipo_documento.toLowerCase()}`;
-                            return searchString.indexOf(query) > -1;
-                        });
-                    }
-                    
-                    renderPersonalTable();
+                    renderPersonalTable(cachePersonal);
                 } else {
+                    if ($.fn.DataTable.isDataTable('#tablaPersonal')) {
+                        $('#tablaPersonal').DataTable().destroy();
+                    }
                     $tablaPersonal.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">No se pudo cargar la lista de personal.</td></tr>');
                 }
             },
             error: function(xhr) {
+                if ($.fn.DataTable.isDataTable('#tablaPersonal')) {
+                    $('#tablaPersonal').DataTable().destroy();
+                }
                 $tablaPersonal.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">Ocurrió un error al cargar la lista de personal.</td></tr>');
                 showGlobalAlert('Ocurrió un error al cargar la lista de personal. Contacte a soporte.', 'danger');
             }
         });
     }
 
-    function renderPersonalTable() {
+    function renderPersonalTable(data) {
+        if ($.fn.DataTable.isDataTable('#tablaPersonal')) {
+            $('#tablaPersonal').DataTable().destroy();
+        }
         $tablaPersonal.empty();
-        const totalRecords = filteredPersonal.length;
 
-        if (totalRecords === 0) {
+        if (!data || data.length === 0) {
             $tablaPersonal.append('<tr><td colspan="6" class="text-center text-muted py-4">No se encontraron registros de personal.</td></tr>');
-            $('#paginacionPersonal').hide();
-            $tablaPersonal.fadeIn(300);
             return;
         }
 
-        const totalPages = Math.ceil(totalRecords / itemsPerPage);
-        
-        if (currentPagePersonal > totalPages) {
-            currentPagePersonal = totalPages;
-        }
-        if (currentPagePersonal < 1) {
-            currentPagePersonal = 1;
-        }
-
-        const startIdx = (currentPagePersonal - 1) * itemsPerPage;
-        const endIdx = Math.min(startIdx + itemsPerPage, totalRecords);
-        const pageData = filteredPersonal.slice(startIdx, endIdx);
-
-        pageData.forEach(function(u) {
+        data.forEach(function(u) {
             let badgeRol = '';
             if (u.rol === 'superadmin') {
                 badgeRol = '<span class="badge-premium badge-premium-superadmin">Super Admin</span>';
@@ -152,8 +133,8 @@ $(document).ready(function() {
                     <td>${nameFull}</td>
                     <td>${badgeRol}</td>
                     <td>${u.created_at}</td>
-                    <td>
-                        <div class="table-actions">
+                    <td class="text-center">
+                        <div class="table-actions justify-content-center">
                             <button class="btn-action btn-action-edit btn-editar-personal" data-id="${u.id}" title="Editar Personal">
                                 <svg viewBox="0 0 24 24"><path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/></svg>
                             </button>
@@ -167,81 +148,13 @@ $(document).ready(function() {
             $tablaPersonal.append(rowHtml);
         });
 
-        // Actualizar datos informativos
-        $('#pagStartPersonal').text(startIdx + 1);
-        $('#pagEndPersonal').text(endIdx);
-        $('#pagTotalPersonal').text(totalRecords);
-
-        // Renderizar controles de paginación
-        const $controls = $('#paginationControlsPersonal');
-        $controls.empty();
-
-        // Botón Anterior
-        const prevDisabled = currentPagePersonal === 1 ? 'disabled' : '';
-        $controls.append(`
-            <li class="page-item ${prevDisabled}">
-                <a class="page-link btn-pag-personal" data-page="${currentPagePersonal - 1}" href="javascript:void(0)">&laquo; Anterior</a>
-            </li>
-        `);
-
-        // Botones de Páginas (Ventana Deslizante de Máximo 10)
-        const maxVisible = 10;
-        let startPage = Math.max(1, currentPagePersonal - Math.floor(maxVisible / 2));
-        let endPage = Math.min(totalPages, startPage + maxVisible - 1);
-
-        if (endPage - startPage + 1 < maxVisible) {
-            startPage = Math.max(1, endPage - maxVisible + 1);
-        }
-
-        for (let i = startPage; i <= endPage; i++) {
-            const activeClass = currentPagePersonal === i ? 'active' : '';
-            $controls.append(`
-                <li class="page-item ${activeClass}">
-                    <a class="page-link btn-pag-personal" data-page="${i}" href="javascript:void(0)">${i}</a>
-                </li>
-            `);
-        }
-
-        // Botón Siguiente
-        const nextDisabled = currentPagePersonal === totalPages ? 'disabled' : '';
-        $controls.append(`
-            <li class="page-item ${nextDisabled}">
-                <a class="page-link btn-pag-personal" data-page="${currentPagePersonal + 1}" href="javascript:void(0)">Siguiente &raquo;</a>
-            </li>
-        `);
-
-        $('#paginacionPersonal').removeClass('d-none').show();
-        $tablaPersonal.fadeIn(300);
+        dtPersonal = $('#tablaPersonal').DataTable({
+            order: [[0, 'desc']],
+            columnDefs: [
+                { targets: 'no-sort', orderable: false, searchable: false }
+            ]
+        });
     }
-
-    // Manejar clicks en paginación
-    $(document).on('click', '.btn-pag-personal', function(e) {
-        e.preventDefault();
-        const page = parseInt($(this).data('page'));
-        if (page && page !== currentPagePersonal) {
-            currentPagePersonal = page;
-            renderPersonalTable();
-        }
-    });
-
-    // =========================================================================
-    // FILTRADO / BUSCADOR EN TIEMPO REAL
-    // =========================================================================
-    $('#searchUser').on('input', function() {
-        const query = $(this).val().toLowerCase().trim();
-        
-        if (query === '') {
-            filteredPersonal = cachePersonal;
-        } else {
-            filteredPersonal = cachePersonal.filter(function(u) {
-                const searchString = `${u.cedula} ${u.nombre.toLowerCase()} ${u.apellido.toLowerCase()} ${u.tipo_documento.toLowerCase()}`;
-                return searchString.indexOf(query) > -1;
-            });
-        }
-        
-        currentPagePersonal = 1;
-        renderPersonalTable();
-    });
 
     // =========================================================================
     // REVELAR / OCULTAR CONTRASEÑA EN FORMULARIOS DE PERSONAL

@@ -36,11 +36,9 @@ $(document).ready(function() {
     const $searchInst = $('#searchInstituciones');
     const $alertFeedback = $('#alertFeedbackGlobal');
 
-    // Variables de paginación y caché
+    // Variables y caché de Instituciones
     let cacheInstituciones = [];
-    let filteredInstituciones = [];
-    let currentPageInstituciones = 1;
-    const itemsPerPage = 10;
+    let dtInstituciones = null;
     let cacheEstados = [];
 
     // Cargar listado y estados al iniciar
@@ -64,6 +62,10 @@ $(document).ready(function() {
     }
 
     function listarInstituciones() {
+        if ($.fn.DataTable.isDataTable('#tablaInstituciones')) {
+            $('#tablaInstituciones').DataTable().destroy();
+        }
+
         $tablaInst.html(`
             <tr id="loaderInstituciones">
                 <td colspan="6" class="text-center py-5">
@@ -74,7 +76,6 @@ $(document).ready(function() {
                 </td>
             </tr>
         `);
-        $('#paginacionInstituciones').hide();
 
         $.ajax({
             url: 'controllers/InstitucionController.php?action=listar',
@@ -83,58 +84,36 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.status === 'success') {
                     cacheInstituciones = response.data || [];
-                    
-                    const query = $searchInst.val().toLowerCase().trim();
-                    if (query === '') {
-                        filteredInstituciones = cacheInstituciones;
-                    } else {
-                        filteredInstituciones = cacheInstituciones.filter(function(inst) {
-                            const name = (inst.nombre_completo || inst.nombre || '').toLowerCase();
-                            const doc = `${(inst.tipo_documento || '').toLowerCase()}-${(inst.documento || '').toLowerCase()}`;
-                            const tipo = (inst.tipo_organizacion || '').toLowerCase();
-                            const sedesText = (inst.sedes || []).map(s => `${s.estado || ''} ${s.municipio || ''} ${s.parroquia || ''} ${s.detalles || ''}`).join(' ').toLowerCase();
-                            const searchStr = `${name} ${doc} ${tipo} ${inst.tipo_gestion || ''} ${sedesText}`;
-                            return searchStr.indexOf(query) > -1;
-                        });
-                    }
-
-                    renderInstitucionesTable();
+                    renderInstitucionesTable(cacheInstituciones);
                 } else {
+                    if ($.fn.DataTable.isDataTable('#tablaInstituciones')) {
+                        $('#tablaInstituciones').DataTable().destroy();
+                    }
                     $tablaInst.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">No se pudo cargar el listado de instituciones.</td></tr>');
                 }
             },
             error: function() {
+                if ($.fn.DataTable.isDataTable('#tablaInstituciones')) {
+                    $('#tablaInstituciones').DataTable().destroy();
+                }
                 $tablaInst.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">Ocurrió un error al cargar el listado de instituciones.</td></tr>');
                 showGlobalAlert('Ocurrió un error al cargar el listado de instituciones.', 'danger');
             }
         });
     }
 
-    function renderInstitucionesTable() {
+    function renderInstitucionesTable(data) {
+        if ($.fn.DataTable.isDataTable('#tablaInstituciones')) {
+            $('#tablaInstituciones').DataTable().destroy();
+        }
         $tablaInst.empty();
-        const totalRecords = filteredInstituciones.length;
 
-        if (totalRecords === 0) {
+        if (!data || data.length === 0) {
             $tablaInst.append('<tr><td colspan="6" class="text-center text-muted py-4">No se encontraron instituciones registradas.</td></tr>');
-            $('#paginacionInstituciones').hide();
-            $tablaInst.fadeIn(300);
             return;
         }
 
-        const totalPages = Math.ceil(totalRecords / itemsPerPage);
-
-        if (currentPageInstituciones > totalPages) {
-            currentPageInstituciones = totalPages;
-        }
-        if (currentPageInstituciones < 1) {
-            currentPageInstituciones = 1;
-        }
-
-        const startIdx = (currentPageInstituciones - 1) * itemsPerPage;
-        const endIdx = Math.min(startIdx + itemsPerPage, totalRecords);
-        const pageData = filteredInstituciones.slice(startIdx, endIdx);
-
-        pageData.forEach(function(inst) {
+        data.forEach(function(inst) {
             let badgeTipo = `<span class="badge-premium badge-premium-info">${inst.tipo_organizacion}</span>`;
             if (inst.tipo_organizacion.toLowerCase() === 'educativa') {
                 badgeTipo = `<span class="badge-premium badge-premium-admin">Educativa</span>`;
@@ -200,8 +179,8 @@ $(document).ready(function() {
                     </td>
                     <td>${contactosHtml}</td>
                     <td style="max-width: 260px;">${sedesHtml}</td>
-                    <td>
-                        <div class="table-actions">
+                    <td class="text-center">
+                        <div class="table-actions justify-content-center">
                             <button class="btn-action btn-action-edit btn-editar-inst" data-id="${inst.id}" title="Editar Institución">
                                 <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/></svg>
                             </button>
@@ -215,78 +194,13 @@ $(document).ready(function() {
             $tablaInst.append(rowHtml);
         });
 
-        // Actualizar datos informativos
-        $('#pagStartInstituciones').text(startIdx + 1);
-        $('#pagEndInstituciones').text(endIdx);
-        $('#pagTotalInstituciones').text(totalRecords);
-
-        // Renderizar controles de paginación
-        const $controls = $('#paginationControlsInstituciones');
-        $controls.empty();
-
-        const prevDisabled = currentPageInstituciones === 1 ? 'disabled' : '';
-        $controls.append(`
-            <li class="page-item ${prevDisabled}">
-                <a class="page-link btn-pag-instituciones" data-page="${currentPageInstituciones - 1}" href="javascript:void(0)">&laquo; Anterior</a>
-            </li>
-        `);
-
-        const maxVisibleInst = 10;
-        let startPageInst = Math.max(1, currentPageInstituciones - Math.floor(maxVisibleInst / 2));
-        let endPageInst = Math.min(totalPages, startPageInst + maxVisibleInst - 1);
-
-        if (endPageInst - startPageInst + 1 < maxVisibleInst) {
-            startPageInst = Math.max(1, endPageInst - maxVisibleInst + 1);
-        }
-
-        for (let i = startPageInst; i <= endPageInst; i++) {
-            const activeClass = currentPageInstituciones === i ? 'active' : '';
-            $controls.append(`
-                <li class="page-item ${activeClass}">
-                    <a class="page-link btn-pag-instituciones" data-page="${i}" href="javascript:void(0)">${i}</a>
-                </li>
-            `);
-        }
-
-        const nextDisabled = currentPageInstituciones === totalPages ? 'disabled' : '';
-        $controls.append(`
-            <li class="page-item ${nextDisabled}">
-                <a class="page-link btn-pag-instituciones" data-page="${currentPageInstituciones + 1}" href="javascript:void(0)">Siguiente &raquo;</a>
-            </li>
-        `);
-
-        $('#paginacionInstituciones').removeClass('d-none').show();
-        $tablaInst.fadeIn(300);
+        dtInstituciones = $('#tablaInstituciones').DataTable({
+            order: [[1, 'asc']], // Ordenar por Razón Social alfabéticamente
+            columnDefs: [
+                { targets: 'no-sort', orderable: false, searchable: false }
+            ]
+        });
     }
-
-    // Clicks en paginación
-    $(document).on('click', '.btn-pag-instituciones', function(e) {
-        e.preventDefault();
-        const page = parseInt($(this).data('page'));
-        if (page && page !== currentPageInstituciones) {
-            currentPageInstituciones = page;
-            renderInstitucionesTable();
-        }
-    });
-
-    // Buscador en tiempo real
-    $searchInst.on('input', function() {
-        const query = $(this).val().toLowerCase().trim();
-        if (query === '') {
-            filteredInstituciones = cacheInstituciones;
-        } else {
-            filteredInstituciones = cacheInstituciones.filter(function(inst) {
-                const name = (inst.nombre_completo || inst.nombre || '').toLowerCase();
-                const doc = `${(inst.tipo_documento || '').toLowerCase()}-${(inst.documento || '').toLowerCase()}`;
-                const tipo = (inst.tipo_organizacion || '').toLowerCase();
-                const sedesText = (inst.sedes || []).map(s => `${s.estado || ''} ${s.municipio || ''} ${s.parroquia || ''} ${s.detalles || ''}`).join(' ').toLowerCase();
-                const searchStr = `${name} ${doc} ${tipo} ${inst.tipo_gestion || ''} ${sedesText}`;
-                return searchStr.indexOf(query) > -1;
-            });
-        }
-        currentPageInstituciones = 1;
-        renderInstitucionesTable();
-    });
 
     // =========================================================================
     // 2. GESTIÓN DINÁMICA DE SEDES MÚLTIPLES

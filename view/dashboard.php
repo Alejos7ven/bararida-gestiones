@@ -24,6 +24,10 @@ if (!isset($viewPath) || !function_exists('obtenerEtiquetaRol')) {
     <link rel="apple-touch-icon" href="view/assets/img/bear-feet.png">
     <!-- Bootstrap Local -->
     <link rel="stylesheet" href="view/assets/css/bootstrap.min.css">
+    <!-- DataTables Bootstrap 5 & Responsive Local -->
+    <link rel="stylesheet" href="view/assets/css/dataTables.bootstrap5.min.css">
+    <link rel="stylesheet" href="view/assets/css/responsive.bootstrap5.min.css">
+    <link rel="stylesheet" href="view/assets/css/dataTables.bararida.css?v=<?php echo time(); ?>">
     <!-- Google Fonts - Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -150,6 +154,12 @@ if (!isset($viewPath) || !function_exists('obtenerEtiquetaRol')) {
     <script src="view/assets/js/validations/global-val-setup.js?v=<?php echo time(); ?>"></script>
     <!-- Bootstrap JS Bundle Local -->
     <script src="view/assets/js/bootstrap.bundle.min.js"></script>
+    <!-- DataTables Core & Bootstrap 5 Local -->
+    <script src="view/assets/js/jquery.dataTables.min.js"></script>
+    <script src="view/assets/js/dataTables.bootstrap5.min.js"></script>
+    <script src="view/assets/js/dataTables.responsive.min.js"></script>
+    <script src="view/assets/js/responsive.bootstrap5.min.js"></script>
+    <script src="view/assets/js/dataTables.es.js?v=<?php echo time(); ?>"></script>
 
     <!-- Librerías y Scripts específicos resueltos dinámicamente según la vista activa -->
     <?php foreach ($viewAssets['js'] as $jsFile): ?>

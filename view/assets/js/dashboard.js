@@ -641,6 +641,9 @@
             dataType: 'json',
             success: function(response) {
                 $loader.hide();
+                if ($.fn.DataTable.isDataTable('#tablaCitasHoy')) {
+                    $('#tablaCitasHoy').DataTable().destroy();
+                }
                 $body.empty();
 
                 if (response.status === 'success') {
@@ -809,6 +812,16 @@
 
                     iniciarContadorRecorridos();
                     $wrapper.fadeIn(300);
+
+                    // Inicializar DataTables para las citas de hoy en el dashboard
+                    $('#tablaCitasHoy').DataTable({
+                        pageLength: 5,
+                        lengthMenu: [[5, 10, 20], [5, 10, 20]],
+                        order: [[1, 'asc']], // Ordenar por hora
+                        columnDefs: [
+                            { targets: 'no-sort', orderable: false, searchable: false }
+                        ]
+                    });
                 } else {
                     $body.append(`<tr><td colspan="8" class="text-center text-danger py-4">No se pudo cargar la agenda del día: ${response.message}</td></tr>`);
                     $wrapper.fadeIn(300);

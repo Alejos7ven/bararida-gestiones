@@ -52,8 +52,8 @@
 
                 <!-- Tabla de visitas de hoy -->
                 <div id="citasHoyWrapper" style="display: none;">
-                    <div class="table-responsive table-responsive-citas-hoy" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y pan-x;">
-                        <table class="table align-middle mb-0 text-center table-hover" style="font-size: 0.85rem; min-width: 820px; touch-action: pan-y pan-x;">
+                    <div class="table-responsive table-responsive-citas-hoy" style="border: 1px solid #e2e8f0; border-radius: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; touch-action: pan-y pan-x; padding: 10px; background: #ffffff;">
+                        <table class="table align-middle mb-0 text-center table-hover w-100" id="tablaCitasHoy" style="font-size: 0.85rem; min-width: 820px; touch-action: pan-y pan-x;">
                             <thead class="table-light">
                                 <tr>
                                     <th style="width: 10%;">ID Cita</th>
@@ -63,7 +63,7 @@
                                     <th style="width: 10%;">Visitantes</th>
                                     <th style="width: 14%;">Guía(s)</th>
                                     <th style="width: 10%;">Estado</th>
-                                    <th style="width: 10%;">Acciones</th>
+                                    <th class="no-sort" style="width: 10%;">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tablaCitasHoyBody">

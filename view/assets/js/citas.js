@@ -20,22 +20,16 @@ $(document).ready(function() {
     let currentStep = 1;
     let selectedInstitutionId = null; // null si no está registrada, entero si existe
     let cacheCitas = [];
+    let dtCitas = null;
     let bookingCalendar = null;
     let cacheEstadosCita = [];
     let sedeCitaCounter = 0;
     let contactCitaCounter = 0;
     let searchTimeout = null;
 
-    // Variables de paginación de citas
-    let filteredCitas = [];
-    let currentPageCitas = 1;
-    const itemsPerPage = 10;
-
-    // Variables de paginación para el modal de visitantes
+    // Variables y caché para el modal de visitantes y DataTables
     let cacheModalVisitantes = [];
-    let filteredModalVisitantes = [];
-    let currentPageModalVisitantes = 1;
-    const itemsPerPageModal = 10;
+    let dtModalVisitantes = null;
 
     // Cargar citas al iniciar
     listarCitas();
@@ -51,9 +45,13 @@ $(document).ready(function() {
     }
 
     // =========================================================================
-    // 1. LISTAR CITAS (AJAX)
+    // 1. LISTAR CITAS (AJAX & DataTables)
     // =========================================================================
     function listarCitas() {
+        if ($.fn.DataTable.isDataTable('#tablaCitas')) {
+            $('#tablaCitas').DataTable().destroy();
+        }
+
         $tablaCitas.html(`
             <tr id="loaderCitas">
                 <td colspan="8" class="text-center py-5">
@@ -64,7 +62,6 @@ $(document).ready(function() {
                 </td>
             </tr>
         `);
-        $('#paginacionCitas').hide();
 
         $.ajax({
             url: 'controllers/CitaController.php?action=listar',
@@ -73,55 +70,36 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.status === 'success') {
                     cacheCitas = response.data || [];
-                    
-                    // Al recargar, intentar mantener la búsqueda actual
-                    const query = $('#searchCitas').val().toLowerCase().trim();
-                    if (query === '') {
-                        filteredCitas = cacheCitas;
-                    } else {
-                        filteredCitas = cacheCitas.filter(function(c) {
-                            const searchStr = `${c.razon_social.toLowerCase()} ${c.RIF.toLowerCase()} ${c.id} ${c.tipo_documento.toLowerCase()} ${(c.tipo || '').toLowerCase()}`;
-                            return searchStr.indexOf(query) > -1;
-                        });
-                    }
-
-                    renderCitasTable();
+                    renderCitasTable(cacheCitas);
                 } else {
+                    if ($.fn.DataTable.isDataTable('#tablaCitas')) {
+                        $('#tablaCitas').DataTable().destroy();
+                    }
                     $tablaCitas.empty().append('<tr><td colspan="8" class="text-center text-muted py-4">No se pudo cargar el listado de citas.</td></tr>');
                 }
             },
             error: function(xhr) {
+                if ($.fn.DataTable.isDataTable('#tablaCitas')) {
+                    $('#tablaCitas').DataTable().destroy();
+                }
                 $tablaCitas.empty().append('<tr><td colspan="8" class="text-center text-muted py-4">Ocurrió un error al cargar el listado de citas.</td></tr>');
                 showGlobalAlert('Ocurrió un error al cargar el listado de citas.', 'danger');
             }
         });
     }
 
-    function renderCitasTable() {
+    function renderCitasTable(data) {
+        if ($.fn.DataTable.isDataTable('#tablaCitas')) {
+            $('#tablaCitas').DataTable().destroy();
+        }
         $tablaCitas.empty();
-        const totalRecords = filteredCitas.length;
 
-        if (totalRecords === 0) {
+        if (!data || data.length === 0) {
             $tablaCitas.append('<tr><td colspan="8" class="text-center text-muted py-4">No se encontraron citas registradas.</td></tr>');
-            $('#paginacionCitas').hide();
-            $tablaCitas.fadeIn(300);
             return;
         }
 
-        const totalPages = Math.ceil(totalRecords / itemsPerPage);
-
-        if (currentPageCitas > totalPages) {
-            currentPageCitas = totalPages;
-        }
-        if (currentPageCitas < 1) {
-            currentPageCitas = 1;
-        }
-
-        const startIdx = (currentPageCitas - 1) * itemsPerPage;
-        const endIdx = Math.min(startIdx + itemsPerPage, totalRecords);
-        const pageData = filteredCitas.slice(startIdx, endIdx);
-
-        pageData.forEach(function(c) {
+        data.forEach(function(c) {
             let badgeEstatus = '';
             if (c.estatus === 'aprobado') {
                 badgeEstatus = '<span class="badge-premium badge-premium-admin">Aprobada</span>';
@@ -174,8 +152,8 @@ $(document).ready(function() {
                     <td><span class="text-muted italic">${guiaAsignado}</span></td>
                     <td>${badgeEstatus}</td>
                     <td>${badgePago}</td>
-                    <td>
-                        <div class="table-actions">
+                    <td class="text-center">
+                        <div class="table-actions justify-content-center">
                             ${btnImportarHtml}
                             <button class="btn-action btn-action-edit btn-editar-cita" data-id="${c.id}" title="Editar Cita">
                                 <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
@@ -193,75 +171,13 @@ $(document).ready(function() {
             $tablaCitas.append(rowHtml);
         });
 
-        // Actualizar datos informativos
-        $('#pagStartCitas').text(startIdx + 1);
-        $('#pagEndCitas').text(endIdx);
-        $('#pagTotalCitas').text(totalRecords);
-
-        // Renderizar controles de paginación
-        const $controls = $('#paginationControlsCitas');
-        $controls.empty();
-
-        const prevDisabled = currentPageCitas === 1 ? 'disabled' : '';
-        $controls.append(`
-            <li class="page-item ${prevDisabled}">
-                <a class="page-link btn-pag-citas" data-page="${currentPageCitas - 1}" href="javascript:void(0)">&laquo; Anterior</a>
-            </li>
-        `);
-
-        // Botones de Páginas (Ventana Deslizante de Máximo 10)
-        const maxVisibleCitas = 10;
-        let startPageCitas = Math.max(1, currentPageCitas - Math.floor(maxVisibleCitas / 2));
-        let endPageCitas = Math.min(totalPages, startPageCitas + maxVisibleCitas - 1);
-
-        if (endPageCitas - startPageCitas + 1 < maxVisibleCitas) {
-            startPageCitas = Math.max(1, endPageCitas - maxVisibleCitas + 1);
-        }
-
-        for (let i = startPageCitas; i <= endPageCitas; i++) {
-            const activeClass = currentPageCitas === i ? 'active' : '';
-            $controls.append(`
-                <li class="page-item ${activeClass}">
-                    <a class="page-link btn-pag-citas" data-page="${i}" href="javascript:void(0)">${i}</a>
-                </li>
-            `);
-        }
-
-        const nextDisabled = currentPageCitas === totalPages ? 'disabled' : '';
-        $controls.append(`
-            <li class="page-item ${nextDisabled}">
-                <a class="page-link btn-pag-citas" data-page="${currentPageCitas + 1}" href="javascript:void(0)">Siguiente &raquo;</a>
-            </li>
-        `);
-
-        $('#paginacionCitas').removeClass('d-none').show();
-        $tablaCitas.fadeIn(300);
+        dtCitas = $('#tablaCitas').DataTable({
+            order: [[0, 'desc']],
+            columnDefs: [
+                { targets: 'no-sort', orderable: false, searchable: false }
+            ]
+        });
     }
-
-    // Clicks en paginación de citas
-    $(document).on('click', '.btn-pag-citas', function(e) {
-        e.preventDefault();
-        const page = parseInt($(this).data('page'));
-        if (page && page !== currentPageCitas) {
-            currentPageCitas = page;
-            renderCitasTable();
-        }
-    });
-
-    // Buscador en tiempo real de citas
-    $('#searchCitas').on('input', function() {
-        const query = $(this).val().toLowerCase().trim();
-        if (query === '') {
-            filteredCitas = cacheCitas;
-        } else {
-            filteredCitas = cacheCitas.filter(function(c) {
-                const searchStr = `${c.razon_social.toLowerCase()} ${c.RIF.toLowerCase()} ${c.id} ${c.tipo_documento.toLowerCase()}`;
-                return searchStr.indexOf(query) > -1;
-            });
-        }
-        currentPageCitas = 1;
-        renderCitasTable();
-    });
 
     // =========================================================================
     // 1.5. CARGAR RECORRIDOS DINÁMICAMENTE PARA SELECTORES (AJAX)
@@ -2417,6 +2333,9 @@ $(document).ready(function() {
             method: 'GET',
             dataType: 'json',
             success: function(response) {
+                if ($.fn.DataTable.isDataTable('#tablaVerVisitantesModal')) {
+                    $('#tablaVerVisitantesModal').DataTable().destroy();
+                }
                 $('#tablaVerVisitantesBody').empty();
                 currentVisitorIds = [];
                 if (response.status === 'success') {
@@ -2426,18 +2345,15 @@ $(document).ready(function() {
                         currentVisitorIds.push(parseInt(v.id));
                     });
 
-                    filteredModalVisitantes = cacheModalVisitantes;
-                    // Mantener en la misma página si es posible o ir a la 1
-                    if (currentPageModalVisitantes < 1) {
-                        currentPageModalVisitantes = 1;
-                    }
-                    
-                    renderModalVisitantesTable();
+                    renderModalVisitantesTable(cacheModalVisitantes);
                 } else {
                     $('#tablaVerVisitantesBody').append('<tr><td colspan="5" class="text-center text-muted py-4">No se encontraron visitantes registrados para esta cita.</td></tr>');
                 }
             },
             error: function(xhr) {
+                if ($.fn.DataTable.isDataTable('#tablaVerVisitantesModal')) {
+                    $('#tablaVerVisitantesModal').DataTable().destroy();
+                }
                 let errorMsg = 'Error al cargar los visitantes.';
                 if (xhr.responseJSON && xhr.responseJSON.message) {
                     errorMsg = xhr.responseJSON.message;
@@ -2447,31 +2363,19 @@ $(document).ready(function() {
         });
     }
 
-    function renderModalVisitantesTable() {
+    function renderModalVisitantesTable(data) {
+        if ($.fn.DataTable.isDataTable('#tablaVerVisitantesModal')) {
+            $('#tablaVerVisitantesModal').DataTable().destroy();
+        }
         $('#tablaVerVisitantesBody').empty();
-        const totalRecords = filteredModalVisitantes.length;
 
-        if (totalRecords === 0) {
+        if (!data || data.length === 0) {
             $('#tablaVerVisitantesBody').append('<tr><td colspan="5" class="text-center text-muted py-4">No se encontraron visitantes registrados para esta cita.</td></tr>');
-            $('#paginacionModalVisitantes').hide();
             return;
         }
 
-        const totalPages = Math.ceil(totalRecords / itemsPerPageModal);
-
-        if (currentPageModalVisitantes > totalPages) {
-            currentPageModalVisitantes = totalPages;
-        }
-        if (currentPageModalVisitantes < 1) {
-            currentPageModalVisitantes = 1;
-        }
-
-        const startIdx = (currentPageModalVisitantes - 1) * itemsPerPageModal;
-        const endIdx = Math.min(startIdx + itemsPerPageModal, totalRecords);
-        const pageData = filteredModalVisitantes.slice(startIdx, endIdx);
-
-        pageData.forEach(function(v, idx) {
-            const actualIdx = startIdx + idx + 1;
+        data.forEach(function(v, idx) {
+            const actualIdx = idx + 1;
             const cedula = v.cedula ? v.cedula : '<span class="text-muted italic">Sin Cédula (Menor)</span>';
             const fechaNac = v.fecha_nacimiento ? formatDate(v.fecha_nacimiento) : '<span class="text-muted italic">N/E</span>';
             $('#tablaVerVisitantesBody').append(`
@@ -2487,59 +2391,15 @@ $(document).ready(function() {
             `);
         });
 
-        // Actualizar datos informativos
-        $('#pagStartModalVisitantes').text(startIdx + 1);
-        $('#pagEndModalVisitantes').text(endIdx);
-        $('#pagTotalModalVisitantes').text(totalRecords);
-
-        // Renderizar controles de paginación
-        const $controls = $('#paginationControlsModalVisitantes');
-        $controls.empty();
-
-        const prevDisabled = currentPageModalVisitantes === 1 ? 'disabled' : '';
-        $controls.append(`
-            <li class="page-item ${prevDisabled}">
-                <a class="page-link btn-pag-modal-visitantes" data-page="${currentPageModalVisitantes - 1}" href="javascript:void(0)">&laquo; Anterior</a>
-            </li>
-        `);
-
-        // Botones de Páginas (Ventana Deslizante de Máximo 10)
-        const maxVisibleModal = 10;
-        let startPageModal = Math.max(1, currentPageModalVisitantes - Math.floor(maxVisibleModal / 2));
-        let endPageModal = Math.min(totalPages, startPageModal + maxVisibleModal - 1);
-
-        if (endPageModal - startPageModal + 1 < maxVisibleModal) {
-            startPageModal = Math.max(1, endPageModal - maxVisibleModal + 1);
-        }
-
-        for (let i = startPageModal; i <= endPageModal; i++) {
-            const activeClass = currentPageModalVisitantes === i ? 'active' : '';
-            $controls.append(`
-                <li class="page-item ${activeClass}">
-                    <a class="page-link btn-pag-modal-visitantes" data-page="${i}" href="javascript:void(0)">${i}</a>
-                </li>
-            `);
-        }
-
-        const nextDisabled = currentPageModalVisitantes === totalPages ? 'disabled' : '';
-        $controls.append(`
-            <li class="page-item ${nextDisabled}">
-                <a class="page-link btn-pag-modal-visitantes" data-page="${currentPageModalVisitantes + 1}" href="javascript:void(0)">Siguiente &raquo;</a>
-            </li>
-        `);
-
-        $('#paginacionModalVisitantes').removeClass('d-none').show();
+        dtModalVisitantes = $('#tablaVerVisitantesModal').DataTable({
+            pageLength: 5,
+            lengthMenu: [[5, 10, 25], [5, 10, 25]],
+            order: [[0, 'asc']],
+            columnDefs: [
+                { targets: 'no-sort', orderable: false, searchable: false }
+            ]
+        });
     }
-
-    // Clicks en paginación del modal
-    $(document).on('click', '.btn-pag-modal-visitantes', function(e) {
-        e.preventDefault();
-        const page = parseInt($(this).data('page'));
-        if (page && page !== currentPageModalVisitantes) {
-            currentPageModalVisitantes = page;
-            renderModalVisitantesTable();
-        }
-    });
 
     $(document).on('click', '.btn-ver-visitantes', function() {
         const id = $(this).data('id');
@@ -2559,6 +2419,13 @@ $(document).ready(function() {
         cargarVisitantesCita(id);
         
         $('#modalVerVisitantes').modal('show');
+    });
+
+    $('#modalVerVisitantes').on('hidden.bs.modal', function() {
+        if ($.fn.DataTable.isDataTable('#tablaVerVisitantesModal')) {
+            $('#tablaVerVisitantesModal').DataTable().destroy();
+        }
+        $('#tablaVerVisitantesBody').empty();
     });
 
     // Alternar visibilidad de panelAgregarAsistencia

@@ -12,17 +12,9 @@
             </div>
         </div>
 
-        <!-- Barra de Búsqueda y Filtrado -->
-        <div class="search-filter-row">
-            <div class="search-input-group">
-                <svg class="search-icon-svg" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
-                <input type="text" id="searchCitas" placeholder="Buscar citas por código, institución o RIF...">
-            </div>
-        </div>
-
-        <!-- Tabla de Citas Agendadas -->
+        <!-- Tabla de Citas Agendadas con DataTables -->
         <div class="table-responsive-premium">
-            <table class="table-premium">
+            <table class="table table-premium w-100" id="tablaCitas">
                 <thead>
                     <tr>
                         <th>Código</th>
@@ -32,7 +24,7 @@
                         <th>Guía Asignado</th>
                         <th>Estado Cita</th>
                         <th>Estado Pago</th>
-                        <th>Acciones</th>
+                        <th class="no-sort text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody id="tablaCitasBody">
@@ -46,18 +38,6 @@
                     </tr>
                 </tbody>
             </table>
-        </div>
-
-        <!-- Controles de Paginación -->
-        <div id="paginacionCitas" class="d-flex justify-content-between align-items-center mt-3 px-2 flex-wrap gap-2" style="display: none !important;">
-            <div class="pagination-info-text">
-                Mostrando <span id="pagStartCitas">0</span> - <span id="pagEndCitas">0</span> de <span id="pagTotalCitas">0</span> registros
-            </div>
-            <nav>
-                <ul class="pagination pagination-premium mb-0" id="paginationControlsCitas">
-                    <!-- Botones de paginación dinámicos -->
-                </ul>
-            </nav>
         </div>
     </div>
 
@@ -614,34 +594,22 @@
                         </div>
                     </div>
 
-                    <!-- Tabla de Asistentes Actuales -->
-                    <div class="table-responsive" style="max-height: 350px; border: 1px solid var(--park-gray); border-radius: 12px; overflow-y: auto;">
-                        <table class="table table-sm table-striped align-middle mb-0" style="font-size: 0.85rem;">
-                            <thead class="table-light" style="position: sticky; top: 0; z-index: 10;">
+                    <!-- Tabla de Asistentes Actuales con DataTables -->
+                    <div class="table-responsive" style="border: 1px solid var(--park-gray); border-radius: 12px; padding: 10px; background-color: #ffffff;">
+                        <table class="table table-sm table-striped align-middle mb-0 w-100" id="tablaVerVisitantesModal" style="font-size: 0.85rem;">
+                            <thead class="table-light">
                                 <tr>
                                     <th class="text-center" style="width: 8%;">#</th>
                                     <th style="width: 25%;">Cédula</th>
                                     <th style="width: 42%;">Nombre Completo</th>
                                     <th class="text-center" style="width: 17%;">F. Nacimiento</th>
-                                    <th class="text-center" style="width: 8%;">Acciones</th>
+                                    <th class="no-sort text-center" style="width: 8%;">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody id="tablaVerVisitantesBody">
                                 <!-- Inyectado por JS -->
                             </tbody>
                         </table>
-                    </div>
-
-                    <!-- Controles de Paginación Modal Visitantes -->
-                    <div id="paginacionModalVisitantes" class="d-flex justify-content-between align-items-center mt-3 px-1 flex-wrap gap-2" style="display: none !important;">
-                        <div class="pagination-info-text">
-                            Mostrando <span id="pagStartModalVisitantes">0</span> - <span id="pagEndModalVisitantes">0</span> de <span id="pagTotalModalVisitantes">0</span> visitantes
-                        </div>
-                        <nav>
-                            <ul class="pagination pagination-premium pagination-sm mb-0" id="paginationControlsModalVisitantes">
-                                <!-- Botones de paginación dinámicos -->
-                            </ul>
-                        </nav>
                     </div>
                 </div>
                 <div class="modal-footer" style="background:#f8f9fa; border-top: 1px solid var(--park-gray); padding: 16px 24px;">

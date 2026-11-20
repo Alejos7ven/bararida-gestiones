@@ -378,6 +378,9 @@ $(document).ready(function() {
     // RENDERIZADO DE TABLA DINÁMICA DE DATOS
     // =========================================================================
     function renderizarTablaDatos(seccion, reporte) {
+        if ($.fn.DataTable.isDataTable('#tablaReportes')) {
+            $('#tablaReportes').DataTable().destroy();
+        }
         const $head = $('#tablaReportesHead');
         const $body = $('#tablaReportesBody');
         $head.empty();
@@ -589,6 +592,12 @@ $(document).ready(function() {
                 `);
             });
         }
+
+        // Inicializar DataTables para la tabla analítica del reporte
+        $('#tablaReportes').DataTable({
+            pageLength: 10,
+            order: []
+        });
     }
 
     // =========================================================================
