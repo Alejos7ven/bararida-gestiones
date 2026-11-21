@@ -191,10 +191,6 @@ class Cita extends Database {
      * @return bool True si se insertó con éxito
      */
     public function crear(): bool {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         try {
             $query = "INSERT INTO " . $this->table_name . " 
                       (institucion_id, sede_id, recorrido_id, tipo, fecha_solicitud, fecha_visita, hora_inicio, estatus, metodo_pago, pago_estado) 
@@ -236,10 +232,6 @@ class Cita extends Database {
      * @return bool True si la actualización fue exitosa
      */
     public function actualizar(): bool {
-        if (!$this->db || empty($this->id)) {
-            return false;
-        }
-
         try {
             $query = "UPDATE " . $this->table_name . " SET 
                       institucion_id = :institucion_id,
@@ -290,10 +282,6 @@ class Cita extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
-            return false;
-        }
-
         try {
             $queryCita = "UPDATE " . $this->table_name . " SET activo = 0, estatus = 'cancelada' WHERE id = :id";
             $stmtCita = $this->db->prepare($queryCita);
@@ -310,10 +298,6 @@ class Cita extends Database {
      * @return array
      */
     public function listarTodas(): array {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         try {
             $query = "SELECT c.id, c.institucion_id, c.sede_id, c.recorrido_id, c.tipo, c.fecha_solicitud, c.fecha_visita, c.hora_inicio, c.estatus, c.metodo_pago, c.pago_estado,
                              e.tipo_documento, e.documento AS RIF, e.nombre_completo AS razon_social, e.nombre_completo,
@@ -353,10 +337,6 @@ class Cita extends Database {
             $this->id = (int)$arg1;
         } elseif ($arg2 !== null && is_numeric($arg2)) {
             $this->id = (int)$arg2;
-        }
-
-        if (!$this->db || !$this->id) {
-            return null;
         }
 
         try {
@@ -412,10 +392,6 @@ class Cita extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
-            return null;
-        }
-
         try {
             $stmt = $this->db->prepare("SELECT fecha_visita FROM " . $this->table_name . " WHERE id = :id AND activo = 1 LIMIT 1");
             $stmt->bindValue(':id', (int)$this->id, PDO::PARAM_INT);
@@ -433,10 +409,6 @@ class Cita extends Database {
      * @return array
      */
     public function obtenerCronogramaCalendario(): array {
-        if (!$this->db) {
-            return [];
-        }
-
         try {
             $query = "SELECT c.fecha_visita, COUNT(DISTINCT c.institucion_id) AS total_instituciones,
                              GROUP_CONCAT(DISTINCT e.nombre_completo SEPARATOR '||') AS instituciones_nombres
@@ -460,10 +432,6 @@ class Cita extends Database {
      * @return array
      */
     public function obtenerEstadisticasAfluencia(): array {
-        if (!$this->db) {
-            return [];
-        }
-
         try {
             $query = "SELECT c.fecha_visita, COUNT(ac.visitante_id) AS total_visitantes
                       FROM " . $this->table_name . " c
@@ -489,10 +457,6 @@ class Cita extends Database {
      * @return array
      */
     public function obtenerCitasHoy(?string $rol = null, ?int $personalId = null, ?bool $tienePermisoCitas = null): array {
-        if (!$this->db) {
-            return [];
-        }
-
         if ($rol !== null) {
             $this->filtro_rol = $rol;
         }
@@ -593,10 +557,6 @@ class Cita extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
-            return false;
-        }
-
         try {
             $stmt = $this->db->prepare("UPDATE " . $this->table_name . " SET estatus = 'en_recorrido', hora_inicio = CURTIME() WHERE id = :id");
             $stmt->bindValue(':id', (int)$this->id, PDO::PARAM_INT);
@@ -615,10 +575,6 @@ class Cita extends Database {
     public function terminarRecorrido(?int $id = null): bool {
         if ($id !== null) {
             $this->id = $id;
-        }
-
-        if (!$this->db || !$this->id) {
-            return false;
         }
 
         try {
@@ -643,10 +599,6 @@ class Cita extends Database {
         }
         if ($personalId !== null) {
             $this->personal_id = $personalId;
-        }
-
-        if (!$this->db || !$this->id || !$this->personal_id) {
-            return false;
         }
 
         try {
@@ -679,10 +631,6 @@ class Cita extends Database {
         }
         if ($citaIdExcluir !== null) {
             $this->cita_id_excluir = $citaIdExcluir;
-        }
-
-        if (!$this->db || !$this->personal_id || empty($this->fecha_visita)) {
-            return false;
         }
 
         try {
@@ -730,10 +678,6 @@ class Cita extends Database {
             $this->rol_guia = $rolGuia;
         }
 
-        if (!$this->db || !$this->id || !$this->personal_id) {
-            return false;
-        }
-
         try {
             $delQuery = "DELETE FROM guia_asignado WHERE cita_id = :cita_id AND personal_id = :personal_id";
             $stmtDel = $this->db->prepare($delQuery);
@@ -767,10 +711,6 @@ class Cita extends Database {
             $this->personal_id = $personalId;
         }
 
-        if (!$this->db || !$this->id || !$this->personal_id) {
-            return false;
-        }
-
         try {
             $query = "DELETE FROM guia_asignado WHERE cita_id = :cita_id AND personal_id = :personal_id";
             $stmt = $this->db->prepare($query);
@@ -795,10 +735,6 @@ class Cita extends Database {
         }
         if ($recorridoId !== null) {
             $this->recorrido_id = $recorridoId;
-        }
-
-        if (!$this->db || !$this->id) {
-            return false;
         }
 
         try {
@@ -826,10 +762,6 @@ class Cita extends Database {
     public function vincularVisitantes(array $visitanteIds, ?int $citaId = null): int {
         if ($citaId !== null) {
             $this->id = $citaId;
-        }
-
-        if (!$this->db || !$this->id) {
-            return 0;
         }
 
         try {
@@ -878,10 +810,6 @@ class Cita extends Database {
             $this->id = $citaId;
         }
 
-        if (!$this->db || !$this->id) {
-            return false;
-        }
-
         try {
             $query = "DELETE FROM asistencia_cita WHERE cita_id = :cita_id AND visitante_id = :visitante_id";
             $stmt = $this->db->prepare($query);
@@ -902,10 +830,6 @@ class Cita extends Database {
     public function obtenerGuiasAsignados(?int $citaId = null): array {
         if ($citaId !== null) {
             $this->id = $citaId;
-        }
-
-        if (!$this->db || !$this->id) {
-            return [];
         }
 
         try {

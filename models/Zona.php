@@ -68,10 +68,6 @@ class Zona extends Database {
      * @return bool True en caso de éxito, False de lo contrario
      */
     public function crear(): bool {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         $query = "INSERT INTO " . $this->table_name . " (nombre, coordenadas) VALUES (:nombre, :coordenadas)";
         $stmt = $this->db->prepare($query);
 
@@ -90,10 +86,6 @@ class Zona extends Database {
      * @return array Listado de zonas
      */
     public function listarTodas(): array {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         $query = "SELECT id, nombre, coordenadas FROM " . $this->table_name . " WHERE activo = 1 ORDER BY id DESC";
         $stmt = $this->db->prepare($query);
         $stmt->execute();
@@ -109,10 +101,6 @@ class Zona extends Database {
     public function obtenerPorId(?int $id = null): ?array {
         if ($id !== null) {
             $this->id = $id;
-        }
-
-        if (!$this->db || !$this->id) {
-            return null;
         }
 
         $query = "SELECT id, nombre, coordenadas FROM " . $this->table_name . " WHERE id = :id AND activo = 1 LIMIT 1";
@@ -139,10 +127,6 @@ class Zona extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
-            return false;
-        }
-
         $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $this->id, PDO::PARAM_INT);
@@ -162,10 +146,6 @@ class Zona extends Database {
         }
         if ($coordenadas !== null) {
             $this->coordenadas = $coordenadas;
-        }
-
-        if (!$this->db || !$this->id) {
-            return false;
         }
 
         $query = "UPDATE " . $this->table_name . " SET coordenadas = :coordenadas WHERE id = :id";
@@ -192,10 +172,6 @@ class Zona extends Database {
         }
         if ($coordenadas !== null) {
             $this->coordenadas = $coordenadas;
-        }
-
-        if (!$this->db || !$this->id) {
-            return false;
         }
 
         $query = "UPDATE " . $this->table_name . " SET nombre = :nombre, coordenadas = :coordenadas WHERE id = :id";

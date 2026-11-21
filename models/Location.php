@@ -42,9 +42,6 @@ class Location extends Database {
      * Obtiene el listado de todos los estados ordenados alfabéticamente.
      */
     public function obtenerEstados(): array {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
         $stmt = $this->db->prepare("SELECT id_estado, estado FROM estados ORDER BY estado ASC");
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -54,10 +51,6 @@ class Location extends Database {
      * Obtiene los municipios correspondientes al estado configurado en $this->estadoId.
      */
     public function obtenerMunicipios(): array {
-        if (!$this->db || !$this->estadoId) {
-            return [];
-        }
-
         $stmt = $this->db->prepare("SELECT id_municipio, municipio FROM municipios WHERE id_estado = :estado_id ORDER BY municipio ASC");
         $stmt->execute([':estado_id' => $this->estadoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -67,10 +60,6 @@ class Location extends Database {
      * Obtiene las parroquias correspondientes al municipio configurado en $this->municipioId.
      */
     public function obtenerParroquias(): array {
-        if (!$this->db || !$this->municipioId) {
-            return [];
-        }
-
         $stmt = $this->db->prepare("SELECT id_parroquia, parroquia FROM parroquias WHERE id_municipio = :municipio_id ORDER BY parroquia ASC");
         $stmt->execute([':municipio_id' => $this->municipioId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -80,10 +69,6 @@ class Location extends Database {
      * Obtiene las ciudades correspondientes al estado configurado en $this->estadoId.
      */
     public function obtenerCiudades(): array {
-        if (!$this->db || !$this->estadoId) {
-            return [];
-        }
-
         $stmt = $this->db->prepare("SELECT id_ciudad, ciudad FROM ciudades WHERE id_estado = :estado_id ORDER BY ciudad ASC");
         $stmt->execute([':estado_id' => $this->estadoId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);

@@ -59,10 +59,6 @@ class Modulo extends Database {
      * @return array Array con todos los módulos registrados
      */
     public function getAll(): array {
-        if (!$this->db) {
-            return [];
-        }
-
         try {
             $query = "SELECT id, nombre, label FROM " . $this->table . " ORDER BY id ASC";
             $stmt  = $this->db->prepare($query);
@@ -79,10 +75,6 @@ class Modulo extends Database {
      * @return array Array de strings con los nombres válidos
      */
     public function getNombresValidos(): array {
-        if (!$this->db) {
-            return [];
-        }
-
         try {
             $query = "SELECT nombre FROM " . $this->table . " ORDER BY id ASC";
             $stmt  = $this->db->prepare($query);
@@ -102,10 +94,6 @@ class Modulo extends Database {
     public function getById(?int $id = null) {
         if ($id !== null) {
             $this->id = $id;
-        }
-
-        if (!$this->db || !$this->id) {
-            return false;
         }
 
         try {
@@ -133,10 +121,6 @@ class Modulo extends Database {
     public function getByNombre(?string $nombre = null) {
         if ($nombre !== null) {
             $this->nombre = $nombre;
-        }
-
-        if (!$this->db || !$this->nombre) {
-            return false;
         }
 
         try {

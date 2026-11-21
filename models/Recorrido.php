@@ -75,10 +75,6 @@ class Recorrido extends Database {
             $this->zonas = $zonasOrdenadas;
         }
 
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         try {
             // Iniciamos la transacción atómica
             $this->db->beginTransaction();
@@ -125,10 +121,6 @@ class Recorrido extends Database {
      * @return array Listado de recorridos
      */
     public function listarTodos(): array {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         // Obtener todos los recorridos activos que tengan al menos una parada asignada en la ruta
         $query = "SELECT r.id, r.nombre FROM " . $this->table_name . " r 
                   WHERE r.activo = 1 AND EXISTS (SELECT 1 FROM rutas ru WHERE ru.recorrido_id = r.id)
@@ -158,10 +150,6 @@ class Recorrido extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
-            return null;
-        }
-
         $query = "SELECT id, nombre FROM " . $this->table_name . " WHERE id = :id AND activo = 1 LIMIT 1";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $this->id, PDO::PARAM_INT);
@@ -187,10 +175,6 @@ class Recorrido extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
-            return null;
-        }
-
         $stmt = $this->db->prepare("SELECT nombre FROM " . $this->table_name . " WHERE id = :id AND activo = 1 LIMIT 1");
         $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
         $stmt->execute();
@@ -212,10 +196,6 @@ class Recorrido extends Database {
     public function eliminar(?int $id = null): bool {
         if ($id !== null) {
             $this->id = $id;
-        }
-
-        if (!$this->db || !$this->id) {
-            return false;
         }
 
         try {
@@ -243,10 +223,6 @@ class Recorrido extends Database {
         }
         if ($zonasOrdenadas !== null) {
             $this->zonas = $zonasOrdenadas;
-        }
-
-        if (!$this->db || !$this->id) {
-            return false;
         }
 
         try {
@@ -301,10 +277,6 @@ class Recorrido extends Database {
             $this->zonas = $zonasOrdenadas;
         }
 
-        if (!$this->db || !$this->id) {
-            return false;
-        }
-
         try {
             $this->db->beginTransaction();
 
@@ -348,7 +320,6 @@ class Recorrido extends Database {
      * @return array Listado simple de recorridos
      */
     public function obtenerListadoSimple(): array {
-        if (!$this->db) return [];
         $query = "SELECT r.id, r.nombre FROM " . $this->table_name . " r 
                   WHERE r.activo = 1 AND EXISTS (SELECT 1 FROM rutas ru WHERE ru.recorrido_id = r.id)
                   ORDER BY r.nombre ASC";

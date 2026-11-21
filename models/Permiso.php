@@ -81,10 +81,6 @@ class Permiso extends Database {
             return false;
         }
 
-        if (!$this->db) {
-            return false;
-        }
-
         // Si no se tiene rolId pero sí rolNombre, resolverlo dinámicamente desde la BD
         if (($rolId === null || $rolId <= 0) && !empty($rolNombre)) {
             $rolId = $this->obtenerRolIdPorNombre($rolNombre);
@@ -148,10 +144,6 @@ class Permiso extends Database {
             $this->rolNombre = $rolNombre;
         }
 
-        if (!$this->db || empty($this->rolNombre)) {
-            return null;
-        }
-
         try {
             $stmt = $this->db->prepare("SELECT id FROM roles WHERE LOWER(nombre) = LOWER(:nombre) LIMIT 1");
             $stmt->bindParam(":nombre", $this->rolNombre, PDO::PARAM_STR);
@@ -180,14 +172,6 @@ class Permiso extends Database {
     public function getPermisosPorRol(?int $rolId = null): array {
         if ($rolId !== null) {
             $this->rolId = $rolId;
-        }
-
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada en Permiso.");
-        }
-
-        if (!$this->rolId) {
-            return [];
         }
 
         $resultado = [];
@@ -225,10 +209,6 @@ class Permiso extends Database {
      * @throws Exception Si la conexión no está disponible
      */
     public function getMatrizCompleta(array $excluir = ['app', 'dashboard']): array {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada en Permiso.");
-        }
-
         try {
             // Obtener todos los roles
             $stmtRoles = $this->db->prepare("SELECT id, nombre FROM roles ORDER BY id ASC");
@@ -285,10 +265,6 @@ class Permiso extends Database {
         }
         if ($puede_acceder !== null) {
             $this->puedeAcceder = (int)$puede_acceder;
-        }
-
-        if (!$this->db || $this->rolId === null || $this->moduloId === null || $this->puedeAcceder === null) {
-            return false;
         }
 
         try {

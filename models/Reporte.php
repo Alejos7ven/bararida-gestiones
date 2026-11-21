@@ -56,10 +56,6 @@ class Reporte extends Database {
         if ($fechaInicio !== null) $this->fechaInicio = $fechaInicio;
         if ($fechaFin !== null) $this->fechaFin = $fechaFin;
 
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         try {
             $filtroTipoSql = "";
             $tieneFiltroTipo = (!empty($this->tipoCita) && $this->tipoCita !== 'todos');
@@ -201,10 +197,6 @@ class Reporte extends Database {
         if ($fechaFin !== null) $this->fechaFin = $fechaFin;
         if ($estatus !== null) $this->estatus = $estatus;
 
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         try {
             $query = "SELECT 
                         c.id,
@@ -301,10 +293,6 @@ class Reporte extends Database {
         if ($fechaInicio !== null) $this->fechaInicio = $fechaInicio;
         if ($fechaFin !== null) $this->fechaFin = $fechaFin;
 
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         try {
             $query = "SELECT 
                         z.id AS zona_id,
@@ -389,10 +377,6 @@ class Reporte extends Database {
     public function obtenerReporteExoneraciones(?string $fechaInicio = null, ?string $fechaFin = null): array {
         if ($fechaInicio !== null) $this->fechaInicio = $fechaInicio;
         if ($fechaFin !== null) $this->fechaFin = $fechaFin;
-
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
 
         try {
             $query = "SELECT 
@@ -482,10 +466,6 @@ class Reporte extends Database {
     public function obtenerReporteVisitantes(?string $fechaInicio = null, ?string $fechaFin = null): array {
         if ($fechaInicio !== null) $this->fechaInicio = $fechaInicio;
         if ($fechaFin !== null) $this->fechaFin = $fechaFin;
-
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
 
         try {
             $query = "SELECT 
@@ -577,10 +557,6 @@ class Reporte extends Database {
     public function obtenerReporteInstituciones(?string $fechaInicio = null, ?string $fechaFin = null): array {
         if ($fechaInicio !== null) $this->fechaInicio = $fechaInicio;
         if ($fechaFin !== null) $this->fechaFin = $fechaFin;
-
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
 
         try {
             $query = "SELECT 

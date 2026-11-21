@@ -142,12 +142,6 @@ class Personal extends Database {
         }
         $passToVerify = $password !== null ? $password : ($this->plainPassword ?? $this->password);
 
-        if (!$this->db) {
-            error_log("Error en Personal::login() - Instancia PDO no configurada.");
-            $this->loginError = "Instancia de base de datos no configurada.";
-            return false;
-        }
-
         try {
             $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre_completo, r.id AS rol_id, r.nombre AS rol, p.password 
                       FROM " . $this->table_name . " p
@@ -193,9 +187,6 @@ class Personal extends Database {
      * Obtiene todo el personal ordenado por ID de forma descendente.
      */
     public function listarTodos(): array {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
         $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre_completo, r.nombre AS rol, p.created_at, p.updated_at 
                   FROM " . $this->table_name . " p
                   INNER JOIN entidades e ON p.entidad_id = e.id
@@ -213,10 +204,6 @@ class Personal extends Database {
     public function obtenerPorId(?int $id = null): ?array {
         if ($id !== null) {
             $this->id = $id;
-        }
-
-        if (!$this->db || $this->id === null) {
-            return null;
         }
 
         $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre_completo, r.nombre AS rol, p.created_at, p.updated_at 
@@ -251,10 +238,6 @@ class Personal extends Database {
             $this->setCedula($cedula);
         }
         $cleanExcluir = $excluirPersonalId !== null ? $excluirPersonalId : ($this->excluirId ?? $this->id);
-
-        if (!$this->db || empty($this->cedula)) {
-            return null;
-        }
 
         try {
             $query = "SELECT e.id, e.tipo_documento, e.documento, e.nombre_completo, e.tipo_entidad,
@@ -298,10 +281,6 @@ class Personal extends Database {
         }
         $cleanExcluir = $excluirId !== null ? $excluirId : ($this->excluirId ?? $this->id);
 
-        if (!$this->db || empty($this->cedula)) {
-            return false;
-        }
-
         $query = "SELECT COUNT(*) 
                   FROM personal p
                   INNER JOIN entidades e ON p.entidad_id = e.id
@@ -325,10 +304,6 @@ class Personal extends Database {
      * Registra un nuevo personal en la base de datos de forma transaccional.
      */
     public function crear(): bool {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         try {
             $this->db->beginTransaction();
 
@@ -402,10 +377,6 @@ class Personal extends Database {
      * Actualiza la información de un personal existente.
      */
     public function actualizar(): bool {
-        if (!$this->db || $this->id === null) {
-            throw new Exception("Conexión de base de datos o ID de personal no configurados.");
-        }
-
         try {
             $this->db->beginTransaction();
 
@@ -469,10 +440,6 @@ class Personal extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || $this->id === null) {
-            return false;
-        }
-
         $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $this->id, PDO::PARAM_INT);
@@ -483,9 +450,6 @@ class Personal extends Database {
      * Obtiene todos los nombres de los roles para poblar selectores
      */
     public function obtenerRolesList(): array {
-        if (!$this->db) {
-            return ['admin', 'guia'];
-        }
         try {
             $query = "SELECT DISTINCT nombre FROM roles WHERE nombre != 'superadmin' ORDER BY nombre ASC";
             $stmt = $this->db->prepare($query);
@@ -502,9 +466,6 @@ class Personal extends Database {
      * Lista todos los guías de campo registrados y activos en el sistema
      */
     public function listarGuias(): array {
-        if (!$this->db) {
-            return [];
-        }
         try {
             $query = "SELECT p.id, e.nombre_completo, e.nombre_completo AS nombre, '' AS apellido 
                       FROM personal p
@@ -526,9 +487,6 @@ class Personal extends Database {
      */
     public function obtenerRolIdPorNombre(?string $rolNombre = null): ?int {
         $nombre = $rolNombre !== null ? $rolNombre : $this->rol;
-        if (!$this->db || empty($nombre)) {
-            return null;
-        }
 
         try {
             $stmt = $this->db->prepare("SELECT id FROM roles WHERE LOWER(nombre) = LOWER(:nombre) LIMIT 1");

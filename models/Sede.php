@@ -52,10 +52,6 @@ class Sede extends Database {
      * Registra una nueva sede para una institución utilizando $this->institucion_id y $this->parroquia_id
      */
     public function crear(): bool {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         $query = "INSERT INTO " . $this->table_name . " (institucion_id, parroquia_id, detalles) 
                   VALUES (:institucion_id, :parroquia_id, :detalles)";
         $stmt = $this->db->prepare($query);
@@ -74,10 +70,6 @@ class Sede extends Database {
      * Actualiza una sede existente utilizando $this->id y $this->parroquia_id
      */
     public function actualizar(): bool {
-        if (!$this->db || !$this->id) {
-            return false;
-        }
-
         $query = "UPDATE " . $this->table_name . " 
                   SET parroquia_id = :parroquia_id, detalles = :detalles 
                   WHERE id = :id";
@@ -97,10 +89,6 @@ class Sede extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
-            return false;
-        }
-
         $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindValue(":id", (int)$this->id, PDO::PARAM_INT);
@@ -114,10 +102,6 @@ class Sede extends Database {
     public function obtenerPorId(?int $id = null): ?array {
         if ($id !== null) {
             $this->id = $id;
-        }
-
-        if (!$this->db || !$this->id) {
-            return null;
         }
 
         try {
@@ -152,10 +136,6 @@ class Sede extends Database {
     public function listarPorInstitucion(?int $institucion_id = null): array {
         if ($institucion_id !== null) {
             $this->institucion_id = $institucion_id;
-        }
-
-        if (!$this->db || !$this->institucion_id) {
-            return [];
         }
 
         try {

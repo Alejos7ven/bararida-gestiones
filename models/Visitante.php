@@ -94,10 +94,6 @@ class Visitante extends Database {
      * @return bool True en caso de éxito, False de lo contrario
      */
     public function registrar(): bool {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-        
         if (!empty($this->cedula)) {
             $stmtCheck = $this->db->prepare("SELECT id, activo FROM " . $this->table_name . " WHERE cedula = :cedula LIMIT 1");
             $stmtCheck->bindParam(":cedula", $this->cedula, PDO::PARAM_STR);
@@ -139,10 +135,6 @@ class Visitante extends Database {
      * @return bool True en caso de éxito, False de lo contrario
      */
     public function actualizar(): bool {
-        if (!$this->db || !$this->id) {
-            return false;
-        }
-        
         $query = "UPDATE " . $this->table_name . " 
                   SET cedula = :cedula, nombres = :nombres, apellidos = :apellidos, fecha_nacimiento = :fecha_nacimiento 
                   WHERE id = :id";
@@ -166,10 +158,6 @@ class Visitante extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
-            return false;
-        }
-
         try {
             $queryVis = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
             $stmtVis = $this->db->prepare($queryVis);
@@ -187,9 +175,6 @@ class Visitante extends Database {
      * @return array Listado de visitantes
      */
     public function listarTodos(): array {
-        if (!$this->db) {
-            return [];
-        }
         $query = "SELECT 
                     v.id, 
                     v.cedula, 
@@ -233,10 +218,6 @@ class Visitante extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
-            return null;
-        }
-
         $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM " . $this->table_name . " WHERE id = :id AND activo = 1 LIMIT 1";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $this->id, PDO::PARAM_INT);
@@ -262,10 +243,6 @@ class Visitante extends Database {
             $this->cita_id = $citaId;
         }
 
-        if (!$this->db || !$this->cita_id) {
-            return [];
-        }
-
         $query = "SELECT v.id, v.cedula, v.nombres, v.apellidos, v.fecha_nacimiento 
                   FROM " . $this->table_name . " v
                   INNER JOIN asistencia_cita ac ON v.id = ac.visitante_id
@@ -288,10 +265,6 @@ class Visitante extends Database {
             $this->cedula = $cedula;
         }
         $exclude = $excludeId !== null ? $excludeId : $this->excluirId;
-
-        if (!$this->db || empty($this->cedula)) {
-            return null;
-        }
 
         $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM " . $this->table_name . " WHERE cedula = :cedula AND activo = 1";
         if ($exclude) {
@@ -319,10 +292,6 @@ class Visitante extends Database {
     public function importarVisitantesCita(array $visitantesArray, ?int $citaId = null): bool {
         if ($citaId !== null) {
             $this->cita_id = $citaId;
-        }
-
-        if (!$this->db || !$this->cita_id) {
-            return false;
         }
 
         try {

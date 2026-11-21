@@ -68,10 +68,6 @@ class Ruta extends Database {
      * @return bool True en caso de éxito, False de lo contrario
      */
     public function crear(): bool {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         $query = "INSERT INTO " . $this->table_name . " (recorrido_id, zona_id, orden) VALUES (:recorrido_id, :zona_id, :orden)";
         $stmt = $this->db->prepare($query);
 
@@ -97,10 +93,6 @@ class Ruta extends Database {
             $this->recorrido_id = $recorrido_id;
         }
 
-        if (!$this->db || !$this->recorrido_id) {
-            return [];
-        }
-
         $query = "SELECT r.id, r.recorrido_id, r.zona_id, r.orden, z.nombre as zona_nombre, z.coordenadas 
                   FROM " . $this->table_name . " r
                   INNER JOIN zonas z ON r.zona_id = z.id
@@ -122,10 +114,6 @@ class Ruta extends Database {
     public function eliminarPorRecorrido(?int $recorrido_id = null): bool {
         if ($recorrido_id !== null) {
             $this->recorrido_id = $recorrido_id;
-        }
-
-        if (!$this->db || !$this->recorrido_id) {
-            return false;
         }
 
         $query = "DELETE FROM " . $this->table_name . " WHERE recorrido_id = :recorrido_id";

@@ -76,10 +76,6 @@ class Institucion extends Database {
             $this->documento = trim($documento);
         }
 
-        if (!$this->db || empty($this->tipo_documento) || empty($this->documento)) {
-            return null;
-        }
-
         try {
             $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre_completo, 
                              i.tipo_organizacion, i.tipo_gestion
@@ -152,10 +148,6 @@ class Institucion extends Database {
         }
         $excluirId = $excluirEntidadId !== null ? $excluirEntidadId : $this->entidad_id;
 
-        if (!$this->db || empty($this->documento)) {
-            return null;
-        }
-
         try {
             $query = "SELECT e.id, e.tipo_documento, e.documento, e.nombre_completo, e.tipo_entidad,
                              (SELECT r.nombre FROM personal p INNER JOIN roles r ON p.rol_id = r.id WHERE p.entidad_id = e.id AND p.activo = 1 LIMIT 1) AS rol_personal,
@@ -196,10 +188,6 @@ class Institucion extends Database {
      * Soporta registro de una o más sedes
      */
     public function crear(): bool {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-
         try {
             $this->db->beginTransaction();
 
@@ -274,7 +262,6 @@ class Institucion extends Database {
      * Obtiene el listado de todas las instituciones registradas con sus sedes y contactos.
      */
     public function listarTodas(): array {
-        if (!$this->db) return [];
         try {
             $query = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre_completo, 
                              e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion,
@@ -360,10 +347,6 @@ class Institucion extends Database {
     public function buscarPorTermino(?string $term = null): array {
         if ($term !== null) {
             $this->terminoBusqueda = trim($term);
-        }
-
-        if (!$this->db || empty($this->terminoBusqueda)) {
-            return [];
         }
 
         try {
@@ -460,10 +443,6 @@ class Institucion extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
-            return null;
-        }
-
         try {
             $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre_completo,
                              e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion,
@@ -534,23 +513,8 @@ class Institucion extends Database {
      * Actualiza la información de una institución existente en el sistema de manera transaccional
      */
     public function actualizar(): bool {
-        if (!$this->db || !$this->id) {
-            return false;
-        }
-
         try {
             $this->db->beginTransaction();
-
-            if (!$this->entidad_id) {
-                $stmtEnt = $this->db->prepare("SELECT entidad_id FROM instituciones WHERE id = :id LIMIT 1");
-                $stmtEnt->bindValue(":id", $this->id, PDO::PARAM_INT);
-                $stmtEnt->execute();
-                $this->entidad_id = (int)$stmtEnt->fetchColumn();
-            }
-
-            if (!$this->entidad_id) {
-                throw new Exception("No se encontró la entidad asociada a la institución.");
-            }
 
             // 1. Actualizar la tabla entidades
             $queryEntidad = "UPDATE entidades 
@@ -662,10 +626,6 @@ class Institucion extends Database {
             $this->id = $id;
         }
 
-        if (!$this->db || !$this->id) {
-            return 0;
-        }
-
         try {
             $query = "SELECT COUNT(*) FROM citas WHERE institucion_id = :id AND activo = 1";
             $stmt = $this->db->prepare($query);
@@ -684,10 +644,6 @@ class Institucion extends Database {
     public function eliminar(?int $id = null): bool {
         if ($id !== null) {
             $this->id = $id;
-        }
-
-        if (!$this->db || !$this->id) {
-            return false;
         }
 
         try {
