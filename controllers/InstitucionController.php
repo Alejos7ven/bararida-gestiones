@@ -366,7 +366,7 @@ function crearInstitucionAction() {
         ]);
     } catch (Exception $e) {
         error_log("Error en crearInstitucionAction: " . $e->getMessage());
-        $isDuplicate = (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '23000') !== false || stripos($e->getMessage(), '1062') !== false);
+        $isDuplicate = (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '1062') !== false);
         http_response_code(400);
         echo json_encode([
             "status" => "error",
@@ -393,9 +393,6 @@ function actualizarInstitucionAction() {
         $_POST['nombre_completo'] = trim($_POST['nombre']);
     }
 
-    $sedesRaw = isset($_POST['sedes']) ? $_POST['sedes'] : [];
-    $contactosRaw = isset($_POST['contactos']) ? $_POST['contactos'] : [];
-
     // Fallback: si no viene el array de sedes pero viene parroquia_id directo
     if (empty($sedesRaw) && !empty($_POST['parroquia_id'])) {
         $sedesRaw[] = [
@@ -407,7 +404,7 @@ function actualizarInstitucionAction() {
 
     $validator = Validator::make($_POST, [
         'id'                => ['required' => true, 'integer' => true, 'min' => 1],
-        'entidad_id'        => ['required' => true, 'integer' => true, 'min' => 1],
+        'entidad_id'        => ['required' => false, 'integer' => true, 'min' => 1],
         'tipo_documento'    => ['required' => true, 'in' => ['J', 'G', 'V', 'E', 'P'], 'maxlength' => 10],
         'documento'         => ['required' => true, 'digits' => true, 'minlength' => 6, 'maxlength' => 15],
         'nombre_completo'   => ['required' => true, 'minlength' => 3, 'maxlength' => 50, 'noLeadingSpaces' => true],
@@ -417,8 +414,9 @@ function actualizarInstitucionAction() {
         'id' => [
             'required' => 'ID de la institución inválido o no suministrado.'
         ],
-        'entidad_id' => [
-            'required' => 'ID de la entidad inválido o no suministrado.'
+        'tipo_documento' => [
+            'required' => 'El tipo de documento es obligatorio.',
+            'in'       => 'El tipo de documento no es válido.'
         ],
         'documento' => [
             'required'  => 'El RIF/Cédula es requerido.',
@@ -449,12 +447,25 @@ function actualizarInstitucionAction() {
     }
 
     $id                = (int)$validator->getValue('id');
-    $entidad_id        = (int)$validator->getValue('entidad_id');
     $tipo_documento    = strtoupper($validator->getValue('tipo_documento'));
     $documento         = $validator->getValue('documento');
     $nombre_completo   = $validator->getValue('nombre_completo');
     $tipo_organizacion = $validator->getValue('tipo_organizacion');
     $tipo_gestion      = $validator->getValue('tipo_gestion');
+
+    // Verificar existencia de la institución y obtener su entidad_id real
+    $instModel = new Institucion();
+    $instActual = $instModel->obtenerPorId($id);
+    if (!$instActual) {
+        http_response_code(404);
+        echo json_encode([
+            "status" => "error",
+            "message" => "La institución que intenta actualizar no existe en el sistema."
+        ]);
+        return;
+    }
+
+    $entidad_id = (int)$instActual['entidad_id'];
 
     $sedesValidadas = [];
     if (is_array($sedesRaw)) {
@@ -557,6 +568,9 @@ function actualizarInstitucionAction() {
 
     try {
         $instModel->setId($id);
+        $instModel->setEntidadId($entidad_id);
+        $instModel->setTipoDocumento($tipo_documento);
+        $instModel->setDocumento($documento);
         $instModel->setNombreCompleto($nombre_completo);
         $instModel->setTipoOrganizacion($tipo_organizacion);
         $instModel->setTipoGestion($tipo_gestion);
@@ -585,7 +599,7 @@ function actualizarInstitucionAction() {
         ]);
     } catch (Exception $e) {
         error_log("Error en actualizarInstitucionAction: " . $e->getMessage());
-        $isDuplicate = (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '23000') !== false || stripos($e->getMessage(), '1062') !== false);
+        $isDuplicate = (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '1062') !== false);
         http_response_code(400);
         echo json_encode([
             "status" => "error",

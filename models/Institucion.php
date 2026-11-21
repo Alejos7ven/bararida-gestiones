@@ -150,9 +150,7 @@ class Institucion extends Database {
         if ($documento !== null) {
             $this->documento = trim($documento);
         }
-        if ($excluirEntidadId !== null) {
-            $this->entidad_id = $excluirEntidadId;
-        }
+        $excluirId = $excluirEntidadId !== null ? $excluirEntidadId : $this->entidad_id;
 
         if (!$this->db || empty($this->documento)) {
             return null;
@@ -165,15 +163,15 @@ class Institucion extends Database {
                       FROM entidades e
                       WHERE e.documento = :documento";
 
-            if ($this->entidad_id !== null && $this->entidad_id > 0) {
+            if ($excluirId !== null && $excluirId > 0) {
                 $query .= " AND e.id != :excluirEntidadId";
             }
             $query .= " LIMIT 1";
 
             $stmt = $this->db->prepare($query);
-            $stmt->bindParam(":documento", $this->documento, PDO::PARAM_STR);
-            if ($this->entidad_id !== null && $this->entidad_id > 0) {
-                $stmt->bindParam(":excluirEntidadId", $this->entidad_id, PDO::PARAM_INT);
+            $stmt->bindValue(":documento", $this->documento, PDO::PARAM_STR);
+            if ($excluirId !== null && $excluirId > 0) {
+                $stmt->bindValue(":excluirEntidadId", $excluirId, PDO::PARAM_INT);
             }
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -543,6 +541,17 @@ class Institucion extends Database {
         try {
             $this->db->beginTransaction();
 
+            if (!$this->entidad_id) {
+                $stmtEnt = $this->db->prepare("SELECT entidad_id FROM instituciones WHERE id = :id LIMIT 1");
+                $stmtEnt->bindValue(":id", $this->id, PDO::PARAM_INT);
+                $stmtEnt->execute();
+                $this->entidad_id = (int)$stmtEnt->fetchColumn();
+            }
+
+            if (!$this->entidad_id) {
+                throw new Exception("No se encontró la entidad asociada a la institución.");
+            }
+
             // 1. Actualizar la tabla entidades
             $queryEntidad = "UPDATE entidades 
                              SET tipo_documento = :tipo_documento, documento = :documento, nombre_completo = :nombre_completo 
@@ -585,12 +594,12 @@ class Institucion extends Database {
                 $stmtDelSedes->execute();
             }
 
-            $queryInsertSede = "INSERT INTO sedes (institucion_id, parroquia_id, detalles) 
-                                VALUES (:institucion_id, :parroquia_id, :detalles)";
+            $queryInsertSede = "INSERT INTO sedes (institucion_id, parroquia_id, detalles, activo) 
+                                VALUES (:institucion_id, :parroquia_id, :detalles, 1)";
             $stmtInsertSede = $this->db->prepare($queryInsertSede);
 
             $queryUpdateSede = "UPDATE sedes 
-                                SET parroquia_id = :parroquia_id, detalles = :detalles 
+                                SET parroquia_id = :parroquia_id, detalles = :detalles, activo = 1 
                                 WHERE id = :id AND institucion_id = :institucion_id";
             $stmtUpdateSede = $this->db->prepare($queryUpdateSede);
 
