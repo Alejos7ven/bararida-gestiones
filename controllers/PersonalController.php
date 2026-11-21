@@ -112,11 +112,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // =========================================================================
 
 /**
- * Obtiene y retorna el listado de todo el personal
+ * Obtiene y retorna el listado de todo el personal (Soporta Server-Side Processing de DataTables)
  */
 function listarAction() {
     try {
         $personalModel = new Personal();
+
+        if (isset($_GET['draw'])) {
+            $draw = (int)$_GET['draw'];
+            $start = isset($_GET['start']) && is_numeric($_GET['start']) ? max(0, (int)$_GET['start']) : 0;
+            $length = isset($_GET['length']) && is_numeric($_GET['length']) ? (int)$_GET['length'] : 10;
+            $search = isset($_GET['search']['value']) ? trim((string)$_GET['search']['value']) : '';
+
+            $columnsMap = [
+                0 => 'p.id',
+                1 => 'e.documento',
+                2 => 'e.nombre_completo',
+                3 => 'r.nombre',
+                4 => 'p.created_at'
+            ];
+
+            $orderColIdx = isset($_GET['order'][0]['column']) ? (int)$_GET['order'][0]['column'] : 0;
+            $orderColumn = $columnsMap[$orderColIdx] ?? 'p.id';
+            $orderDirRaw = isset($_GET['order'][0]['dir']) ? strtoupper(trim((string)$_GET['order'][0]['dir'])) : 'DESC';
+            $orderDir = ($orderDirRaw === 'ASC') ? 'ASC' : 'DESC';
+
+            $personalModel->setDtStart($start);
+            $personalModel->setDtLength($length);
+            $personalModel->setDtSearch($search);
+            $personalModel->setDtOrderColumn($orderColumn);
+            $personalModel->setDtOrderDir($orderDir);
+
+            $resultado = $personalModel->listarPaginado();
+
+            http_response_code(200);
+            echo json_encode([
+                "status"          => "success",
+                "draw"            => $draw,
+                "recordsTotal"    => $resultado['recordsTotal'],
+                "recordsFiltered" => $resultado['recordsFiltered'],
+                "data"            => $resultado['data']
+            ]);
+            return;
+        }
+
         $listaPersonal = $personalModel->listarTodos();
         
         http_response_code(200);

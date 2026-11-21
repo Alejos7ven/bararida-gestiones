@@ -18,6 +18,13 @@ class Visitante extends Database {
     private ?int $cita_id = null;
     private ?int $excluirId = null;
 
+    // Propiedades para Server-Side DataTables
+    private int $dtStart = 0;
+    private int $dtLength = 10;
+    private string $dtSearch = '';
+    private string $dtOrderColumn = 'v.id';
+    private string $dtOrderDir = 'DESC';
+
     /**
      * Constructor del Modelo Visitante
      */
@@ -83,6 +90,46 @@ class Visitante extends Database {
 
     public function setExcluirId(?int $excluirId): void {
         $this->excluirId = $excluirId;
+    }
+
+    public function getDtStart(): int {
+        return $this->dtStart;
+    }
+
+    public function setDtStart(int $dtStart): void {
+        $this->dtStart = $dtStart;
+    }
+
+    public function getDtLength(): int {
+        return $this->dtLength;
+    }
+
+    public function setDtLength(int $dtLength): void {
+        $this->dtLength = $dtLength;
+    }
+
+    public function getDtSearch(): string {
+        return $this->dtSearch;
+    }
+
+    public function setDtSearch(string $dtSearch): void {
+        $this->dtSearch = $dtSearch;
+    }
+
+    public function getDtOrderColumn(): string {
+        return $this->dtOrderColumn;
+    }
+
+    public function setDtOrderColumn(string $dtOrderColumn): void {
+        $this->dtOrderColumn = $dtOrderColumn;
+    }
+
+    public function getDtOrderDir(): string {
+        return $this->dtOrderDir;
+    }
+
+    public function setDtOrderDir(string $dtOrderDir): void {
+        $this->dtOrderDir = $dtOrderDir;
     }
 
     // =========================================================================
@@ -204,6 +251,102 @@ class Visitante extends Database {
     }
 
     /**
+     * Obtiene el listado paginado de visitantes para DataTables Server-Side Processing
+     * utilizando las propiedades internas ($this->dtStart, $this->dtLength, $this->dtSearch, $this->dtOrderColumn, $this->dtOrderDir).
+     */
+    public function listarPaginado(): array {
+        $stmtTotal = $this->db->prepare("SELECT COUNT(*) FROM " . $this->table_name . " v WHERE v.activo = 1");
+        $stmtTotal->execute();
+        $recordsTotal = (int)$stmtTotal->fetchColumn();
+
+        $baseJoins = "FROM " . $this->table_name . " v
+                      LEFT JOIN (
+                          SELECT ac.visitante_id, MAX(ac.cita_id) AS max_cita_id
+                          FROM asistencia_cita ac
+                          INNER JOIN citas c ON ac.cita_id = c.id AND c.activo = 1
+                          GROUP BY ac.visitante_id
+                      ) ult_asistencia ON v.id = ult_asistencia.visitante_id
+                      LEFT JOIN citas c ON ult_asistencia.max_cita_id = c.id
+                      LEFT JOIN instituciones i ON c.institucion_id = i.id
+                      LEFT JOIN entidades e ON i.entidad_id = e.id
+                      LEFT JOIN sedes s ON c.sede_id = s.id
+                      LEFT JOIN parroquias par ON s.parroquia_id = par.id_parroquia
+                      LEFT JOIN municipios mun ON par.id_municipio = mun.id_municipio
+                      LEFT JOIN estados est ON mun.id_estado = est.id_estado
+                      WHERE v.activo = 1";
+
+        $searchSql = "";
+        $hasSearch = ($this->dtSearch !== '');
+        if ($hasSearch) {
+            $searchSql = " AND (
+                CAST(v.id AS CHAR) LIKE :s1
+                OR CONCAT('#VIS-', v.id) LIKE :s2
+                OR v.cedula LIKE :s3
+                OR v.nombres LIKE :s4
+                OR v.apellidos LIKE :s5
+                OR CONCAT(v.nombres, ' ', v.apellidos) LIKE :s6
+                OR v.fecha_nacimiento LIKE :s7
+                OR e.nombre_completo LIKE :s8
+                OR mun.municipio LIKE :s9
+                OR est.estado LIKE :s10
+            )";
+        }
+
+        if ($hasSearch) {
+            $stmtFiltered = $this->db->prepare("SELECT COUNT(*) " . $baseJoins . $searchSql);
+            $likeVal = '%' . $this->dtSearch . '%';
+            for ($i = 1; $i <= 10; $i++) {
+                $stmtFiltered->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+            }
+            $stmtFiltered->execute();
+            $recordsFiltered = (int)$stmtFiltered->fetchColumn();
+        } else {
+            $recordsFiltered = $recordsTotal;
+        }
+
+        $queryData = "SELECT 
+                        v.id, 
+                        v.cedula, 
+                        v.nombres, 
+                        v.apellidos, 
+                        v.fecha_nacimiento,
+                        c.id AS ultima_cita_id,
+                        c.fecha_visita AS ultima_cita_fecha,
+                        e.nombre_completo AS procedencia_institucion,
+                        par.parroquia AS procedencia_parroquia,
+                        mun.municipio AS procedencia_municipio,
+                        est.estado AS procedencia_estado "
+                   . $baseJoins
+                   . $searchSql
+                   . " ORDER BY " . $this->dtOrderColumn . " " . $this->dtOrderDir;
+
+        if ($this->dtLength > 0) {
+            $queryData .= " LIMIT :limit OFFSET :offset";
+        }
+
+        $stmtData = $this->db->prepare($queryData);
+        if ($hasSearch) {
+            $likeVal = '%' . $this->dtSearch . '%';
+            for ($i = 1; $i <= 10; $i++) {
+                $stmtData->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+            }
+        }
+        if ($this->dtLength > 0) {
+            $stmtData->bindValue(":limit", $this->dtLength, PDO::PARAM_INT);
+            $stmtData->bindValue(":offset", $this->dtStart, PDO::PARAM_INT);
+        }
+
+        $stmtData->execute();
+        $data = $stmtData->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'recordsTotal'    => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data'            => $data
+        ];
+    }
+
+    /**
      * Obtiene un visitante específico por su ID utilizando $this->id
      * @return array|null Datos del visitante o null si no se encuentra
      */
@@ -237,6 +380,79 @@ class Visitante extends Database {
         $stmt->bindParam(":cita_id", $this->cita_id, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Obtiene los visitantes asignados a una cita de forma paginada para DataTables Server-Side Processing
+     * utilizando $this->cita_id y las propiedades de paginación ($this->dtStart, $this->dtLength, $this->dtSearch, $this->dtOrderColumn, $this->dtOrderDir).
+     */
+    public function obtenerPorCitaIdPaginado(): array {
+        $baseJoins = "FROM " . $this->table_name . " v
+                      INNER JOIN asistencia_cita ac ON v.id = ac.visitante_id
+                      WHERE ac.cita_id = :cita_id AND v.activo = 1";
+
+        $stmtIds = $this->db->prepare("SELECT v.id " . $baseJoins);
+        $stmtIds->bindValue(":cita_id", (int)$this->cita_id, PDO::PARAM_INT);
+        $stmtIds->execute();
+        $allIds = array_map('intval', $stmtIds->fetchAll(PDO::FETCH_COLUMN));
+        $recordsTotal = count($allIds);
+
+        $searchSql = "";
+        $hasSearch = ($this->dtSearch !== '');
+        if ($hasSearch) {
+            $searchSql = " AND (
+                v.cedula LIKE :s1
+                OR v.nombres LIKE :s2
+                OR v.apellidos LIKE :s3
+                OR CONCAT(v.nombres, ' ', v.apellidos) LIKE :s4
+                OR v.fecha_nacimiento LIKE :s5
+            )";
+        }
+
+        if ($hasSearch) {
+            $stmtFiltered = $this->db->prepare("SELECT COUNT(*) " . $baseJoins . $searchSql);
+            $stmtFiltered->bindValue(":cita_id", (int)$this->cita_id, PDO::PARAM_INT);
+            $likeVal = '%' . $this->dtSearch . '%';
+            for ($i = 1; $i <= 5; $i++) {
+                $stmtFiltered->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+            }
+            $stmtFiltered->execute();
+            $recordsFiltered = (int)$stmtFiltered->fetchColumn();
+        } else {
+            $recordsFiltered = $recordsTotal;
+        }
+
+        $queryData = "SELECT v.id, v.cedula, v.nombres, v.apellidos, v.fecha_nacimiento "
+                   . $baseJoins
+                   . $searchSql
+                   . " ORDER BY " . $this->dtOrderColumn . " " . $this->dtOrderDir;
+
+        if ($this->dtLength > 0) {
+            $queryData .= " LIMIT :limit OFFSET :offset";
+        }
+
+        $stmtData = $this->db->prepare($queryData);
+        $stmtData->bindValue(":cita_id", (int)$this->cita_id, PDO::PARAM_INT);
+        if ($hasSearch) {
+            $likeVal = '%' . $this->dtSearch . '%';
+            for ($i = 1; $i <= 5; $i++) {
+                $stmtData->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+            }
+        }
+        if ($this->dtLength > 0) {
+            $stmtData->bindValue(":limit", $this->dtLength, PDO::PARAM_INT);
+            $stmtData->bindValue(":offset", $this->dtStart, PDO::PARAM_INT);
+        }
+
+        $stmtData->execute();
+        $data = $stmtData->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'recordsTotal'    => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data'            => $data,
+            'allIds'          => $allIds
+        ];
     }
 
     /**

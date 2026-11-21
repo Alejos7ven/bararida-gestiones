@@ -183,6 +183,118 @@ if (!function_exists('procesarConsultaReporte')) {
         $reporteModel->setFechaFin($fechaFin);
         $reporteModel->setEstatus($estatus);
         $reporteModel->setTipoCita($tipoCita);
+        $reporteModel->setSeccion($seccion);
+
+        // Si es una petición Server-Side de DataTables para la tabla analítica
+        if (isset($_REQUEST['draw'])) {
+            $draw = (int)$_REQUEST['draw'];
+            $start = isset($_REQUEST['start']) && is_numeric($_REQUEST['start']) ? max(0, (int)$_REQUEST['start']) : 0;
+            $length = isset($_REQUEST['length']) && is_numeric($_REQUEST['length']) ? (int)$_REQUEST['length'] : 10;
+            $search = isset($_REQUEST['search']['value']) ? trim((string)$_REQUEST['search']['value']) : '';
+
+            $columnsBySection = [
+                'general' => [
+                    0 => 'sub.id',
+                    1 => 'sub.fecha_visita',
+                    2 => 'sub.institucion_nombre',
+                    3 => 'sub.tipo',
+                    4 => 'sub.tipo_organizacion',
+                    5 => 'sub.recorrido_nombre',
+                    6 => 'sub.total_visitantes',
+                    7 => 'sub.estatus',
+                    8 => 'sub.metodo_pago'
+                ],
+                'citas' => [
+                    0 => 'sub.id',
+                    1 => 'sub.fecha_visita',
+                    2 => 'sub.institucion_nombre',
+                    3 => 'sub.tipo',
+                    4 => 'sub.tipo_organizacion',
+                    5 => 'sub.recorrido_nombre',
+                    6 => 'sub.total_visitantes',
+                    7 => 'sub.estatus',
+                    8 => 'sub.metodo_pago'
+                ],
+                'zonas' => [
+                    0 => 'sub.zona_nombre',
+                    1 => 'sub.total_visitas',
+                    2 => 'sub.total_visitantes_zona',
+                    3 => 'sub.recorridos_asociados',
+                    4 => 'sub.total_visitas'
+                ],
+                'exoneraciones' => [
+                    0 => 'sub.cita_id',
+                    1 => 'sub.fecha_visita',
+                    2 => 'sub.institucion_nombre',
+                    3 => 'sub.tipo_gestion',
+                    4 => 'sub.motivo_exoneracion',
+                    5 => 'sub.total_visitantes_exonerados',
+                    6 => 'sub.estatus'
+                ],
+                'visitantes' => [
+                    0 => 'sub.cedula',
+                    1 => 'sub.apellidos',
+                    2 => 'sub.fecha_nacimiento',
+                    3 => 'sub.edad_estimada',
+                    4 => 'sub.grupo_etario',
+                    5 => 'sub.fecha_visita',
+                    6 => 'sub.institucion_nombre'
+                ],
+                'instituciones' => [
+                    0 => 'sub.rif',
+                    1 => 'sub.institucion_nombre',
+                    2 => 'sub.tipo_organizacion',
+                    3 => 'sub.tipo_gestion',
+                    4 => 'sub.total_citas',
+                    5 => 'sub.total_visitantes_atendidos',
+                    6 => 'sub.ultima_visita'
+                ]
+            ];
+
+            $defaultColumns = [
+                'general'       => 'sub.fecha_visita',
+                'citas'         => 'sub.fecha_visita',
+                'zonas'         => 'sub.total_visitas',
+                'exoneraciones' => 'sub.fecha_visita',
+                'visitantes'    => 'sub.fecha_visita',
+                'instituciones' => 'sub.total_visitantes_atendidos'
+            ];
+
+            $defaultDirs = [
+                'general'       => 'ASC',
+                'citas'         => 'ASC',
+                'zonas'         => 'DESC',
+                'exoneraciones' => 'ASC',
+                'visitantes'    => 'ASC',
+                'instituciones' => 'DESC'
+            ];
+
+            $sectionMap = $columnsBySection[$seccion] ?? $columnsBySection['general'];
+            $orderColIdx = isset($_REQUEST['order'][0]['column']) ? (int)$_REQUEST['order'][0]['column'] : -1;
+            $orderColumn = ($orderColIdx >= 0 && isset($sectionMap[$orderColIdx]))
+                ? $sectionMap[$orderColIdx]
+                : ($defaultColumns[$seccion] ?? 'sub.id');
+
+            $orderDirRaw = isset($_REQUEST['order'][0]['dir']) ? strtoupper(trim((string)$_REQUEST['order'][0]['dir'])) : ($defaultDirs[$seccion] ?? 'ASC');
+            $orderDir = ($orderDirRaw === 'DESC') ? 'DESC' : 'ASC';
+
+            $reporteModel->setDtStart($start);
+            $reporteModel->setDtLength($length);
+            $reporteModel->setDtSearch($search);
+            $reporteModel->setDtOrderColumn($orderColumn);
+            $reporteModel->setDtOrderDir($orderDir);
+
+            $tablaPaginada = $reporteModel->obtenerTablaPaginada();
+
+            echo json_encode([
+                "status"          => "success",
+                "draw"            => $draw,
+                "recordsTotal"    => $tablaPaginada['recordsTotal'],
+                "recordsFiltered" => $tablaPaginada['recordsFiltered'],
+                "data"            => $tablaPaginada['data']
+            ]);
+            return;
+        }
 
         // Ejecutar consulta según sección solicitada
         $resultado = [];
@@ -246,6 +358,7 @@ try {
 
     switch ($action) {
         case 'consultar':
+        case 'listar_tabla':
             procesarConsultaReporte($reporteModel);
             break;
 

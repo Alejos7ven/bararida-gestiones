@@ -62,143 +62,143 @@ $(document).ready(function() {
     }
 
     function listarInstituciones() {
-        if ($.fn.DataTable.isDataTable('#tablaInstituciones')) {
-            $('#tablaInstituciones').DataTable().destroy();
-        }
-
-        $tablaInst.html(`
-            <tr id="loaderInstituciones">
-                <td colspan="6" class="text-center py-5">
-                    <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                    <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando instituciones registradas...</p>
-                </td>
-            </tr>
-        `);
-
-        $.ajax({
-            url: 'controllers/InstitucionController.php?action=listar',
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    cacheInstituciones = response.data || [];
-                    renderInstitucionesTable(cacheInstituciones);
-                } else {
-                    if ($.fn.DataTable.isDataTable('#tablaInstituciones')) {
-                        $('#tablaInstituciones').DataTable().destroy();
-                    }
-                    $tablaInst.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">No se pudo cargar el listado de instituciones.</td></tr>');
-                }
-            },
-            error: function() {
-                if ($.fn.DataTable.isDataTable('#tablaInstituciones')) {
-                    $('#tablaInstituciones').DataTable().destroy();
-                }
-                $tablaInst.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">Ocurrió un error al cargar el listado de instituciones.</td></tr>');
-                showGlobalAlert('Ocurrió un error al cargar el listado de instituciones.', 'danger');
-            }
-        });
-    }
-
-    function renderInstitucionesTable(data) {
-        if ($.fn.DataTable.isDataTable('#tablaInstituciones')) {
-            $('#tablaInstituciones').DataTable().destroy();
-        }
-        $tablaInst.empty();
-
-        if (!data || data.length === 0) {
-            $tablaInst.append('<tr><td colspan="6" class="text-center text-muted py-4">No se encontraron instituciones registradas.</td></tr>');
+        if ($.fn.DataTable.isDataTable('#tablaInstituciones') && dtInstituciones) {
+            dtInstituciones.ajax.reload(null, false);
             return;
         }
 
-        data.forEach(function(inst) {
-            let badgeTipo = `<span class="badge-premium badge-premium-info">${inst.tipo_organizacion}</span>`;
-            if (inst.tipo_organizacion.toLowerCase() === 'educativa') {
-                badgeTipo = `<span class="badge-premium badge-premium-admin">Educativa</span>`;
-            } else if (inst.tipo_organizacion.toLowerCase() === 'empresarial') {
-                badgeTipo = `<span class="badge-premium badge-premium-superadmin">Empresarial</span>`;
-            } else if (inst.tipo_organizacion.toLowerCase() === 'comunitaria') {
-                badgeTipo = `<span class="badge-premium badge-premium-guia">Comunitaria</span>`;
-            }
-
-            // Contactos
-            let contactosHtml = '';
-            if (inst.contactos && inst.contactos.length > 0) {
-                inst.contactos.forEach(function(c) {
-                    let icon = c.tipo === 'correo' ? '✉' : '📞';
-                    let displayContact = c.contacto;
-                    if (displayContact.length > 24) {
-                        displayContact = displayContact.substring(0, 21) + '...';
-                    }
-                    contactosHtml += `<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px;" title="${c.contacto}">` +
-                                     `<small class="text-muted">${icon}&nbsp;${displayContact}</small>` +
-                                     `</div>`;
-                });
-            } else {
-                contactosHtml = '<span class="text-muted italic">Sin contactos</span>';
-            }
-
-            // Sedes múltiples
-            let sedesHtml = '';
-            const sedesList = inst.sedes && inst.sedes.length > 0 ? inst.sedes : [];
-            if (sedesList.length > 0) {
-                sedesList.forEach(function(s, idx) {
-                    const sedeNum = idx + 1;
-                    const estado = s.estado || '';
-                    const municipio = s.municipio || '';
-                    const parroquia = s.parroquia || '';
-                    const detalles = s.detalles ? `<br><small class="text-muted">${s.detalles}</small>` : '';
-                    
-                    sedesHtml += `<div class="mb-1 pb-1 ${idx < sedesList.length - 1 ? 'border-bottom border-light' : ''}">
-                        <span class="badge bg-light text-dark border me-1" style="font-size:0.7rem;">Sede #${sedeNum}</span>
-                        <strong>${estado}</strong>${municipio ? `, ${municipio}` : ''}${parroquia ? ` (${parroquia})` : ''}
-                        ${detalles}
-                    </div>`;
-                });
-            } else {
-                sedesHtml = '<span class="text-muted italic">Sin sedes asignadas</span>';
-            }
-
-            const nombreInst = inst.nombre_completo || inst.nombre || '';
-            const totalCitas = parseInt(inst.total_citas || 0, 10);
-            const hasCitas = totalCitas > 0;
-            const deleteDisabledAttr = hasCitas ? 'disabled' : '';
-            const deleteTitle = hasCitas 
-                ? `No se puede eliminar: posee ${totalCitas} cita(s) registrada(s) (pasadas, activas o futuras)` 
-                : 'Eliminar Institución';
-
-            const rowHtml = `
-                <tr class="inst-row">
-                    <td style="white-space: nowrap;"><strong>${inst.tipo_documento}-${inst.documento}</strong></td>
-                    <td><strong>${nombreInst}</strong></td>
-                    <td>
-                        ${badgeTipo}
-                        <small class="text-muted d-block mt-0.5" style="font-size:0.75rem; text-transform:capitalize;">${inst.tipo_gestion || 'Pública'}</small>
-                    </td>
-                    <td>${contactosHtml}</td>
-                    <td style="max-width: 260px;">${sedesHtml}</td>
-                    <td class="text-center">
-                        <div class="table-actions justify-content-center">
-                            <button class="btn-action btn-action-edit btn-editar-inst" data-id="${inst.id}" title="Editar Institución">
-                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/></svg>
-                            </button>
-                            <button class="btn-action btn-action-delete btn-eliminar-inst" data-id="${inst.id}" data-name="${nombreInst}" ${deleteDisabledAttr} title="${deleteTitle}">
-                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            $tablaInst.append(rowHtml);
-        });
+        $tablaInst.empty();
 
         dtInstituciones = $('#tablaInstituciones').DataTable({
+            serverSide: true,
+            processing: true,
             responsive: true,
             order: [[1, 'asc']], // Ordenar por Razón Social alfabéticamente
-            columnDefs: [
-                { targets: 'no-sort', orderable: false, searchable: false }
+            ajax: {
+                url: 'controllers/InstitucionController.php?action=listar',
+                type: 'GET',
+                dataType: 'json',
+                dataSrc: function(json) {
+                    if (json && json.status === 'error') {
+                        showGlobalAlert(json.message || 'No se pudo cargar el listado de instituciones.', 'danger');
+                        return [];
+                    }
+                    cacheInstituciones = (json && json.data) ? json.data : [];
+                    return cacheInstituciones;
+                },
+                error: function() {
+                    showGlobalAlert('Ocurrió un error al cargar el listado de instituciones.', 'danger');
+                }
+            },
+            createdRow: function(row) {
+                $(row).addClass('inst-row');
+            },
+            columns: [
+                {
+                    data: 'documento',
+                    render: function(data, type, inst) {
+                        return `<span style="white-space: nowrap;"><strong>${inst.tipo_documento}-${inst.documento}</strong></span>`;
+                    }
+                },
+                {
+                    data: 'nombre_completo',
+                    render: function(data, type, inst) {
+                        const nombreInst = inst.nombre_completo || inst.nombre || '';
+                        return `<strong>${nombreInst}</strong>`;
+                    }
+                },
+                {
+                    data: 'tipo_organizacion',
+                    render: function(data, type, inst) {
+                        let badgeTipo = `<span class="badge-premium badge-premium-info">${inst.tipo_organizacion}</span>`;
+                        const tipoOrg = (inst.tipo_organizacion || '').toLowerCase();
+                        if (tipoOrg === 'educativa') {
+                            badgeTipo = `<span class="badge-premium badge-premium-admin">Educativa</span>`;
+                        } else if (tipoOrg === 'empresarial') {
+                            badgeTipo = `<span class="badge-premium badge-premium-superadmin">Empresarial</span>`;
+                        } else if (tipoOrg === 'comunitaria') {
+                            badgeTipo = `<span class="badge-premium badge-premium-guia">Comunitaria</span>`;
+                        }
+                        return `
+                            ${badgeTipo}
+                            <small class="text-muted d-block mt-0.5" style="font-size:0.75rem; text-transform:capitalize;">${inst.tipo_gestion || 'Pública'}</small>
+                        `;
+                    }
+                },
+                {
+                    data: 'contactos',
+                    orderable: false,
+                    render: function(data, type, inst) {
+                        let contactosHtml = '';
+                        if (inst.contactos && inst.contactos.length > 0) {
+                            inst.contactos.forEach(function(c) {
+                                let icon = c.tipo === 'correo' ? '✉' : '📞';
+                                let displayContact = c.contacto;
+                                if (displayContact.length > 24) {
+                                    displayContact = displayContact.substring(0, 21) + '...';
+                                }
+                                contactosHtml += `<div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px;" title="${c.contacto}">` +
+                                                 `<small class="text-muted">${icon}&nbsp;${displayContact}</small>` +
+                                                 `</div>`;
+                            });
+                        } else {
+                            contactosHtml = '<span class="text-muted italic">Sin contactos</span>';
+                        }
+                        return contactosHtml;
+                    }
+                },
+                {
+                    data: 'sedes',
+                    orderable: false,
+                    render: function(data, type, inst) {
+                        let sedesHtml = '';
+                        const sedesList = inst.sedes && inst.sedes.length > 0 ? inst.sedes : [];
+                        if (sedesList.length > 0) {
+                            sedesList.forEach(function(s, idx) {
+                                const sedeNum = idx + 1;
+                                const estado = s.estado || '';
+                                const municipio = s.municipio || '';
+                                const parroquia = s.parroquia || '';
+                                const detalles = s.detalles ? `<br><small class="text-muted">${s.detalles}</small>` : '';
+                                
+                                sedesHtml += `<div class="mb-1 pb-1 ${idx < sedesList.length - 1 ? 'border-bottom border-light' : ''}">
+                                    <span class="badge bg-light text-dark border me-1" style="font-size:0.7rem;">Sede #${sedeNum}</span>
+                                    <strong>${estado}</strong>${municipio ? `, ${municipio}` : ''}${parroquia ? ` (${parroquia})` : ''}
+                                    ${detalles}
+                                </div>`;
+                            });
+                        } else {
+                            sedesHtml = '<span class="text-muted italic">Sin sedes asignadas</span>';
+                        }
+                        return `<div style="max-width: 260px;">${sedesHtml}</div>`;
+                    }
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    className: 'no-sort text-center',
+                    render: function(data, type, inst) {
+                        const nombreInst = inst.nombre_completo || inst.nombre || '';
+                        const totalCitas = parseInt(inst.total_citas || 0, 10);
+                        const hasCitas = totalCitas > 0;
+                        const deleteDisabledAttr = hasCitas ? 'disabled' : '';
+                        const deleteTitle = hasCitas 
+                            ? `No se puede eliminar: posee ${totalCitas} cita(s) registrada(s) (pasadas, activas o futuras)` 
+                            : 'Eliminar Institución';
+
+                        return `
+                            <div class="table-actions justify-content-center">
+                                <button class="btn-action btn-action-edit btn-editar-inst" data-id="${inst.id}" title="Editar Institución">
+                                    <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/></svg>
+                                </button>
+                                <button class="btn-action btn-action-delete btn-eliminar-inst" data-id="${inst.id}" data-name="${nombreInst}" ${deleteDisabledAttr} title="${deleteTitle}">
+                                    <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
             ]
         });
     }

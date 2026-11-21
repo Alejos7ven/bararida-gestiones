@@ -21,6 +21,13 @@ class Personal extends Database {
     private ?string $loginError = null;
     private ?int $excluirId = null;
 
+    // Propiedades para Server-Side DataTables
+    private int $dtStart = 0;
+    private int $dtLength = 10;
+    private string $dtSearch = '';
+    private string $dtOrderColumn = 'p.id';
+    private string $dtOrderDir = 'DESC';
+
     /**
      * Constructor del Modelo Personal
      */
@@ -124,6 +131,46 @@ class Personal extends Database {
         $this->excluirId = $excluirId;
     }
 
+    public function getDtStart(): int {
+        return $this->dtStart;
+    }
+
+    public function setDtStart(int $dtStart): void {
+        $this->dtStart = $dtStart;
+    }
+
+    public function getDtLength(): int {
+        return $this->dtLength;
+    }
+
+    public function setDtLength(int $dtLength): void {
+        $this->dtLength = $dtLength;
+    }
+
+    public function getDtSearch(): string {
+        return $this->dtSearch;
+    }
+
+    public function setDtSearch(string $dtSearch): void {
+        $this->dtSearch = $dtSearch;
+    }
+
+    public function getDtOrderColumn(): string {
+        return $this->dtOrderColumn;
+    }
+
+    public function setDtOrderColumn(string $dtOrderColumn): void {
+        $this->dtOrderColumn = $dtOrderColumn;
+    }
+
+    public function getDtOrderDir(): string {
+        return $this->dtOrderDir;
+    }
+
+    public function setDtOrderDir(string $dtOrderDir): void {
+        $this->dtOrderDir = $dtOrderDir;
+    }
+
     // =========================================================================
     // MÉTODOS DE BASE DE DATOS Y LÓGICA DE NEGOCIO
     // =========================================================================
@@ -189,6 +236,77 @@ class Personal extends Database {
         $stmt = $this->db->prepare($query);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Obtiene el listado paginado de personal para DataTables Server-Side Processing
+     * utilizando las propiedades internas ($this->dtStart, $this->dtLength, $this->dtSearch, $this->dtOrderColumn, $this->dtOrderDir).
+     */
+    public function listarPaginado(): array {
+        $stmtTotal = $this->db->prepare("SELECT COUNT(*) FROM " . $this->table_name . " p WHERE p.activo = 1");
+        $stmtTotal->execute();
+        $recordsTotal = (int)$stmtTotal->fetchColumn();
+
+        $baseJoins = "FROM " . $this->table_name . " p
+                      INNER JOIN entidades e ON p.entidad_id = e.id
+                      INNER JOIN roles r ON p.rol_id = r.id
+                      WHERE p.activo = 1";
+
+        $searchSql = "";
+        $hasSearch = ($this->dtSearch !== '');
+        if ($hasSearch) {
+            $searchSql = " AND (
+                CAST(p.id AS CHAR) LIKE :s1
+                OR CONCAT('#', p.id) LIKE :s2
+                OR e.documento LIKE :s3
+                OR CONCAT(e.tipo_documento, '-', e.documento) LIKE :s4
+                OR e.nombre_completo LIKE :s5
+                OR r.nombre LIKE :s6
+                OR p.created_at LIKE :s7
+            )";
+        }
+
+        if ($hasSearch) {
+            $stmtFiltered = $this->db->prepare("SELECT COUNT(*) " . $baseJoins . $searchSql);
+            $likeVal = '%' . $this->dtSearch . '%';
+            for ($i = 1; $i <= 7; $i++) {
+                $stmtFiltered->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+            }
+            $stmtFiltered->execute();
+            $recordsFiltered = (int)$stmtFiltered->fetchColumn();
+        } else {
+            $recordsFiltered = $recordsTotal;
+        }
+
+        $queryData = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre_completo, r.nombre AS rol, p.created_at, p.updated_at "
+                   . $baseJoins
+                   . $searchSql
+                   . " ORDER BY " . $this->dtOrderColumn . " " . $this->dtOrderDir;
+
+        if ($this->dtLength > 0) {
+            $queryData .= " LIMIT :limit OFFSET :offset";
+        }
+
+        $stmtData = $this->db->prepare($queryData);
+        if ($hasSearch) {
+            $likeVal = '%' . $this->dtSearch . '%';
+            for ($i = 1; $i <= 7; $i++) {
+                $stmtData->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+            }
+        }
+        if ($this->dtLength > 0) {
+            $stmtData->bindValue(":limit", $this->dtLength, PDO::PARAM_INT);
+            $stmtData->bindValue(":offset", $this->dtStart, PDO::PARAM_INT);
+        }
+
+        $stmtData->execute();
+        $data = $stmtData->fetchAll(PDO::FETCH_ASSOC);
+
+        return [
+            'recordsTotal'    => $recordsTotal,
+            'recordsFiltered' => $recordsFiltered,
+            'data'            => $data
+        ];
     }
 
     /**

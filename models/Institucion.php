@@ -19,6 +19,13 @@ class Institucion extends Database {
     private array $contactos = [];
     private ?string $terminoBusqueda = null;
 
+    // Propiedades para Server-Side DataTables
+    private int $dtStart = 0;
+    private int $dtLength = 10;
+    private string $dtSearch = '';
+    private string $dtOrderColumn = 'e.nombre_completo';
+    private string $dtOrderDir = 'ASC';
+
     public function __construct() {
         parent::__construct();
     }
@@ -60,6 +67,21 @@ class Institucion extends Database {
 
     public function getTerminoBusqueda(): ?string { return $this->terminoBusqueda; }
     public function setTerminoBusqueda(?string $term): void { $this->terminoBusqueda = $term ? trim($term) : null; }
+
+    public function getDtStart(): int { return $this->dtStart; }
+    public function setDtStart(int $dtStart): void { $this->dtStart = $dtStart; }
+
+    public function getDtLength(): int { return $this->dtLength; }
+    public function setDtLength(int $dtLength): void { $this->dtLength = $dtLength; }
+
+    public function getDtSearch(): string { return $this->dtSearch; }
+    public function setDtSearch(string $dtSearch): void { $this->dtSearch = $dtSearch; }
+
+    public function getDtOrderColumn(): string { return $this->dtOrderColumn; }
+    public function setDtOrderColumn(string $dtOrderColumn): void { $this->dtOrderColumn = $dtOrderColumn; }
+
+    public function getDtOrderDir(): string { return $this->dtOrderDir; }
+    public function setDtOrderDir(string $dtOrderDir): void { $this->dtOrderDir = $dtOrderDir; }
 
     // =========================================================================
     // MÉTODOS DE BASE DE DATOS Y LÓGICA DE NEGOCIO
@@ -321,6 +343,148 @@ class Institucion extends Database {
             return $instituciones;
         } catch (PDOException $e) {
             error_log("Error en Institucion::listarTodas: " . $e->getMessage());
+            throw $e;
+        }
+    }
+
+    /**
+     * Obtiene el listado paginado de instituciones con sus sedes y contactos para DataTables Server-Side Processing
+     * utilizando las propiedades internas ($this->dtStart, $this->dtLength, $this->dtSearch, $this->dtOrderColumn, $this->dtOrderDir).
+     */
+    public function listarPaginado(): array {
+        try {
+            $stmtTotal = $this->db->prepare("SELECT COUNT(*) FROM instituciones i WHERE i.activo = 1");
+            $stmtTotal->execute();
+            $recordsTotal = (int)$stmtTotal->fetchColumn();
+
+            $baseJoins = "FROM instituciones i
+                          INNER JOIN entidades e ON i.entidad_id = e.id
+                          WHERE i.activo = 1";
+
+            $searchSql = "";
+            $hasSearch = ($this->dtSearch !== '');
+            if ($hasSearch) {
+                $searchSql = " AND (
+                    e.documento LIKE :s1
+                    OR CONCAT(e.tipo_documento, '-', e.documento) LIKE :s2
+                    OR e.nombre_completo LIKE :s3
+                    OR i.tipo_organizacion LIKE :s4
+                    OR i.tipo_gestion LIKE :s5
+                    OR EXISTS (
+                        SELECT 1 FROM directorio d
+                        WHERE d.entidad_id = e.id AND d.contacto LIKE :s6
+                    )
+                    OR EXISTS (
+                        SELECT 1 FROM sedes s
+                        LEFT JOIN parroquias p ON s.parroquia_id = p.id_parroquia
+                        LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
+                        LEFT JOIN estados est ON m.id_estado = est.id_estado
+                        WHERE s.institucion_id = i.id AND s.activo = 1
+                          AND (p.parroquia LIKE :s7 OR m.municipio LIKE :s8 OR est.estado LIKE :s9 OR s.detalles LIKE :s10)
+                    )
+                )";
+            }
+
+            if ($hasSearch) {
+                $stmtFiltered = $this->db->prepare("SELECT COUNT(*) " . $baseJoins . $searchSql);
+                $likeVal = '%' . $this->dtSearch . '%';
+                for ($i = 1; $i <= 10; $i++) {
+                    $stmtFiltered->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+                }
+                $stmtFiltered->execute();
+                $recordsFiltered = (int)$stmtFiltered->fetchColumn();
+            } else {
+                $recordsFiltered = $recordsTotal;
+            }
+
+            $queryData = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre_completo, 
+                                 e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion,
+                                 (SELECT COUNT(*) FROM citas c WHERE c.institucion_id = i.id) AS total_citas "
+                       . $baseJoins
+                       . $searchSql
+                       . " ORDER BY " . $this->dtOrderColumn . " " . $this->dtOrderDir;
+
+            if ($this->dtLength > 0) {
+                $queryData .= " LIMIT :limit OFFSET :offset";
+            }
+
+            $stmtData = $this->db->prepare($queryData);
+            if ($hasSearch) {
+                $likeVal = '%' . $this->dtSearch . '%';
+                for ($i = 1; $i <= 10; $i++) {
+                    $stmtData->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+                }
+            }
+            if ($this->dtLength > 0) {
+                $stmtData->bindValue(":limit", $this->dtLength, PDO::PARAM_INT);
+                $stmtData->bindValue(":offset", $this->dtStart, PDO::PARAM_INT);
+            }
+
+            $stmtData->execute();
+            $instituciones = $stmtData->fetchAll(PDO::FETCH_ASSOC);
+
+            if (!empty($instituciones)) {
+                $querySedes = "SELECT s.id, s.institucion_id, s.parroquia_id, s.detalles,
+                                      p.parroquia, m.id_municipio, m.municipio, est.id_estado, est.estado
+                               FROM sedes s
+                               LEFT JOIN parroquias p ON s.parroquia_id = p.id_parroquia
+                               LEFT JOIN municipios m ON p.id_municipio = m.id_municipio
+                               LEFT JOIN estados est ON m.id_estado = est.id_estado
+                               WHERE s.activo = 1
+                               ORDER BY s.id ASC";
+                $stmtSedes = $this->db->prepare($querySedes);
+                $stmtSedes->execute();
+                $allSedes = $stmtSedes->fetchAll(PDO::FETCH_ASSOC);
+
+                $sedesMap = [];
+                foreach ($allSedes as $s) {
+                    $sedesMap[$s['institucion_id']][] = $s;
+                }
+
+                $queryContacts = "SELECT entidad_id, contacto, tipo FROM directorio";
+                $stmtContacts = $this->db->prepare($queryContacts);
+                $stmtContacts->execute();
+                $allContacts = $stmtContacts->fetchAll(PDO::FETCH_ASSOC);
+
+                $contactsMap = [];
+                foreach ($allContacts as $c) {
+                    $contactsMap[$c['entidad_id']][] = [
+                        'contacto' => $c['contacto'],
+                        'tipo' => $c['tipo']
+                    ];
+                }
+
+                foreach ($instituciones as &$inst) {
+                    $inst['total_citas'] = (int)($inst['total_citas'] ?? 0);
+                    $inst['sedes'] = $sedesMap[$inst['id']] ?? [];
+                    $inst['contactos'] = $contactsMap[$inst['entidad_id']] ?? [];
+
+                    if (!empty($inst['sedes'])) {
+                        $first = $inst['sedes'][0];
+                        $inst['parroquia_id'] = $first['parroquia_id'];
+                        $inst['detalles_direccion'] = $first['detalles'];
+                        $inst['parroquia'] = $first['parroquia'];
+                        $inst['municipio'] = $first['municipio'];
+                        $inst['estado'] = $first['estado'];
+                        $inst['id_estado'] = $first['id_estado'];
+                        $inst['id_municipio'] = $first['id_municipio'];
+                    } else {
+                        $inst['detalles_direccion'] = '';
+                        $inst['parroquia'] = '';
+                        $inst['municipio'] = '';
+                        $inst['estado'] = '';
+                    }
+                }
+                unset($inst);
+            }
+
+            return [
+                'recordsTotal'    => $recordsTotal,
+                'recordsFiltered' => $recordsFiltered,
+                'data'            => $instituciones
+            ];
+        } catch (PDOException $e) {
+            error_log("Error en Institucion::listarPaginado: " . $e->getMessage());
             throw $e;
         }
     }

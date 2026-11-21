@@ -100,11 +100,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // =========================================================================
 
 /**
- * Lista todos los visitantes en el sistema
+ * Lista todos los visitantes en el sistema (Soporta Server-Side Processing de DataTables)
  */
 function listarVisitantesAction() {
     try {
         $visitanteModel = new Visitante();
+
+        if (isset($_GET['draw'])) {
+            $draw = (int)$_GET['draw'];
+            $start = isset($_GET['start']) && is_numeric($_GET['start']) ? max(0, (int)$_GET['start']) : 0;
+            $length = isset($_GET['length']) && is_numeric($_GET['length']) ? (int)$_GET['length'] : 10;
+            $search = isset($_GET['search']['value']) ? trim((string)$_GET['search']['value']) : '';
+
+            $columnsMap = [
+                0 => 'v.id',
+                1 => 'v.cedula',
+                2 => 'v.nombres',
+                3 => 'v.apellidos',
+                4 => 'v.fecha_nacimiento',
+                5 => 'e.nombre_completo'
+            ];
+
+            $orderColIdx = isset($_GET['order'][0]['column']) ? (int)$_GET['order'][0]['column'] : 0;
+            $orderColumn = $columnsMap[$orderColIdx] ?? 'v.id';
+            $orderDirRaw = isset($_GET['order'][0]['dir']) ? strtoupper(trim((string)$_GET['order'][0]['dir'])) : 'DESC';
+            $orderDir = ($orderDirRaw === 'ASC') ? 'ASC' : 'DESC';
+
+            $visitanteModel->setDtStart($start);
+            $visitanteModel->setDtLength($length);
+            $visitanteModel->setDtSearch($search);
+            $visitanteModel->setDtOrderColumn($orderColumn);
+            $visitanteModel->setDtOrderDir($orderDir);
+
+            $resultado = $visitanteModel->listarPaginado();
+
+            http_response_code(200);
+            echo json_encode([
+                "status"          => "success",
+                "draw"            => $draw,
+                "recordsTotal"    => $resultado['recordsTotal'],
+                "recordsFiltered" => $resultado['recordsFiltered'],
+                "data"            => $resultado['data']
+            ]);
+            return;
+        }
+
         $visitantes = $visitanteModel->listarTodos();
         echo json_encode([
             "status" => "success",

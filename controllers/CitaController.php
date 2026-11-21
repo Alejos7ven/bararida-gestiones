@@ -196,7 +196,7 @@ function comprobarInstitucionAction() {
 }
 
 /**
- * Lista todas las citas activas
+ * Lista todas las citas activas (Soporta Server-Side Processing de DataTables)
  */
 function listarCitasAction() {
     if (!usuarioTienePermisoCitas()) {
@@ -210,6 +210,47 @@ function listarCitasAction() {
 
     try {
         $citaModel = new Cita();
+
+        if (isset($_GET['draw'])) {
+            $draw = (int)$_GET['draw'];
+            $start = isset($_GET['start']) && is_numeric($_GET['start']) ? max(0, (int)$_GET['start']) : 0;
+            $length = isset($_GET['length']) && is_numeric($_GET['length']) ? (int)$_GET['length'] : 10;
+            $search = isset($_GET['search']['value']) ? trim((string)$_GET['search']['value']) : '';
+
+            $columnsMap = [
+                0 => 'c.id',
+                1 => 'e.nombre_completo',
+                2 => 'c.fecha_visita',
+                3 => 'total_visitantes',
+                4 => 'guia_nombre',
+                5 => 'c.estatus',
+                6 => 'c.pago_estado'
+            ];
+
+            $orderColIdx = isset($_GET['order'][0]['column']) ? (int)$_GET['order'][0]['column'] : 0;
+            $orderColumn = $columnsMap[$orderColIdx] ?? 'c.id';
+            $orderDirRaw = isset($_GET['order'][0]['dir']) ? strtoupper(trim((string)$_GET['order'][0]['dir'])) : 'DESC';
+            $orderDir = ($orderDirRaw === 'ASC') ? 'ASC' : 'DESC';
+
+            $citaModel->setDtStart($start);
+            $citaModel->setDtLength($length);
+            $citaModel->setDtSearch($search);
+            $citaModel->setDtOrderColumn($orderColumn);
+            $citaModel->setDtOrderDir($orderDir);
+
+            $resultado = $citaModel->listarPaginado();
+
+            http_response_code(200);
+            echo json_encode([
+                "status"          => "success",
+                "draw"            => $draw,
+                "recordsTotal"    => $resultado['recordsTotal'],
+                "recordsFiltered" => $resultado['recordsFiltered'],
+                "data"            => $resultado['data']
+            ]);
+            return;
+        }
+
         $citas = $citaModel->listarTodas();
 
         http_response_code(200);
@@ -985,7 +1026,7 @@ function resolveBirthDatePhp($valCol3, $valCol4, $valCol5) {
 }
 
 /**
- * Obtiene el listado de visitantes de una cita específica
+ * Obtiene el listado de visitantes de una cita específica (Soporta Server-Side Processing de DataTables)
  */
 function listarVisitantesAction() {
     $cita_id = isset($_GET['cita_id']) ? filter_var($_GET['cita_id'], FILTER_VALIDATE_INT) : 0;
@@ -1001,6 +1042,45 @@ function listarVisitantesAction() {
     try {
         $visitanteModel = new Visitante();
         $visitanteModel->setCitaId($cita_id);
+
+        if (isset($_GET['draw'])) {
+            $draw = (int)$_GET['draw'];
+            $start = isset($_GET['start']) && is_numeric($_GET['start']) ? max(0, (int)$_GET['start']) : 0;
+            $length = isset($_GET['length']) && is_numeric($_GET['length']) ? (int)$_GET['length'] : 5;
+            $search = isset($_GET['search']['value']) ? trim((string)$_GET['search']['value']) : '';
+
+            $columnsMap = [
+                0 => 'v.id',
+                1 => 'v.cedula',
+                2 => 'v.nombres',
+                3 => 'v.fecha_nacimiento'
+            ];
+
+            $orderColIdx = isset($_GET['order'][0]['column']) ? (int)$_GET['order'][0]['column'] : 0;
+            $orderColumn = $columnsMap[$orderColIdx] ?? 'v.id';
+            $orderDirRaw = isset($_GET['order'][0]['dir']) ? strtoupper(trim((string)$_GET['order'][0]['dir'])) : 'ASC';
+            $orderDir = ($orderDirRaw === 'DESC') ? 'DESC' : 'ASC';
+
+            $visitanteModel->setDtStart($start);
+            $visitanteModel->setDtLength($length);
+            $visitanteModel->setDtSearch($search);
+            $visitanteModel->setDtOrderColumn($orderColumn);
+            $visitanteModel->setDtOrderDir($orderDir);
+
+            $resultado = $visitanteModel->obtenerPorCitaIdPaginado();
+
+            http_response_code(200);
+            echo json_encode([
+                "status"          => "success",
+                "draw"            => $draw,
+                "recordsTotal"    => $resultado['recordsTotal'],
+                "recordsFiltered" => $resultado['recordsFiltered'],
+                "data"            => $resultado['data'],
+                "allIds"          => $resultado['allIds']
+            ]);
+            exit;
+        }
+
         $visitantes = $visitanteModel->obtenerPorCitaId();
         echo json_encode([
             "status" => "success",
@@ -1041,7 +1121,7 @@ function obtenerDatosDashboardAction() {
 }
 
 /**
- * Retorna las citas programadas para el día de hoy, según el rol y sesión del usuario
+ * Retorna las citas programadas para el día de hoy, según el rol y sesión del usuario (Soporta Server-Side Processing de DataTables)
  */
 function citasHoyAction() {
     try {
@@ -1054,6 +1134,47 @@ function citasHoyAction() {
         $citaModel->setFiltroRol($rol);
         $citaModel->setFiltroPersonalId($personalId);
         $citaModel->setTienePermisoCitas($tienePermisoCitas);
+
+        if (isset($_GET['draw'])) {
+            $draw = (int)$_GET['draw'];
+            $start = isset($_GET['start']) && is_numeric($_GET['start']) ? max(0, (int)$_GET['start']) : 0;
+            $length = isset($_GET['length']) && is_numeric($_GET['length']) ? (int)$_GET['length'] : 5;
+            $search = isset($_GET['search']['value']) ? trim((string)$_GET['search']['value']) : '';
+
+            $columnsMap = [
+                0 => 'c.id',
+                1 => 'c.hora_inicio',
+                2 => 'e.nombre_completo',
+                3 => 'r.nombre',
+                4 => 'total_visitantes',
+                5 => 'guias_asignados',
+                6 => 'c.estatus'
+            ];
+
+            $orderColIdx = isset($_GET['order'][0]['column']) ? (int)$_GET['order'][0]['column'] : 1;
+            $orderColumn = $columnsMap[$orderColIdx] ?? 'c.hora_inicio';
+            $orderDirRaw = isset($_GET['order'][0]['dir']) ? strtoupper(trim((string)$_GET['order'][0]['dir'])) : 'ASC';
+            $orderDir = ($orderDirRaw === 'DESC') ? 'DESC' : 'ASC';
+
+            $citaModel->setDtStart($start);
+            $citaModel->setDtLength($length);
+            $citaModel->setDtSearch($search);
+            $citaModel->setDtOrderColumn($orderColumn);
+            $citaModel->setDtOrderDir($orderDir);
+
+            $resultado = $citaModel->obtenerCitasHoyPaginado();
+
+            http_response_code(200);
+            echo json_encode([
+                "status"          => "success",
+                "draw"            => $draw,
+                "recordsTotal"    => $resultado['recordsTotal'],
+                "recordsFiltered" => $resultado['recordsFiltered'],
+                "data"            => $resultado['data']
+            ]);
+            return;
+        }
+
         $citas = $citaModel->obtenerCitasHoy();
 
         http_response_code(200);

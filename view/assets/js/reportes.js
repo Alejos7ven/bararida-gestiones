@@ -375,7 +375,7 @@ $(document).ready(function() {
     }
 
     // =========================================================================
-    // RENDERIZADO DE TABLA DINÁMICA DE DATOS
+    // RENDERIZADO DE TABLA DINÁMICA DE DATOS (DataTables Server-Side)
     // =========================================================================
     function renderizarTablaDatos(seccion, reporte) {
         if ($.fn.DataTable.isDataTable('#tablaReportes')) {
@@ -409,7 +409,8 @@ $(document).ready(function() {
         $('#estadoVacioReporte').addClass('d-none');
         $('#tablaReportes').removeClass('d-none');
 
-        // Construir Encabezados y Filas según Sección
+        let columnsConfig = [];
+
         if (seccion === 'general' || seccion === 'citas') {
             $head.html(`
                 <tr>
@@ -425,37 +426,56 @@ $(document).ready(function() {
                 </tr>
             `);
 
-            datos.forEach(function(c) {
-                const estatusBadge = obtenerBadgeEstatus(c.estatus);
-                const gestionBadge = `<span class="badge-gestion-${c.tipo_gestion}">${c.tipo_gestion === 'publica' ? 'Pública' : 'Privada'}</span>`;
-                const tipoBadge = `<span class="badge bg-light text-success border" style="font-size:0.75rem; text-transform:capitalize; font-weight:600;">${c.tipo || 'Institucional'}</span>`;
-
-                $body.append(`
-                    <tr>
-                        <td><strong>#${c.id}</strong></td>
-                        <td>
-                            <div>${formatearFechaVisual(c.fecha_visita)}</div>
-                            <small class="text-muted">${c.hora_inicio ? c.hora_inicio.substring(0, 5) : '--'}</small>
-                        </td>
-                        <td>
-                            <div class="fw-bold">${c.institucion_nombre || 'Sin nombre'}</div>
-                            <small class="text-muted">${c.tipo_documento || 'J'}-${c.institucion_rif || ''}</small>
-                        </td>
-                        <td>${tipoBadge}</td>
-                        <td>
-                            <div>${c.tipo_organizacion || 'Educativa'}</div>
-                            <div>${gestionBadge}</div>
-                        </td>
-                        <td>${c.recorrido_nombre || '<span class="text-muted">No asignado</span>'}</td>
-                        <td class="fw-bold">${c.total_visitantes || 0}</td>
-                        <td>${estatusBadge}</td>
-                        <td>
-                            <div style="font-size: 0.85rem;">${c.metodo_pago || 'No especificado'}</div>
-                            <small class="text-muted">Estado: ${c.pago_estado || 'pendiente'}</small>
-                        </td>
-                    </tr>
-                `);
-            });
+            columnsConfig = [
+                {
+                    data: 'id',
+                    render: function(data) { return `<strong>#${data}</strong>`; }
+                },
+                {
+                    data: 'fecha_visita',
+                    render: function(data, type, c) {
+                        return `<div>${formatearFechaVisual(c.fecha_visita)}</div><small class="text-muted">${c.hora_inicio ? c.hora_inicio.substring(0, 5) : '--'}</small>`;
+                    }
+                },
+                {
+                    data: 'institucion_nombre',
+                    render: function(data, type, c) {
+                        return `<div class="fw-bold">${c.institucion_nombre || 'Sin nombre'}</div><small class="text-muted">${c.tipo_documento || 'J'}-${c.institucion_rif || ''}</small>`;
+                    }
+                },
+                {
+                    data: 'tipo',
+                    render: function(data) {
+                        return `<span class="badge bg-light text-success border" style="font-size:0.75rem; text-transform:capitalize; font-weight:600;">${data || 'Institucional'}</span>`;
+                    }
+                },
+                {
+                    data: 'tipo_organizacion',
+                    render: function(data, type, c) {
+                        const gestionBadge = `<span class="badge-gestion-${c.tipo_gestion}">${c.tipo_gestion === 'publica' ? 'Pública' : 'Privada'}</span>`;
+                        return `<div>${c.tipo_organizacion || 'Educativa'}</div><div>${gestionBadge}</div>`;
+                    }
+                },
+                {
+                    data: 'recorrido_nombre',
+                    render: function(data) { return data || '<span class="text-muted">No asignado</span>'; }
+                },
+                {
+                    data: 'total_visitantes',
+                    className: 'fw-bold',
+                    render: function(data) { return data || 0; }
+                },
+                {
+                    data: 'estatus',
+                    render: function(data) { return obtenerBadgeEstatus(data); }
+                },
+                {
+                    data: 'metodo_pago',
+                    render: function(data, type, c) {
+                        return `<div style="font-size: 0.85rem;">${c.metodo_pago || 'No especificado'}</div><small class="text-muted">Estado: ${c.pago_estado || 'pendiente'}</small>`;
+                    }
+                }
+            ];
 
         } else if (seccion === 'zonas') {
             $head.html(`
@@ -468,29 +488,39 @@ $(document).ready(function() {
                 </tr>
             `);
 
-            datos.forEach(function(z) {
-                $body.append(`
-                    <tr>
-                        <td class="fw-bold text-dark">
-                            <span class="me-2">📍</span>${z.zona_nombre}
-                        </td>
-                        <td>
-                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fs-6 fw-bold">
-                                ${z.total_visitas} visitas
-                            </span>
-                        </td>
-                        <td class="fw-semibold">${z.total_visitantes_zona || 0} personas</td>
-                        <td class="text-muted" style="max-width: 250px; white-space: normal;">
-                            ${z.recorridos_asociados || 'Recorrido Estándar'}
-                        </td>
-                        <td>
-                            <span class="badge bg-light text-success border border-success px-2 py-1">
-                                Activa en citas
-                            </span>
-                        </td>
-                    </tr>
-                `);
-            });
+            columnsConfig = [
+                {
+                    data: 'zona_nombre',
+                    className: 'fw-bold text-dark',
+                    render: function(data) { return `<span class="me-2">📍</span>${data}`; }
+                },
+                {
+                    data: 'total_visitas',
+                    render: function(data) {
+                        return `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fs-6 fw-bold">${data} visitas</span>`;
+                    }
+                },
+                {
+                    data: 'total_visitantes_zona',
+                    className: 'fw-semibold',
+                    render: function(data) { return `${data || 0} personas`; }
+                },
+                {
+                    data: 'recorridos_asociados',
+                    className: 'text-muted',
+                    render: function(data) {
+                        return `<div style="max-width: 250px; white-space: normal;">${data || 'Recorrido Estándar'}</div>`;
+                    }
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    render: function() {
+                        return `<span class="badge bg-light text-success border border-success px-2 py-1">Activa en citas</span>`;
+                    }
+                }
+            ];
 
         } else if (seccion === 'exoneraciones') {
             $head.html(`
@@ -505,28 +535,43 @@ $(document).ready(function() {
                 </tr>
             `);
 
-            datos.forEach(function(e) {
-                $body.append(`
-                    <tr>
-                        <td><strong>#${e.cita_id}</strong></td>
-                        <td>${formatearFechaVisual(e.fecha_visita)}</td>
-                        <td>
-                            <div class="fw-bold">${e.institucion_nombre}</div>
-                            <small class="text-muted">${e.tipo_documento || 'J'}-${e.institucion_rif}</small>
-                        </td>
-                        <td>
-                            <span class="badge-gestion-${e.tipo_gestion}">${e.tipo_gestion === 'publica' ? 'Pública' : 'Privada'}</span>
-                        </td>
-                        <td>
-                            <span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">
-                                ${e.motivo_exoneracion}
-                            </span>
-                        </td>
-                        <td class="fw-bold text-success fs-6">${e.total_visitantes_exonerados || 0}</td>
-                        <td>${obtenerBadgeEstatus(e.estatus)}</td>
-                    </tr>
-                `);
-            });
+            columnsConfig = [
+                {
+                    data: 'cita_id',
+                    render: function(data) { return `<strong>#${data}</strong>`; }
+                },
+                {
+                    data: 'fecha_visita',
+                    render: function(data) { return formatearFechaVisual(data); }
+                },
+                {
+                    data: 'institucion_nombre',
+                    render: function(data, type, e) {
+                        return `<div class="fw-bold">${e.institucion_nombre}</div><small class="text-muted">${e.tipo_documento || 'J'}-${e.institucion_rif}</small>`;
+                    }
+                },
+                {
+                    data: 'tipo_gestion',
+                    render: function(data) {
+                        return `<span class="badge-gestion-${data}">${data === 'publica' ? 'Pública' : 'Privada'}</span>`;
+                    }
+                },
+                {
+                    data: 'motivo_exoneracion',
+                    render: function(data) {
+                        return `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle px-2 py-1">${data}</span>`;
+                    }
+                },
+                {
+                    data: 'total_visitantes_exonerados',
+                    className: 'fw-bold text-success fs-6',
+                    render: function(data) { return data || 0; }
+                },
+                {
+                    data: 'estatus',
+                    render: function(data) { return obtenerBadgeEstatus(data); }
+                }
+            ];
 
         } else if (seccion === 'visitantes') {
             $head.html(`
@@ -541,23 +586,41 @@ $(document).ready(function() {
                 </tr>
             `);
 
-            datos.forEach(function(v) {
-                $body.append(`
-                    <tr>
-                        <td class="fw-semibold">${v.cedula || 'S/C'}</td>
-                        <td class="fw-bold">${v.nombres || ''} ${v.apellidos || ''}</td>
-                        <td>${v.fecha_nacimiento ? formatearFechaVisual(v.fecha_nacimiento) : 'No registrada'}</td>
-                        <td>${v.edad_estimada !== null ? v.edad_estimada + ' años' : 'N/A'}</td>
-                        <td>
-                            <span class="badge bg-light text-dark border px-2 py-1">
-                                ${v.grupo_etario}
-                            </span>
-                        </td>
-                        <td>${formatearFechaVisual(v.fecha_visita)}</td>
-                        <td class="text-muted">${v.institucion_nombre || '--'}</td>
-                    </tr>
-                `);
-            });
+            columnsConfig = [
+                {
+                    data: 'cedula',
+                    className: 'fw-semibold',
+                    render: function(data) { return data || 'S/C'; }
+                },
+                {
+                    data: 'apellidos',
+                    className: 'fw-bold',
+                    render: function(data, type, v) { return `${v.nombres || ''} ${v.apellidos || ''}`.trim(); }
+                },
+                {
+                    data: 'fecha_nacimiento',
+                    render: function(data) { return data ? formatearFechaVisual(data) : 'No registrada'; }
+                },
+                {
+                    data: 'edad_estimada',
+                    render: function(data) { return data !== null ? data + ' años' : 'N/A'; }
+                },
+                {
+                    data: 'grupo_etario',
+                    render: function(data) {
+                        return `<span class="badge bg-light text-dark border px-2 py-1">${data}</span>`;
+                    }
+                },
+                {
+                    data: 'fecha_visita',
+                    render: function(data) { return formatearFechaVisual(data); }
+                },
+                {
+                    data: 'institucion_nombre',
+                    className: 'text-muted',
+                    render: function(data) { return data || '--'; }
+                }
+            ];
 
         } else if (seccion === 'instituciones') {
             $head.html(`
@@ -572,32 +635,79 @@ $(document).ready(function() {
                 </tr>
             `);
 
-            datos.forEach(function(i) {
-                $body.append(`
-                    <tr>
-                        <td class="fw-bold">${i.tipo_documento || 'J'}-${i.rif}</td>
-                        <td class="fw-bold text-dark">${i.institucion_nombre}</td>
-                        <td>${i.tipo_organizacion || 'Educativa'}</td>
-                        <td>
-                            <span class="badge-gestion-${i.tipo_gestion}">${i.tipo_gestion === 'publica' ? 'Pública' : 'Privada'}</span>
-                        </td>
-                        <td>
-                            <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold">
-                                ${i.total_citas} citas
-                            </span>
-                        </td>
-                        <td class="fw-bold">${i.total_visitantes_atendidos || 0} personas</td>
-                        <td>${formatearFechaVisual(i.ultima_visita)}</td>
-                    </tr>
-                `);
-            });
+            columnsConfig = [
+                {
+                    data: 'rif',
+                    className: 'fw-bold',
+                    render: function(data, type, i) { return `${i.tipo_documento || 'J'}-${i.rif}`; }
+                },
+                {
+                    data: 'institucion_nombre',
+                    className: 'fw-bold text-dark'
+                },
+                {
+                    data: 'tipo_organizacion',
+                    render: function(data) { return data || 'Educativa'; }
+                },
+                {
+                    data: 'tipo_gestion',
+                    render: function(data) {
+                        return `<span class="badge-gestion-${data}">${data === 'publica' ? 'Pública' : 'Privada'}</span>`;
+                    }
+                },
+                {
+                    data: 'total_citas',
+                    render: function(data) {
+                        return `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1 fw-bold">${data} citas</span>`;
+                    }
+                },
+                {
+                    data: 'total_visitantes_atendidos',
+                    className: 'fw-bold',
+                    render: function(data) { return `${data || 0} personas`; }
+                },
+                {
+                    data: 'ultima_visita',
+                    render: function(data) { return formatearFechaVisual(data); }
+                }
+            ];
         }
 
-        // Inicializar DataTables para la tabla analítica del reporte
+        // Inicializar DataTables en modo Server-Side para la tabla analítica del reporte
         $('#tablaReportes').DataTable({
+            serverSide: true,
+            processing: true,
             responsive: true,
             pageLength: 10,
-            order: []
+            order: [],
+            ajax: {
+                url: 'controllers/ReporteController.php?action=listar_tabla',
+                type: 'GET',
+                dataType: 'json',
+                data: function(d) {
+                    const filtroTiempo = $('#filtroTiempo').val() || 'mes';
+                    d.seccion = seccion;
+                    d.filtro_tiempo = filtroTiempo;
+                    d.estatus = $('#filtroEstatus').val() || 'todos';
+                    d.tipo_cita = $('#filtroTipoCita').val() || 'todos';
+                    if (filtroTiempo === 'dia') {
+                        d.fecha_dia = $('#fechaDia').val();
+                    } else if (filtroTiempo === 'mes') {
+                        d.mes = $('#filtroMesMes').val();
+                        d.anio = $('#filtroMesAnio').val();
+                    } else if (filtroTiempo === 'anio') {
+                        d.fecha_anio = $('#fechaAnio').val();
+                    }
+                },
+                dataSrc: function(json) {
+                    if (json && typeof json.recordsFiltered !== 'undefined') {
+                        const count = parseInt(json.recordsFiltered, 10) || 0;
+                        $('#conteoRegistrosBadge').text(`${count} registro${count === 1 ? '' : 's'}`);
+                    }
+                    return (json && json.data) ? json.data : [];
+                }
+            },
+            columns: columnsConfig
         });
     }
 

@@ -45,24 +45,9 @@ $(document).ready(function() {
     }
 
     // =========================================================================
-    // 1. LISTAR CITAS (AJAX & DataTables)
+    // 1. LISTAR CITAS (AJAX & DataTables Server-Side)
     // =========================================================================
-    function listarCitas() {
-        if ($.fn.DataTable.isDataTable('#tablaCitas')) {
-            $('#tablaCitas').DataTable().destroy();
-        }
-
-        $tablaCitas.html(`
-            <tr id="loaderCitas">
-                <td colspan="8" class="text-center py-5">
-                    <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                    <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando cronograma de citas del parque...</p>
-                </td>
-            </tr>
-        `);
-
+    function sincronizarCacheCitasCalendario() {
         $.ajax({
             url: 'controllers/CitaController.php?action=listar',
             method: 'GET',
@@ -70,112 +55,138 @@ $(document).ready(function() {
             success: function(response) {
                 if (response.status === 'success') {
                     cacheCitas = response.data || [];
-                    renderCitasTable(cacheCitas);
-                } else {
-                    if ($.fn.DataTable.isDataTable('#tablaCitas')) {
-                        $('#tablaCitas').DataTable().destroy();
-                    }
-                    $tablaCitas.empty().append('<tr><td colspan="8" class="text-center text-muted py-4">No se pudo cargar el listado de citas.</td></tr>');
                 }
-            },
-            error: function(xhr) {
-                if ($.fn.DataTable.isDataTable('#tablaCitas')) {
-                    $('#tablaCitas').DataTable().destroy();
-                }
-                $tablaCitas.empty().append('<tr><td colspan="8" class="text-center text-muted py-4">Ocurrió un error al cargar el listado de citas.</td></tr>');
-                showGlobalAlert('Ocurrió un error al cargar el listado de citas.', 'danger');
             }
         });
     }
 
-    function renderCitasTable(data) {
-        if ($.fn.DataTable.isDataTable('#tablaCitas')) {
-            $('#tablaCitas').DataTable().destroy();
-        }
-        $tablaCitas.empty();
+    function listarCitas() {
+        sincronizarCacheCitasCalendario();
 
-        if (!data || data.length === 0) {
-            $tablaCitas.append('<tr><td colspan="8" class="text-center text-muted py-4">No se encontraron citas registradas.</td></tr>');
+        if ($.fn.DataTable.isDataTable('#tablaCitas') && dtCitas) {
+            dtCitas.ajax.reload(null, false);
             return;
         }
 
-        data.forEach(function(c) {
-            let badgeEstatus = '';
-            if (c.estatus === 'aprobado') {
-                badgeEstatus = '<span class="badge-premium badge-premium-admin">Aprobada</span>';
-            } else if (c.estatus === 'completado') {
-                badgeEstatus = '<span class="badge-premium badge-premium-superadmin">Completada</span>';
-            } else if (c.estatus === 'cancelado') {
-                badgeEstatus = '<span class="badge-premium badge-premium-danger">Cancelada</span>';
-            } else {
-                badgeEstatus = '<span class="badge-premium badge-premium-guia">Pendiente</span>';
-            }
-
-            const badgePago = c.pago_estado === 'pagado' 
-                ? '<span class="badge-premium badge-payment-paid">Pagado</span>'
-                : '<span class="badge-premium badge-payment-pending">Pendiente</span>';
-
-            const badgeVisitantes = `<span class="badge-premium btn-ver-visitantes ${parseInt(c.total_visitantes) > 0 ? 'badge-premium-info' : 'bg-secondary'}" data-id="${c.id}" data-name="${c.razon_social}" style="cursor: pointer;">${c.total_visitantes} visitantes</span>`;
-
-            const btnImportarHtml = `
-                <button class="btn-action btn-action-edit btn-importar-visitantes" data-id="${c.id}" data-name="${c.razon_social}" title="Importar Visitantes (CSV)">
-                    <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
-                </button>
-            `;
-
-            // Guía asignado o pendiente
-            const guiaAsignado = c.guia_nombre ? `${c.guia_nombre} ${c.guia_apellido || ''}` : '<span class="text-muted italic">No asignado</span>';
-
-            const nombreInst = c.nombre_completo || c.razon_social || '';
-            let sedeInfo = '';
-            if (c.sede_municipio || c.sede_estado) {
-                const ubicacionStr = [c.sede_municipio, c.sede_estado].filter(Boolean).join(', ');
-                sedeInfo = `<div class="mt-1"><span class="badge bg-light text-dark border" style="font-size:0.7rem;">Sede: ${ubicacionStr}</span> <small class="text-muted">${c.sede_detalles || ''}</small></div>`;
-            } else if (c.estado) {
-                sedeInfo = `<div class="mt-1"><small class="text-muted">${c.estado}${c.municipio ? `, ${c.municipio}` : ''}</small></div>`;
-            }
-
-            const rowHtml = `
-                <tr class="cita-row">
-                    <td><strong>#CIT-${c.id}</strong></td>
-                    <td>
-                        <span style="white-space: nowrap;"><strong>${c.tipo_documento}-${c.RIF}</strong></span>
-                        <span class="badge bg-light text-success border ms-1" style="font-size:0.72rem; text-transform:capitalize; font-weight:600;">${c.tipo || 'Institucional'}</span><br>
-                        <strong class="text-success" style="font-size:0.88rem;">${nombreInst}</strong>
-                        ${sedeInfo}
-                    </td>
-                    <td>
-                        ${formatDate(c.fecha_visita)}<br>
-                        <small class="text-success fw-600">${formatTime(c.hora_inicio)}</small>
-                    </td>
-                    <td>${badgeVisitantes}</td>
-                    <td><span class="text-muted italic">${guiaAsignado}</span></td>
-                    <td>${badgeEstatus}</td>
-                    <td>${badgePago}</td>
-                    <td class="text-center">
-                        <div class="table-actions justify-content-center">
-                            ${btnImportarHtml}
-                            <button class="btn-action btn-action-edit btn-editar-cita" data-id="${c.id}" title="Editar Cita">
-                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                            </button>
-                            <a href="controllers/CitaController.php?action=descargar_plantilla&cita_id=${c.id}" class="btn-action btn-action-edit" title="Descargar Plantilla Excel (.xlsx)" target="_blank">
-                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
-                            </a>
-                            <button class="btn-action btn-action-delete btn-eliminar-cita" data-id="${c.id}" data-name="${nombreInst}" title="Eliminar Cita">
-                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            $tablaCitas.append(rowHtml);
-        });
+        $tablaCitas.empty();
 
         dtCitas = $('#tablaCitas').DataTable({
+            serverSide: true,
+            processing: true,
             responsive: true,
             order: [[0, 'desc']],
-            columnDefs: [
-                { targets: 'no-sort', orderable: false, searchable: false }
+            ajax: {
+                url: 'controllers/CitaController.php?action=listar',
+                type: 'GET',
+                dataType: 'json',
+                dataSrc: function(json) {
+                    if (json && json.status === 'error') {
+                        showGlobalAlert(json.message || 'No se pudo cargar el listado de citas.', 'danger');
+                        return [];
+                    }
+                    return (json && json.data) ? json.data : [];
+                },
+                error: function() {
+                    showGlobalAlert('Ocurrió un error al cargar el listado de citas.', 'danger');
+                }
+            },
+            createdRow: function(row) {
+                $(row).addClass('cita-row');
+            },
+            columns: [
+                {
+                    data: 'id',
+                    render: function(data) {
+                        return `<strong>#CIT-${data}</strong>`;
+                    }
+                },
+                {
+                    data: 'razon_social',
+                    render: function(data, type, c) {
+                        const nombreInst = c.nombre_completo || c.razon_social || '';
+                        let sedeInfo = '';
+                        if (c.sede_municipio || c.sede_estado) {
+                            const ubicacionStr = [c.sede_municipio, c.sede_estado].filter(Boolean).join(', ');
+                            sedeInfo = `<div class="mt-1"><span class="badge bg-light text-dark border" style="font-size:0.7rem;">Sede: ${ubicacionStr}</span> <small class="text-muted">${c.sede_detalles || ''}</small></div>`;
+                        } else if (c.estado) {
+                            sedeInfo = `<div class="mt-1"><small class="text-muted">${c.estado}${c.municipio ? `, ${c.municipio}` : ''}</small></div>`;
+                        }
+                        return `
+                            <span style="white-space: nowrap;"><strong>${c.tipo_documento}-${c.RIF}</strong></span>
+                            <span class="badge bg-light text-success border ms-1" style="font-size:0.72rem; text-transform:capitalize; font-weight:600;">${c.tipo || 'Institucional'}</span><br>
+                            <strong class="text-success" style="font-size:0.88rem;">${nombreInst}</strong>
+                            ${sedeInfo}
+                        `;
+                    }
+                },
+                {
+                    data: 'fecha_visita',
+                    render: function(data, type, c) {
+                        return `
+                            ${formatDate(c.fecha_visita)}<br>
+                            <small class="text-success fw-600">${formatTime(c.hora_inicio)}</small>
+                        `;
+                    }
+                },
+                {
+                    data: 'total_visitantes',
+                    render: function(data, type, c) {
+                        return `<span class="badge-premium btn-ver-visitantes ${parseInt(c.total_visitantes) > 0 ? 'badge-premium-info' : 'bg-secondary'}" data-id="${c.id}" data-name="${c.razon_social}" style="cursor: pointer;">${c.total_visitantes} visitantes</span>`;
+                    }
+                },
+                {
+                    data: 'guia_nombre',
+                    render: function(data, type, c) {
+                        const guiaAsignado = c.guia_nombre ? `${c.guia_nombre} ${c.guia_apellido || ''}`.trim() : '<span class="text-muted italic">No asignado</span>';
+                        return `<span class="text-muted italic">${guiaAsignado}</span>`;
+                    }
+                },
+                {
+                    data: 'estatus',
+                    render: function(data, type, c) {
+                        if (c.estatus === 'aprobado') {
+                            return '<span class="badge-premium badge-premium-admin">Aprobada</span>';
+                        } else if (c.estatus === 'completado') {
+                            return '<span class="badge-premium badge-premium-superadmin">Completada</span>';
+                        } else if (c.estatus === 'cancelado') {
+                            return '<span class="badge-premium badge-premium-danger">Cancelada</span>';
+                        }
+                        return '<span class="badge-premium badge-premium-guia">Pendiente</span>';
+                    }
+                },
+                {
+                    data: 'pago_estado',
+                    render: function(data, type, c) {
+                        return c.pago_estado === 'pagado' 
+                            ? '<span class="badge-premium badge-payment-paid">Pagado</span>'
+                            : '<span class="badge-premium badge-payment-pending">Pendiente</span>';
+                    }
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    className: 'no-sort text-center',
+                    render: function(data, type, c) {
+                        const nombreInst = c.nombre_completo || c.razon_social || '';
+                        return `
+                            <div class="table-actions justify-content-center">
+                                <button class="btn-action btn-action-edit btn-importar-visitantes" data-id="${c.id}" data-name="${c.razon_social}" title="Importar Visitantes (CSV)">
+                                    <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
+                                </button>
+                                <button class="btn-action btn-action-edit btn-editar-cita" data-id="${c.id}" title="Editar Cita">
+                                    <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                </button>
+                                <a href="controllers/CitaController.php?action=descargar_plantilla&cita_id=${c.id}" class="btn-action btn-action-edit" title="Descargar Plantilla Excel (.xlsx)" target="_blank">
+                                    <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM17 13l-5 5-5-5h3V9h4v4h3z"/></svg>
+                                </a>
+                                <button class="btn-action btn-action-delete btn-eliminar-cita" data-id="${c.id}" data-name="${nombreInst}" title="Eliminar Cita">
+                                    <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
             ]
         });
     }
@@ -2382,79 +2393,74 @@ $(document).ready(function() {
     let currentVisitorIds = [];
 
     function cargarVisitantesCita(id) {
-        $('#tablaVerVisitantesBody').empty().append('<tr><td colspan="5" class="text-center py-4"><div class="spinner-border text-success" role="status"></div><br><small class="text-muted mt-2 d-block">Cargando listado de visitantes...</small></td></tr>');
         $('#paginacionModalVisitantes').hide();
 
-        return $.ajax({
-            url: `controllers/CitaController.php?action=listar_visitantes&cita_id=${id}`,
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if ($.fn.DataTable.isDataTable('#tablaVerVisitantesModal')) {
-                    $('#tablaVerVisitantesModal').DataTable().destroy();
-                }
-                $('#tablaVerVisitantesBody').empty();
-                currentVisitorIds = [];
-                if (response.status === 'success') {
-                    cacheModalVisitantes = response.data || [];
-                    
-                    cacheModalVisitantes.forEach(function(v) {
-                        currentVisitorIds.push(parseInt(v.id));
-                    });
-
-                    renderModalVisitantesTable(cacheModalVisitantes);
-                } else {
-                    $('#tablaVerVisitantesBody').append('<tr><td colspan="5" class="text-center text-muted py-4">No se encontraron visitantes registrados para esta cita.</td></tr>');
-                }
-            },
-            error: function(xhr) {
-                if ($.fn.DataTable.isDataTable('#tablaVerVisitantesModal')) {
-                    $('#tablaVerVisitantesModal').DataTable().destroy();
-                }
-                let errorMsg = 'Error al cargar los visitantes.';
-                if (xhr.responseJSON && xhr.responseJSON.message) {
-                    errorMsg = xhr.responseJSON.message;
-                }
-                $('#tablaVerVisitantesBody').html(`<tr><td colspan="5" class="text-center text-danger py-4"><strong>✕ Error:</strong> ${errorMsg}</td></tr>`);
-            }
-        });
-    }
-
-    function renderModalVisitantesTable(data) {
         if ($.fn.DataTable.isDataTable('#tablaVerVisitantesModal')) {
             $('#tablaVerVisitantesModal').DataTable().destroy();
         }
         $('#tablaVerVisitantesBody').empty();
 
-        if (!data || data.length === 0) {
-            $('#tablaVerVisitantesBody').append('<tr><td colspan="5" class="text-center text-muted py-4">No se encontraron visitantes registrados para esta cita.</td></tr>');
-            return;
-        }
-
-        data.forEach(function(v, idx) {
-            const actualIdx = idx + 1;
-            const cedula = v.cedula ? v.cedula : '<span class="text-muted italic">Sin Cédula (Menor)</span>';
-            const fechaNac = v.fecha_nacimiento ? formatDate(v.fecha_nacimiento) : '<span class="text-muted italic">N/E</span>';
-            $('#tablaVerVisitantesBody').append(`
-                <tr>
-                    <td class="text-center fw-600">${actualIdx}</td>
-                    <td><strong>${cedula}</strong></td>
-                    <td>${v.nombres} ${v.apellidos}</td>
-                    <td class="text-center">${fechaNac}</td>
-                    <td class="text-center">
-                        <button type="button" class="btn-quitar-visitante-asistencia btn-remove-contact" data-visitante-id="${v.id}" title="Remover de la asistencia" style="width:24px; height:24px; font-size:10px; padding:0; display:inline-flex; align-items:center; justify-content:center;">✕</button>
-                    </td>
-                </tr>
-            `);
-        });
-
         dtModalVisitantes = $('#tablaVerVisitantesModal').DataTable({
+            serverSide: true,
+            processing: true,
             responsive: true,
             pageLength: 5,
             lengthMenu: [[5, 10, 25], [5, 10, 25]],
             order: [[0, 'asc']],
-            columnDefs: [
-                { targets: 'no-sort', orderable: false, searchable: false }
+            ajax: {
+                url: `controllers/CitaController.php?action=listar_visitantes&cita_id=${id}`,
+                type: 'GET',
+                dataType: 'json',
+                dataSrc: function(json) {
+                    if (json && json.status === 'error') {
+                        return [];
+                    }
+                    cacheModalVisitantes = (json && json.data) ? json.data : [];
+                    if (Array.isArray(json.allIds)) {
+                        currentVisitorIds = json.allIds.map(function(vid) { return parseInt(vid, 10); });
+                    } else {
+                        currentVisitorIds = cacheModalVisitantes.map(function(v) { return parseInt(v.id, 10); });
+                    }
+                    return cacheModalVisitantes;
+                }
+            },
+            columns: [
+                {
+                    data: 'id',
+                    className: 'text-center fw-600',
+                    render: function(data, type, row, meta) {
+                        return meta.row + meta.settings._iDisplayStart + 1;
+                    }
+                },
+                {
+                    data: 'cedula',
+                    render: function(data) {
+                        const cedula = data ? data : '<span class="text-muted italic">Sin Cédula (Menor)</span>';
+                        return `<strong>${cedula}</strong>`;
+                    }
+                },
+                {
+                    data: 'nombres',
+                    render: function(data, type, v) {
+                        return `${v.nombres} ${v.apellidos}`;
+                    }
+                },
+                {
+                    data: 'fecha_nacimiento',
+                    className: 'text-center',
+                    render: function(data) {
+                        return data ? formatDate(data) : '<span class="text-muted italic">N/E</span>';
+                    }
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    className: 'no-sort text-center',
+                    render: function(data, type, v) {
+                        return `<button type="button" class="btn-quitar-visitante-asistencia btn-remove-contact" data-visitante-id="${v.id}" title="Remover de la asistencia" style="width:24px; height:24px; font-size:10px; padding:0; display:inline-flex; align-items:center; justify-content:center;">✕</button>`;
+                    }
+                }
             ]
         });
     }

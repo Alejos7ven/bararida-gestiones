@@ -632,47 +632,114 @@
 
         if ($body.length === 0) return;
 
-        $wrapper.hide();
-        $loader.show();
+        if ($.fn.DataTable.isDataTable('#tablaCitasHoy')) {
+            $('#tablaCitasHoy').DataTable().ajax.reload(null, false);
+            return;
+        }
 
-        $.ajax({
-            url: 'controllers/CitaController.php?action=citas_hoy',
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                $loader.hide();
-                if ($.fn.DataTable.isDataTable('#tablaCitasHoy')) {
-                    $('#tablaCitasHoy').DataTable().destroy();
-                }
-                $body.empty();
+        $loader.hide();
+        $body.empty();
+        $wrapper.fadeIn(300);
 
-                if (response.status === 'success') {
-                    const citas = response.data || [];
-                    if (citas.length === 0) {
-                        $body.append('<tr><td colspan="8" class="text-center text-muted py-4">No hay visitas guiadas programadas para el día de hoy.</td></tr>');
-                        $wrapper.fadeIn(300);
-                        return;
+        $('#tablaCitasHoy').DataTable({
+            serverSide: true,
+            processing: true,
+            responsive: true,
+            pageLength: 5,
+            lengthMenu: [[5, 10, 20], [5, 10, 20]],
+            order: [[1, 'asc']], // Ordenar por hora
+            ajax: {
+                url: 'controllers/CitaController.php?action=citas_hoy',
+                type: 'GET',
+                dataType: 'json',
+                dataSrc: function(json) {
+                    if (json && json.status === 'error') {
+                        return [];
                     }
-
-                    citas.forEach(function(c) {
-                        const hora = formatTime(c.hora_inicio);
+                    return (json && json.data) ? json.data : [];
+                }
+            },
+            drawCallback: function() {
+                iniciarContadorRecorridos();
+            },
+            columns: [
+                {
+                    data: 'id',
+                    render: function(data) {
+                        return `<strong>#CIT-${data}</strong>`;
+                    }
+                },
+                {
+                    data: 'hora_inicio',
+                    render: function(data) {
+                        return `<strong>${formatTime(data)}</strong>`;
+                    }
+                },
+                {
+                    data: 'razon_social',
+                    render: function(data, type, c) {
+                        return `
+                            <strong>${c.tipo_documento}-${c.rif}</strong><br>
+                            <small class="text-muted">${c.razon_social}</small>
+                        `;
+                    }
+                },
+                {
+                    data: 'recorrido_nombre',
+                    render: function(data, type, c) {
                         const userRol = ($('#quickAccessCard').data('user-rol') || '').toString().toLowerCase().trim();
                         const esAdmin = userRol === 'superadmin' || userRol === 'admin';
                         const esMiAsignacion = parseInt(c.es_mi_asignacion, 10) === 1;
-                        const tieneGuia = !!c.guias_asignados;
                         const puedeGestionarRecorrido = esAdmin || esMiAsignacion;
 
-                        // 1. Columna Guía(s) - Solo píldoras con los nombres de los guías
-                        let guiasHtml = '';
-                        if (c.guias_asignados) {
-                            const listado = c.guias_asignados.split(',').map(g => g.trim());
-                            guiasHtml = listado.map(nombre => `<span class="badge bg-success mb-1 d-inline-block text-truncate shadow-xs" style="max-width: 140px; font-size:0.75rem; font-weight:600;" title="${nombre}">${nombre}</span>`).join('<br>');
-                        } else {
-                            guiasHtml = `<span class="badge bg-light text-muted border" style="font-size:0.75rem;">Sin asignar</span>`;
-                        }
+                        const recId = c.recorrido_id ? parseInt(c.recorrido_id, 10) : null;
+                        const recNombre = c.recorrido_nombre || '';
 
-                        // 2. Columna Estado - Badges descriptivos y timer dinámico si está en recorrido
-                        let estadoHtml = '';
+                        if (recNombre && recId) {
+                            return `
+                                <div class="d-inline-flex align-items-center justify-content-center flex-wrap gap-1">
+                                    <button type="button" class="btn btn-sm btn-outline-success btn-ver-recorrido-mapa py-0.5 px-2 d-inline-flex align-items-center gap-1 shadow-2xs fw-medium" data-recorrido-id="${recId}" title="Ver trazado en el mapa interactivo">
+                                        <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                                        <span>${recNombre}</span>
+                                    </button>
+                                    ${puedeGestionarRecorrido ? `
+                                        <button type="button" class="btn btn-sm btn-link text-success p-0 ms-1 btn-abrir-asignar-recorrido" data-id="${c.id}" data-institucion="${c.razon_social}" data-recorrido-id="${recId}" title="Cambiar recorrido">
+                                            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                        </button>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }
+                        if (puedeGestionarRecorrido) {
+                            return `
+                                <button type="button" class="btn btn-sm btn-outline-primary btn-abrir-asignar-recorrido py-0.5 px-2 d-inline-flex align-items-center gap-1 shadow-2xs fw-bold" data-id="${c.id}" data-institucion="${c.razon_social}" data-recorrido-id="" style="border-radius:8px; font-size:0.75rem;" title="Asignar recorrido a esta cita">
+                                    <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:currentColor;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                                    Asignar
+                                </button>
+                            `;
+                        }
+                        return `<span class="badge bg-light text-muted border" style="font-size:0.75rem;">Sin recorrido</span>`;
+                    }
+                },
+                {
+                    data: 'total_visitantes',
+                    render: function(data) {
+                        return `<span class="badge bg-info text-dark" style="font-size:0.75rem; font-weight:600;">${data}</span>`;
+                    }
+                },
+                {
+                    data: 'guias_asignados',
+                    render: function(data) {
+                        if (data) {
+                            const listado = data.split(',').map(g => g.trim());
+                            return listado.map(nombre => `<span class="badge bg-success mb-1 d-inline-block text-truncate shadow-xs" style="max-width: 140px; font-size:0.75rem; font-weight:600;" title="${nombre}">${nombre}</span>`).join('<br>');
+                        }
+                        return `<span class="badge bg-light text-muted border" style="font-size:0.75rem;">Sin asignar</span>`;
+                    }
+                },
+                {
+                    data: 'estatus',
+                    render: function(data, type, c) {
                         if (c.estatus === 'en_recorrido') {
                             const segRestantes = parseInt(c.segundos_restantes, 10) || 0;
                             const h = Math.floor(segRestantes / 3600);
@@ -682,7 +749,7 @@
                                                (m < 10 ? '0' + m : m) + ':' + 
                                                (s < 10 ? '0' + s : s);
 
-                            estadoHtml = `
+                            return `
                                 <div>
                                     <span class="badge bg-primary d-inline-flex align-items-center gap-1 shadow-sm" style="font-size:0.75rem; padding: 0.35em 0.65em;">
                                         <span class="spinner-grow spinner-grow-sm text-light" style="width:0.4rem;height:0.4rem;" role="status"></span>
@@ -694,23 +761,33 @@
                                 </div>
                             `;
                         } else if (c.estatus === 'completado') {
-                            estadoHtml = `
+                            return `
                                 <span class="badge bg-secondary d-inline-flex align-items-center gap-1" style="font-size:0.75rem; padding: 0.35em 0.65em;">
                                     <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:currentColor;"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Completado
                                 </span>
                             `;
                         } else if (c.estatus === 'cancelado') {
-                            estadoHtml = `<span class="badge bg-danger" style="font-size:0.75rem; padding: 0.35em 0.65em;">Cancelado</span>`;
+                            return `<span class="badge bg-danger" style="font-size:0.75rem; padding: 0.35em 0.65em;">Cancelado</span>`;
                         } else if (c.estatus === 'aprobado') {
-                            estadoHtml = `<span class="badge bg-success" style="font-size:0.75rem; padding: 0.35em 0.65em;">Aprobada</span>`;
-                        } else {
-                            estadoHtml = `<span class="badge bg-warning text-dark" style="font-size:0.75rem; padding: 0.35em 0.65em;">Pendiente</span>`;
+                            return `<span class="badge bg-success" style="font-size:0.75rem; padding: 0.35em 0.65em;">Aprobada</span>`;
                         }
+                        return `<span class="badge bg-warning text-dark" style="font-size:0.75rem; padding: 0.35em 0.65em;">Pendiente</span>`;
+                    }
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    className: 'no-sort text-center',
+                    render: function(data, type, c) {
+                        const userRol = ($('#quickAccessCard').data('user-rol') || '').toString().toLowerCase().trim();
+                        const esAdmin = userRol === 'superadmin' || userRol === 'admin';
+                        const esMiAsignacion = parseInt(c.es_mi_asignacion, 10) === 1;
+                        const tieneGuia = !!c.guias_asignados;
+                        const puedeGestionarRecorrido = esAdmin || esMiAsignacion;
 
-                        // 3. Columna Acciones - Botones claros, estilizados y ubicados exclusivamente aquí
                         let accionesBtns = [];
 
-                        // Botón Asignar / Gestionar Guía (Solo Administradores / SuperAdmin)
                         if (esAdmin) {
                             const asigTitle = tieneGuia ? 'Gestionar guías asignados' : 'Asignar guía a esta cita';
                             const asigIcon = tieneGuia
@@ -724,7 +801,6 @@
                             `);
                         }
 
-                        // Botón Iniciar Recorrido / Aceptar Visita (Para el Guía Asignado o Admin)
                         if (tieneGuia && puedeGestionarRecorrido && c.estatus !== 'en_recorrido' && c.estatus !== 'completado' && c.estatus !== 'cancelado') {
                             const btnTexto = esAdmin ? 'Iniciar' : 'Iniciar Recorrido';
                             accionesBtns.push(`
@@ -735,7 +811,6 @@
                             `);
                         }
 
-                        // Botón Finalizar Recorrido (Para el Guía Asignado o Admin)
                         if (c.estatus === 'en_recorrido' && puedeGestionarRecorrido) {
                             const btnTexto = esAdmin ? 'Finalizar' : 'Finalizar Recorrido';
                             accionesBtns.push(`
@@ -746,92 +821,19 @@
                             `);
                         }
 
-                        // Si ya está completado
                         if (c.estatus === 'completado') {
                             accionesBtns.push(`
                                 <span class="badge bg-light text-secondary border px-2 py-1" style="font-size:0.75rem;">Visita Finalizada</span>
                             `);
                         }
 
-                        let accionesHtml = '';
                         if (accionesBtns.length > 0) {
-                            accionesHtml = `<div class="d-flex align-items-center justify-content-center flex-wrap gap-1">${accionesBtns.join('')}</div>`;
-                        } else {
-                            accionesHtml = `<span class="text-muted" style="font-size:0.8rem;">—</span>`;
+                            return `<div class="d-flex align-items-center justify-content-center flex-wrap gap-1">${accionesBtns.join('')}</div>`;
                         }
-
-                        // 4. Columna Recorrido (Visualización interactiva y asignación)
-                        let recorridoHtml = '';
-                        const recId = c.recorrido_id ? parseInt(c.recorrido_id, 10) : null;
-                        const recNombre = c.recorrido_nombre || '';
-
-                        if (recNombre && recId) {
-                            recorridoHtml = `
-                                <div class="d-inline-flex align-items-center justify-content-center flex-wrap gap-1">
-                                    <button type="button" class="btn btn-sm btn-outline-success btn-ver-recorrido-mapa py-0.5 px-2 d-inline-flex align-items-center gap-1 shadow-2xs fw-medium" data-recorrido-id="${recId}" title="Ver trazado en el mapa interactivo">
-                                        <svg viewBox="0 0 24 24" style="width:13px;height:13px;fill:currentColor;"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                                        <span>${recNombre}</span>
-                                    </button>
-                                    ${puedeGestionarRecorrido ? `
-                                        <button type="button" class="btn btn-sm btn-link text-success p-0 ms-1 btn-abrir-asignar-recorrido" data-id="${c.id}" data-institucion="${c.razon_social}" data-recorrido-id="${recId}" title="Cambiar recorrido">
-                                            <svg viewBox="0 0 24 24" style="width:14px;height:14px;fill:currentColor;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                                        </button>
-                                    ` : ''}
-                                </div>
-                            `;
-                        } else {
-                            if (puedeGestionarRecorrido) {
-                                recorridoHtml = `
-                                    <button type="button" class="btn btn-sm btn-outline-primary btn-abrir-asignar-recorrido py-0.5 px-2 d-inline-flex align-items-center gap-1 shadow-2xs fw-bold" data-id="${c.id}" data-institucion="${c.razon_social}" data-recorrido-id="" style="border-radius:8px; font-size:0.75rem;" title="Asignar recorrido a esta cita">
-                                        <svg viewBox="0 0 24 24" style="width:12px;height:12px;fill:currentColor;"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                                        Asignar
-                                    </button>
-                                `;
-                            } else {
-                                recorridoHtml = `<span class="badge bg-light text-muted border" style="font-size:0.75rem;">Sin recorrido</span>`;
-                            }
-                        }
-
-                        const rowHtml = `
-                            <tr>
-                                <td><strong>#CIT-${c.id}</strong></td>
-                                <td><strong>${hora}</strong></td>
-                                <td>
-                                    <strong>${c.tipo_documento}-${c.rif}</strong><br>
-                                    <small class="text-muted">${c.razon_social}</small>
-                                </td>
-                                <td>${recorridoHtml}</td>
-                                <td><span class="badge bg-info text-dark" style="font-size:0.75rem; font-weight:600;">${c.total_visitantes}</span></td>
-                                <td>${guiasHtml}</td>
-                                <td>${estadoHtml}</td>
-                                <td>${accionesHtml}</td>
-                            </tr>
-                        `;
-                        $body.append(rowHtml);
-                    });
-
-                    iniciarContadorRecorridos();
-                    $wrapper.fadeIn(300);
-
-                    // Inicializar DataTables para las citas de hoy en el dashboard
-                    $('#tablaCitasHoy').DataTable({
-                        pageLength: 5,
-                        lengthMenu: [[5, 10, 20], [5, 10, 20]],
-                        order: [[1, 'asc']], // Ordenar por hora
-                        columnDefs: [
-                            { targets: 'no-sort', orderable: false, searchable: false }
-                        ]
-                    });
-                } else {
-                    $body.append(`<tr><td colspan="8" class="text-center text-danger py-4">No se pudo cargar la agenda del día: ${response.message}</td></tr>`);
-                    $wrapper.fadeIn(300);
+                        return `<span class="text-muted" style="font-size:0.8rem;">—</span>`;
+                    }
                 }
-            },
-            error: function() {
-                $loader.hide();
-                $body.append('<tr><td colspan="8" class="text-center text-danger py-4">Error al cargar la agenda de hoy.</td></tr>');
-                $wrapper.fadeIn(300);
-            }
+            ]
         });
     }
 

@@ -59,132 +59,125 @@ $(document).ready(function() {
     }
 
     // =========================================================================
-    // LISTAR PERSONAL (AJAX & DataTables)
+    // LISTAR PERSONAL (AJAX & DataTables Server-Side)
     // =========================================================================
     function listarPersonal() {
-        if ($.fn.DataTable.isDataTable('#tablaPersonal')) {
-            $('#tablaPersonal').DataTable().destroy();
-        }
-
-        $tablaPersonal.html(`
-            <tr id="loaderPersonal">
-                <td colspan="6" class="text-center py-5">
-                    <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                    <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando registros de personal...</p>
-                </td>
-            </tr>
-        `);
-
-        $.ajax({
-            url: 'controllers/PersonalController.php?action=listar',
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    cachePersonal = response.data || [];
-                    renderPersonalTable(cachePersonal);
-                } else {
-                    if ($.fn.DataTable.isDataTable('#tablaPersonal')) {
-                        $('#tablaPersonal').DataTable().destroy();
-                    }
-                    $tablaPersonal.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">No se pudo cargar la lista de personal.</td></tr>');
-                }
-            },
-            error: function(xhr) {
-                if ($.fn.DataTable.isDataTable('#tablaPersonal')) {
-                    $('#tablaPersonal').DataTable().destroy();
-                }
-                $tablaPersonal.empty().append('<tr><td colspan="6" class="text-center text-muted py-4">Ocurrió un error al cargar la lista de personal.</td></tr>');
-                showGlobalAlert('Ocurrió un error al cargar la lista de personal. Contacte a soporte.', 'danger');
-            }
-        });
-    }
-
-    function renderPersonalTable(data) {
-        if ($.fn.DataTable.isDataTable('#tablaPersonal')) {
-            $('#tablaPersonal').DataTable().destroy();
-        }
-        $tablaPersonal.empty();
-
-        if (!data || data.length === 0) {
-            $tablaPersonal.append('<tr><td colspan="6" class="text-center text-muted py-4">No se encontraron registros de personal.</td></tr>');
+        if ($.fn.DataTable.isDataTable('#tablaPersonal') && dtPersonal) {
+            dtPersonal.ajax.reload(null, false);
             return;
         }
 
-        const loggedUserId = parseInt($('#currentLoggedUserId').val(), 10);
-        const loggedUserRol = ($('#currentLoggedUserRol').val() || '').toLowerCase().trim();
-
-        data.forEach(function(u) {
-            let badgeRol = '';
-            const rolNorm = (u.rol || '').toLowerCase().trim();
-            if (rolNorm === 'superadmin') {
-                badgeRol = '<span class="badge-premium badge-premium-superadmin">Super Admin</span>';
-            } else if (rolNorm === 'admin') {
-                badgeRol = '<span class="badge-premium badge-premium-admin">Administrador</span>';
-            } else {
-                badgeRol = '<span class="badge-premium badge-premium-guia">Guía de Campo</span>';
-            }
-
-            const targetId = parseInt(u.id, 10);
-            const isRootSuperadmin = (targetId === 0);
-            const isSelf = (!isNaN(loggedUserId) && targetId === loggedUserId);
-            const isTargetSuperadmin = (rolNorm === 'superadmin');
-
-            // Determinar si la eliminación está deshabilitada y la razón descriptiva
-            let deleteDisabled = '';
-            let deleteTitle = 'Eliminar Personal';
-
-            if (isRootSuperadmin) {
-                deleteDisabled = 'disabled';
-                deleteTitle = 'No es posible eliminar al Super Administrador principal';
-            } else if (isSelf) {
-                deleteDisabled = 'disabled';
-                deleteTitle = 'No puede eliminar su propia cuenta de usuario en sesión';
-            } else if (isTargetSuperadmin && loggedUserRol !== 'superadmin') {
-                deleteDisabled = 'disabled';
-                deleteTitle = 'No posee permisos para eliminar a un Super Administrador';
-            }
-
-            // Determinar si la edición está deshabilitada y la razón
-            let editDisabled = '';
-            let editTitle = 'Editar Personal';
-
-            if (isTargetSuperadmin && loggedUserRol !== 'superadmin') {
-                editDisabled = 'disabled';
-                editTitle = 'No posee permisos para editar a un Super Administrador';
-            }
-
-            const nameFull = u.nombre_completo || `${u.nombre || ''} ${u.apellido || ''}`.trim();
-
-            const rowHtml = `
-                <tr class="personal-row">
-                    <td class="fw-600">#${u.id}</td>
-                    <td><strong>${u.tipo_documento}-${u.cedula}</strong></td>
-                    <td>${nameFull}</td>
-                    <td>${badgeRol}</td>
-                    <td>${u.created_at}</td>
-                    <td class="text-center">
-                        <div class="table-actions justify-content-center">
-                            <button class="btn-action btn-action-edit btn-editar-personal" data-id="${u.id}" ${editDisabled} title="${editTitle}">
-                                <svg viewBox="0 0 24 24"><path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/></svg>
-                            </button>
-                            <button class="btn-action btn-action-delete btn-eliminar-personal" data-id="${u.id}" data-name="${nameFull}" ${deleteDisabled} title="${deleteTitle}">
-                                <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            $tablaPersonal.append(rowHtml);
-        });
+        $tablaPersonal.empty();
 
         dtPersonal = $('#tablaPersonal').DataTable({
+            serverSide: true,
+            processing: true,
             responsive: true,
             order: [[0, 'desc']],
-            columnDefs: [
-                { targets: 'no-sort', orderable: false, searchable: false }
+            ajax: {
+                url: 'controllers/PersonalController.php?action=listar',
+                type: 'GET',
+                dataType: 'json',
+                dataSrc: function(json) {
+                    if (json && json.status === 'error') {
+                        showGlobalAlert(json.message || 'No se pudo cargar la lista de personal.', 'danger');
+                        return [];
+                    }
+                    cachePersonal = (json && json.data) ? json.data : [];
+                    return cachePersonal;
+                },
+                error: function() {
+                    showGlobalAlert('Ocurrió un error al cargar la lista de personal. Contacte a soporte.', 'danger');
+                }
+            },
+            createdRow: function(row) {
+                $(row).addClass('personal-row');
+            },
+            columns: [
+                {
+                    data: 'id',
+                    className: 'fw-600',
+                    render: function(data) {
+                        return `#${data}`;
+                    }
+                },
+                {
+                    data: 'cedula',
+                    render: function(data, type, u) {
+                        return `<strong>${u.tipo_documento}-${u.cedula}</strong>`;
+                    }
+                },
+                {
+                    data: 'nombre_completo',
+                    render: function(data, type, u) {
+                        return u.nombre_completo || `${u.nombre || ''} ${u.apellido || ''}`.trim();
+                    }
+                },
+                {
+                    data: 'rol',
+                    render: function(data, type, u) {
+                        const rolNorm = (u.rol || '').toLowerCase().trim();
+                        if (rolNorm === 'superadmin') {
+                            return '<span class="badge-premium badge-premium-superadmin">Super Admin</span>';
+                        } else if (rolNorm === 'admin') {
+                            return '<span class="badge-premium badge-premium-admin">Administrador</span>';
+                        }
+                        return '<span class="badge-premium badge-premium-guia">Guía de Campo</span>';
+                    }
+                },
+                {
+                    data: 'created_at'
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    className: 'no-sort text-center',
+                    render: function(data, type, u) {
+                        const loggedUserId = parseInt($('#currentLoggedUserId').val(), 10);
+                        const loggedUserRol = ($('#currentLoggedUserRol').val() || '').toLowerCase().trim();
+                        const rolNorm = (u.rol || '').toLowerCase().trim();
+                        const targetId = parseInt(u.id, 10);
+                        const isRootSuperadmin = (targetId === 0);
+                        const isSelf = (!isNaN(loggedUserId) && targetId === loggedUserId);
+                        const isTargetSuperadmin = (rolNorm === 'superadmin');
+
+                        let deleteDisabled = '';
+                        let deleteTitle = 'Eliminar Personal';
+
+                        if (isRootSuperadmin) {
+                            deleteDisabled = 'disabled';
+                            deleteTitle = 'No es posible eliminar al Super Administrador principal';
+                        } else if (isSelf) {
+                            deleteDisabled = 'disabled';
+                            deleteTitle = 'No puede eliminar su propia cuenta de usuario en sesión';
+                        } else if (isTargetSuperadmin && loggedUserRol !== 'superadmin') {
+                            deleteDisabled = 'disabled';
+                            deleteTitle = 'No posee permisos para eliminar a un Super Administrador';
+                        }
+
+                        let editDisabled = '';
+                        let editTitle = 'Editar Personal';
+
+                        if (isTargetSuperadmin && loggedUserRol !== 'superadmin') {
+                            editDisabled = 'disabled';
+                            editTitle = 'No posee permisos para editar a un Super Administrador';
+                        }
+
+                        const nameFull = u.nombre_completo || `${u.nombre || ''} ${u.apellido || ''}`.trim();
+
+                        return `
+                            <div class="table-actions justify-content-center">
+                                <button class="btn-action btn-action-edit btn-editar-personal" data-id="${u.id}" ${editDisabled} title="${editTitle}">
+                                    <svg viewBox="0 0 24 24"><path d="M3 17.25V21H6.75L17.81 9.94L14.06 6.19L3 17.25ZM20.71 7.04C21.1 6.65 21.1 6.02 20.71 5.63L18.37 3.29C17.98 2.9 17.35 2.9 16.96 3.29L15.13 5.12L18.88 8.87L20.71 7.04Z"/></svg>
+                                </button>
+                                <button class="btn-action btn-action-delete btn-eliminar-personal" data-id="${u.id}" data-name="${nameFull}" ${deleteDisabled} title="${deleteTitle}">
+                                    <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
             ]
         });
     }

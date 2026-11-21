@@ -111,6 +111,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 function listarInstitucionesAction() {
     try {
         $instModel = new Institucion();
+
+        if (isset($_GET['draw'])) {
+            $draw = (int)$_GET['draw'];
+            $start = isset($_GET['start']) && is_numeric($_GET['start']) ? max(0, (int)$_GET['start']) : 0;
+            $length = isset($_GET['length']) && is_numeric($_GET['length']) ? (int)$_GET['length'] : 10;
+            $search = isset($_GET['search']['value']) ? trim((string)$_GET['search']['value']) : '';
+
+            $columnsMap = [
+                0 => 'e.documento',
+                1 => 'e.nombre_completo',
+                2 => 'i.tipo_organizacion',
+                3 => 'i.id',
+                4 => 'i.id'
+            ];
+
+            $orderColIdx = isset($_GET['order'][0]['column']) ? (int)$_GET['order'][0]['column'] : 1;
+            $orderColumn = $columnsMap[$orderColIdx] ?? 'e.nombre_completo';
+            $orderDirRaw = isset($_GET['order'][0]['dir']) ? strtoupper(trim((string)$_GET['order'][0]['dir'])) : 'ASC';
+            $orderDir = ($orderDirRaw === 'DESC') ? 'DESC' : 'ASC';
+
+            $instModel->setDtStart($start);
+            $instModel->setDtLength($length);
+            $instModel->setDtSearch($search);
+            $instModel->setDtOrderColumn($orderColumn);
+            $instModel->setDtOrderDir($orderDir);
+
+            $resultado = $instModel->listarPaginado();
+
+            http_response_code(200);
+            echo json_encode([
+                "status"          => "success",
+                "draw"            => $draw,
+                "recordsTotal"    => $resultado['recordsTotal'],
+                "recordsFiltered" => $resultado['recordsFiltered'],
+                "data"            => $resultado['data']
+            ]);
+            return;
+        }
+
         $instituciones = $instModel->listarTodas();
         http_response_code(200);
         echo json_encode([

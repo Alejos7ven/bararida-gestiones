@@ -21,108 +21,102 @@ $(document).ready(function() {
     listarVisitantes();
 
     // =========================================================================
-    // 1. LISTAR VISITANTES (AJAX & DataTables)
+    // 1. LISTAR VISITANTES (AJAX & DataTables Server-Side)
     // =========================================================================
     function listarVisitantes() {
-        if ($.fn.DataTable.isDataTable('#tablaVisitantes')) {
-            $('#tablaVisitantes').DataTable().destroy();
-        }
-
-        $tablaVisitantes.html(`
-            <tr id="loaderVisitantes">
-                <td colspan="7" class="text-center py-5">
-                    <div class="spinner-border text-success" role="status" style="width: 2.5rem; height: 2.5rem;">
-                        <span class="visually-hidden">Cargando...</span>
-                    </div>
-                    <p class="text-muted mt-2 mb-0" style="font-size: 0.9rem;">Cargando listado de visitantes...</p>
-                </td>
-            </tr>
-        `);
-
-        $.ajax({
-            url: 'controllers/VisitanteController.php?action=listar',
-            method: 'GET',
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    cacheVisitantes = response.data || [];
-                    renderVisitantesTable(cacheVisitantes);
-                } else {
-                    if ($.fn.DataTable.isDataTable('#tablaVisitantes')) {
-                        $('#tablaVisitantes').DataTable().destroy();
-                    }
-                    $tablaVisitantes.empty().append('<tr><td colspan="7" class="text-center text-muted py-4">No se pudo cargar el listado de visitantes.</td></tr>');
-                }
-            },
-            error: function() {
-                if ($.fn.DataTable.isDataTable('#tablaVisitantes')) {
-                    $('#tablaVisitantes').DataTable().destroy();
-                }
-                $tablaVisitantes.empty().append('<tr><td colspan="7" class="text-center text-muted py-4">Ocurrió un error al cargar el listado de visitantes.</td></tr>');
-                alert('Ocurrió un error al cargar el listado de visitantes.');
-            }
-        });
-    }
-
-    function renderVisitantesTable(data) {
-        if ($.fn.DataTable.isDataTable('#tablaVisitantes')) {
-            $('#tablaVisitantes').DataTable().destroy();
-        }
-        $tablaVisitantes.empty();
-
-        if (!data || data.length === 0) {
-            $tablaVisitantes.append('<tr><td colspan="7" class="text-center text-muted py-4">No se encontraron visitantes registrados.</td></tr>');
+        if ($.fn.DataTable.isDataTable('#tablaVisitantes') && dtVisitantes) {
+            dtVisitantes.ajax.reload(null, false);
             return;
         }
 
-        data.forEach(function(v) {
-            const cedula = v.cedula ? v.cedula : '<span class="text-muted italic">Sin Cédula (Menor)</span>';
-            const fechaNac = v.fecha_nacimiento ? formatDate(v.fecha_nacimiento) : '<span class="text-muted">N/E</span>';
-
-            // Formatear procedencia de la última cita
-            let procedenciaHtml = '<span class="badge bg-light text-muted border" style="font-size:0.75rem;">Sin citas registradas</span>';
-            if (v.procedencia_institucion) {
-                const ubicacionArr = [v.procedencia_municipio, v.procedencia_estado].filter(Boolean);
-                const ubicacionStr = ubicacionArr.length > 0 ? ` &bull; ${ubicacionArr.join(', ')}` : '';
-                const fechaVisitaStr = v.ultima_cita_fecha ? formatDate(v.ultima_cita_fecha) : '';
-                procedenciaHtml = `
-                    <div>
-                        <strong class="text-success" style="font-size:0.88rem;">${v.procedencia_institucion}</strong>
-                        <div class="mt-1" style="font-size:0.75rem; color:#6c757d;">
-                            <span>#CIT-${v.ultima_cita_id}${fechaVisitaStr ? ' (' + fechaVisitaStr + ')' : ''}</span>${ubicacionStr}
-                        </div>
-                    </div>
-                `;
-            }
-
-            const rowHtml = `
-                <tr class="visitor-row">
-                    <td><strong>#VIS-${v.id}</strong></td>
-                    <td><strong>${cedula}</strong></td>
-                    <td>${v.nombres}</td>
-                    <td>${v.apellidos}</td>
-                    <td>${fechaNac}</td>
-                    <td>${procedenciaHtml}</td>
-                    <td class="text-center">
-                        <div class="table-actions justify-content-center">
-                            <button class="btn-action btn-action-edit btn-editar-visitor" data-id="${v.id}" title="Editar Visitante">
-                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                            </button>
-                            <button class="btn-action btn-action-delete btn-eliminar-visitor" data-id="${v.id}" data-name="${v.nombres} ${v.apellidos}" title="Eliminar Visitante">
-                                <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            $tablaVisitantes.append(rowHtml);
-        });
+        $tablaVisitantes.empty();
 
         dtVisitantes = $('#tablaVisitantes').DataTable({
+            serverSide: true,
+            processing: true,
             responsive: true,
             order: [[0, 'desc']],
-            columnDefs: [
-                { targets: 'no-sort', orderable: false, searchable: false }
+            ajax: {
+                url: 'controllers/VisitanteController.php?action=listar',
+                type: 'GET',
+                dataType: 'json',
+                dataSrc: function(json) {
+                    if (json && json.status === 'error') {
+                        return [];
+                    }
+                    cacheVisitantes = (json && json.data) ? json.data : [];
+                    return cacheVisitantes;
+                },
+                error: function() {
+                    alert('Ocurrió un error al cargar el listado de visitantes.');
+                }
+            },
+            createdRow: function(row) {
+                $(row).addClass('visitor-row');
+            },
+            columns: [
+                {
+                    data: 'id',
+                    render: function(data) {
+                        return `<strong>#VIS-${data}</strong>`;
+                    }
+                },
+                {
+                    data: 'cedula',
+                    render: function(data) {
+                        const cedula = data ? data : '<span class="text-muted italic">Sin Cédula (Menor)</span>';
+                        return `<strong>${cedula}</strong>`;
+                    }
+                },
+                {
+                    data: 'nombres'
+                },
+                {
+                    data: 'apellidos'
+                },
+                {
+                    data: 'fecha_nacimiento',
+                    render: function(data) {
+                        return data ? formatDate(data) : '<span class="text-muted">N/E</span>';
+                    }
+                },
+                {
+                    data: 'procedencia_institucion',
+                    render: function(data, type, v) {
+                        if (!v.procedencia_institucion) {
+                            return '<span class="badge bg-light text-muted border" style="font-size:0.75rem;">Sin citas registradas</span>';
+                        }
+                        const ubicacionArr = [v.procedencia_municipio, v.procedencia_estado].filter(Boolean);
+                        const ubicacionStr = ubicacionArr.length > 0 ? ` &bull; ${ubicacionArr.join(', ')}` : '';
+                        const fechaVisitaStr = v.ultima_cita_fecha ? formatDate(v.ultima_cita_fecha) : '';
+                        return `
+                            <div>
+                                <strong class="text-success" style="font-size:0.88rem;">${v.procedencia_institucion}</strong>
+                                <div class="mt-1" style="font-size:0.75rem; color:#6c757d;">
+                                    <span>#CIT-${v.ultima_cita_id}${fechaVisitaStr ? ' (' + fechaVisitaStr + ')' : ''}</span>${ubicacionStr}
+                                </div>
+                            </div>
+                        `;
+                    }
+                },
+                {
+                    data: null,
+                    orderable: false,
+                    searchable: false,
+                    className: 'no-sort text-center',
+                    render: function(data, type, v) {
+                        return `
+                            <div class="table-actions justify-content-center">
+                                <button class="btn-action btn-action-edit btn-editar-visitor" data-id="${v.id}" title="Editar Visitante">
+                                    <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                                </button>
+                                <button class="btn-action btn-action-delete btn-eliminar-visitor" data-id="${v.id}" data-name="${v.nombres} ${v.apellidos}" title="Eliminar Visitante">
+                                    <svg viewBox="0 0 24 24" style="width:20px; height:20px;"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
             ]
         });
     }

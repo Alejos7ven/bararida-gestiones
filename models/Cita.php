@@ -31,6 +31,13 @@ class Cita extends Database {
     private ?int $filtro_personal_id = null;
     private bool $tiene_permiso_citas = true;
 
+    // Propiedades para Server-Side DataTables
+    private int $dtStart = 0;
+    private int $dtLength = 10;
+    private string $dtSearch = '';
+    private string $dtOrderColumn = 'c.id';
+    private string $dtOrderDir = 'DESC';
+
     /**
      * Constructor del modelo Cita
      */
@@ -182,6 +189,46 @@ class Cita extends Database {
         $this->tiene_permiso_citas = $tienePermiso;
     }
 
+    public function getDtStart(): int {
+        return $this->dtStart;
+    }
+
+    public function setDtStart(int $dtStart): void {
+        $this->dtStart = $dtStart;
+    }
+
+    public function getDtLength(): int {
+        return $this->dtLength;
+    }
+
+    public function setDtLength(int $dtLength): void {
+        $this->dtLength = $dtLength;
+    }
+
+    public function getDtSearch(): string {
+        return $this->dtSearch;
+    }
+
+    public function setDtSearch(string $dtSearch): void {
+        $this->dtSearch = $dtSearch;
+    }
+
+    public function getDtOrderColumn(): string {
+        return $this->dtOrderColumn;
+    }
+
+    public function setDtOrderColumn(string $dtOrderColumn): void {
+        $this->dtOrderColumn = $dtOrderColumn;
+    }
+
+    public function getDtOrderDir(): string {
+        return $this->dtOrderDir;
+    }
+
+    public function setDtOrderDir(string $dtOrderDir): void {
+        $this->dtOrderDir = $dtOrderDir;
+    }
+
     // =========================================================================
     // OPERACIONES DE PERSISTENCIA Y CONSULTA
     // =========================================================================
@@ -299,7 +346,12 @@ class Cita extends Database {
                              r.nombre AS recorrido_nombre,
                              s.detalles AS sede_detalles, par.parroquia AS sede_parroquia,
                              mun.municipio AS sede_municipio, est.estado AS sede_estado,
-                             (SELECT COUNT(*) FROM asistencia_cita ac WHERE ac.cita_id = c.id) AS total_visitantes
+                             (SELECT COUNT(*) FROM asistencia_cita ac WHERE ac.cita_id = c.id) AS total_visitantes,
+                             (SELECT GROUP_CONCAT(e_g.nombre_completo ORDER BY ga.rol_guia ASC SEPARATOR ', ')
+                              FROM guia_asignado ga
+                              INNER JOIN personal p_g ON p_g.id = ga.personal_id
+                              INNER JOIN entidades e_g ON p_g.entidad_id = e_g.id
+                              WHERE ga.cita_id = c.id) AS guia_nombre
                       FROM " . $this->table_name . " c
                       INNER JOIN instituciones i ON c.institucion_id = i.id
                       INNER JOIN entidades e ON i.entidad_id = e.id
@@ -317,6 +369,103 @@ class Cita extends Database {
         } catch (PDOException $e) {
             error_log("Error al listar citas: " . $e->getMessage());
             throw new Exception("Error al consultar el listado de citas.");
+        }
+    }
+
+    /**
+     * Obtiene el listado paginado de citas activas para DataTables Server-Side Processing
+     * utilizando las propiedades internas ($this->dtStart, $this->dtLength, $this->dtSearch, $this->dtOrderColumn, $this->dtOrderDir).
+     */
+    public function listarPaginado(): array {
+        try {
+            $stmtTotal = $this->db->prepare("SELECT COUNT(*) FROM " . $this->table_name . " c INNER JOIN instituciones i ON c.institucion_id = i.id WHERE c.activo = 1");
+            $stmtTotal->execute();
+            $recordsTotal = (int)$stmtTotal->fetchColumn();
+
+            $baseJoins = "FROM " . $this->table_name . " c
+                          INNER JOIN instituciones i ON c.institucion_id = i.id
+                          INNER JOIN entidades e ON i.entidad_id = e.id
+                          LEFT JOIN sedes s ON c.sede_id = s.id
+                          LEFT JOIN parroquias par ON s.parroquia_id = par.id_parroquia
+                          LEFT JOIN municipios mun ON par.id_municipio = mun.id_municipio
+                          LEFT JOIN estados est ON mun.id_estado = est.id_estado
+                          LEFT JOIN recorrido r ON c.recorrido_id = r.id
+                          WHERE c.activo = 1";
+
+            $searchSql = "";
+            $hasSearch = ($this->dtSearch !== '');
+            if ($hasSearch) {
+                $searchSql = " AND (
+                    CAST(c.id AS CHAR) LIKE :s1
+                    OR CONCAT('#CIT-', c.id) LIKE :s2
+                    OR e.documento LIKE :s3
+                    OR CONCAT(e.tipo_documento, '-', e.documento) LIKE :s4
+                    OR e.nombre_completo LIKE :s5
+                    OR c.tipo LIKE :s6
+                    OR c.fecha_visita LIKE :s7
+                    OR c.hora_inicio LIKE :s8
+                    OR c.estatus LIKE :s9
+                    OR c.pago_estado LIKE :s10
+                    OR r.nombre LIKE :s11
+                    OR mun.municipio LIKE :s12
+                    OR est.estado LIKE :s13
+                )";
+            }
+
+            if ($hasSearch) {
+                $stmtFiltered = $this->db->prepare("SELECT COUNT(*) " . $baseJoins . $searchSql);
+                $likeVal = '%' . $this->dtSearch . '%';
+                for ($i = 1; $i <= 13; $i++) {
+                    $stmtFiltered->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+                }
+                $stmtFiltered->execute();
+                $recordsFiltered = (int)$stmtFiltered->fetchColumn();
+            } else {
+                $recordsFiltered = $recordsTotal;
+            }
+
+            $queryData = "SELECT c.id, c.institucion_id, c.sede_id, c.recorrido_id, c.tipo, c.fecha_solicitud, c.fecha_visita, c.hora_inicio, c.estatus, c.metodo_pago, c.pago_estado,
+                                 e.tipo_documento, e.documento AS RIF, e.nombre_completo AS razon_social, e.nombre_completo,
+                                 r.nombre AS recorrido_nombre,
+                                 s.detalles AS sede_detalles, par.parroquia AS sede_parroquia,
+                                 mun.municipio AS sede_municipio, est.estado AS sede_estado,
+                                 (SELECT COUNT(*) FROM asistencia_cita ac WHERE ac.cita_id = c.id) AS total_visitantes,
+                                 (SELECT GROUP_CONCAT(e_g.nombre_completo ORDER BY ga.rol_guia ASC SEPARATOR ', ')
+                                  FROM guia_asignado ga
+                                  INNER JOIN personal p_g ON p_g.id = ga.personal_id
+                                  INNER JOIN entidades e_g ON p_g.entidad_id = e_g.id
+                                  WHERE ga.cita_id = c.id) AS guia_nombre "
+                       . $baseJoins
+                       . $searchSql
+                       . " ORDER BY " . $this->dtOrderColumn . " " . $this->dtOrderDir;
+
+            if ($this->dtLength > 0) {
+                $queryData .= " LIMIT :limit OFFSET :offset";
+            }
+
+            $stmtData = $this->db->prepare($queryData);
+            if ($hasSearch) {
+                $likeVal = '%' . $this->dtSearch . '%';
+                for ($i = 1; $i <= 13; $i++) {
+                    $stmtData->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+                }
+            }
+            if ($this->dtLength > 0) {
+                $stmtData->bindValue(":limit", $this->dtLength, PDO::PARAM_INT);
+                $stmtData->bindValue(":offset", $this->dtStart, PDO::PARAM_INT);
+            }
+
+            $stmtData->execute();
+            $data = $stmtData->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'recordsTotal'    => $recordsTotal,
+                'recordsFiltered' => $recordsFiltered,
+                'data'            => $data
+            ];
+        } catch (PDOException $e) {
+            error_log("Error al listar citas paginadas: " . $e->getMessage());
+            throw new Exception("Error al consultar el listado paginado de citas.");
         }
     }
 
@@ -515,6 +664,150 @@ class Cita extends Database {
         } catch (PDOException $e) {
             error_log("Error en Cita::obtenerCitasHoy(): " . $e->getMessage());
             return [];
+        }
+    }
+
+    /**
+     * Obtiene las citas programadas para el día de hoy de forma paginada para DataTables Server-Side Processing
+     * utilizando las propiedades internas ($this->filtro_rol, $this->filtro_personal_id, $this->tiene_permiso_citas,
+     * $this->dtStart, $this->dtLength, $this->dtSearch, $this->dtOrderColumn, $this->dtOrderDir).
+     */
+    public function obtenerCitasHoyPaginado(): array {
+        try {
+            $this->db->exec("UPDATE " . $this->table_name . " 
+                             SET estatus = 'completado' 
+                             WHERE estatus = 'en_recorrido' 
+                               AND (
+                                 fecha_visita < CURDATE() 
+                                 OR (fecha_visita = CURDATE() AND TIMESTAMPDIFF(MINUTE, hora_inicio, CURTIME()) >= 120)
+                               )");
+
+            $loggedId = $this->filtro_personal_id !== null ? (int)$this->filtro_personal_id : 0;
+            $rolNorm = strtolower(trim((string)$this->filtro_rol));
+            $filtrarPorGuia = (!$this->tiene_permiso_citas && ($rolNorm === 'guia' || $rolNorm === 'guía') && $this->filtro_personal_id !== null);
+
+            $baseFrom = "FROM " . $this->table_name . " c
+                         INNER JOIN instituciones i ON c.institucion_id = i.id
+                         INNER JOIN entidades e ON i.entidad_id = e.id
+                         LEFT JOIN sedes s ON c.sede_id = s.id
+                         LEFT JOIN parroquias par ON s.parroquia_id = par.id_parroquia
+                         LEFT JOIN municipios mun ON par.id_municipio = mun.id_municipio
+                         LEFT JOIN estados est ON mun.id_estado = est.id_estado
+                         LEFT JOIN recorrido r ON c.recorrido_id = r.id
+                         LEFT JOIN guia_asignado ga ON ga.cita_id = c.id
+                         LEFT JOIN personal p ON p.id = ga.personal_id
+                         LEFT JOIN entidades e2 ON p.entidad_id = e2.id
+                         WHERE c.activo = 1 AND DATE(c.fecha_visita) = CURDATE()";
+
+            if ($filtrarPorGuia) {
+                $baseFrom .= " AND EXISTS (
+                                SELECT 1 FROM guia_asignado ga2
+                                WHERE ga2.cita_id = c.id AND ga2.personal_id = :filter_personal_id
+                              )";
+            }
+
+            $stmtTotal = $this->db->prepare("SELECT COUNT(DISTINCT c.id) " . $baseFrom);
+            if ($filtrarPorGuia) {
+                $stmtTotal->bindValue(':filter_personal_id', $this->filtro_personal_id, PDO::PARAM_INT);
+            }
+            $stmtTotal->execute();
+            $recordsTotal = (int)$stmtTotal->fetchColumn();
+
+            $searchSql = "";
+            $hasSearch = ($this->dtSearch !== '');
+            if ($hasSearch) {
+                $searchSql = " AND (
+                    CAST(c.id AS CHAR) LIKE :s1
+                    OR CONCAT('#CIT-', c.id) LIKE :s2
+                    OR c.hora_inicio LIKE :s3
+                    OR e.documento LIKE :s4
+                    OR CONCAT(e.tipo_documento, '-', e.documento) LIKE :s5
+                    OR e.nombre_completo LIKE :s6
+                    OR r.nombre LIKE :s7
+                    OR c.estatus LIKE :s8
+                    OR e2.nombre_completo LIKE :s9
+                )";
+            }
+
+            if ($hasSearch) {
+                $stmtFiltered = $this->db->prepare("SELECT COUNT(DISTINCT c.id) " . $baseFrom . $searchSql);
+                if ($filtrarPorGuia) {
+                    $stmtFiltered->bindValue(':filter_personal_id', $this->filtro_personal_id, PDO::PARAM_INT);
+                }
+                $likeVal = '%' . $this->dtSearch . '%';
+                for ($i = 1; $i <= 9; $i++) {
+                    $stmtFiltered->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+                }
+                $stmtFiltered->execute();
+                $recordsFiltered = (int)$stmtFiltered->fetchColumn();
+            } else {
+                $recordsFiltered = $recordsTotal;
+            }
+
+            $queryData = "SELECT c.id, c.hora_inicio, c.estatus, c.pago_estado, c.tipo, c.fecha_visita, c.recorrido_id,
+                                 e.nombre_completo AS razon_social, e.tipo_documento, e.documento AS rif,
+                                 r.nombre AS recorrido_nombre,
+                                 s.detalles AS sede_detalles, par.parroquia AS sede_parroquia, mun.municipio AS sede_municipio, est.estado AS sede_estado,
+                                 (SELECT COUNT(*) FROM asistencia_cita ac WHERE ac.cita_id = c.id) AS total_visitantes,
+                                 GROUP_CONCAT(
+                                     e2.nombre_completo
+                                     ORDER BY ga.rol_guia ASC SEPARATOR ', '
+                                 ) AS guias_asignados,
+                                 CASE 
+                                     WHEN :logged_personal_id > 0 AND EXISTS (
+                                         SELECT 1 FROM guia_asignado ga_me 
+                                         WHERE ga_me.cita_id = c.id AND ga_me.personal_id = :logged_personal_id2
+                                     ) THEN 1 
+                                     ELSE 0 
+                                 END AS es_mi_asignacion,
+                                 CASE 
+                                     WHEN c.estatus = 'en_recorrido' THEN TIMESTAMPDIFF(SECOND, CONCAT(c.fecha_visita, ' ', c.hora_inicio), NOW())
+                                     ELSE 0 
+                                 END AS segundos_transcurridos,
+                                 CASE 
+                                     WHEN c.estatus = 'en_recorrido' THEN GREATEST(0, 7200 - TIMESTAMPDIFF(SECOND, CONCAT(c.fecha_visita, ' ', c.hora_inicio), NOW()))
+                                     ELSE 0 
+                                 END AS segundos_restantes "
+                       . $baseFrom
+                       . $searchSql
+                       . " GROUP BY c.id ORDER BY " . $this->dtOrderColumn . " " . $this->dtOrderDir;
+
+            if ($this->dtLength > 0) {
+                $queryData .= " LIMIT :limit OFFSET :offset";
+            }
+
+            $stmtData = $this->db->prepare($queryData);
+            $stmtData->bindValue(':logged_personal_id', $loggedId, PDO::PARAM_INT);
+            $stmtData->bindValue(':logged_personal_id2', $loggedId, PDO::PARAM_INT);
+            if ($filtrarPorGuia) {
+                $stmtData->bindValue(':filter_personal_id', $this->filtro_personal_id, PDO::PARAM_INT);
+            }
+            if ($hasSearch) {
+                $likeVal = '%' . $this->dtSearch . '%';
+                for ($i = 1; $i <= 9; $i++) {
+                    $stmtData->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+                }
+            }
+            if ($this->dtLength > 0) {
+                $stmtData->bindValue(':limit', $this->dtLength, PDO::PARAM_INT);
+                $stmtData->bindValue(':offset', $this->dtStart, PDO::PARAM_INT);
+            }
+
+            $stmtData->execute();
+            $data = $stmtData->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'recordsTotal'    => $recordsTotal,
+                'recordsFiltered' => $recordsFiltered,
+                'data'            => $data
+            ];
+        } catch (PDOException $e) {
+            error_log("Error en Cita::obtenerCitasHoyPaginado(): " . $e->getMessage());
+            return [
+                'recordsTotal'    => 0,
+                'recordsFiltered' => 0,
+                'data'            => []
+            ];
         }
     }
 

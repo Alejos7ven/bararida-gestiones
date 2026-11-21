@@ -15,6 +15,14 @@ class Reporte extends Database {
     private ?string $tipoGestion = null;
     private ?string $tipoCita = null;
     private ?string $anio = null;
+    private string $seccion = 'general';
+
+    // Propiedades para Server-Side DataTables
+    private int $dtStart = 0;
+    private int $dtLength = 10;
+    private string $dtSearch = '';
+    private string $dtOrderColumn = '';
+    private string $dtOrderDir = 'ASC';
 
     public function __construct() {
         parent::__construct();
@@ -44,6 +52,24 @@ class Reporte extends Database {
 
     public function getAnio(): ?string { return $this->anio; }
     public function setAnio(?string $anio): void { $this->anio = $anio ? trim($anio) : null; }
+
+    public function getSeccion(): string { return $this->seccion; }
+    public function setSeccion(string $seccion): void { $this->seccion = $seccion; }
+
+    public function getDtStart(): int { return $this->dtStart; }
+    public function setDtStart(int $dtStart): void { $this->dtStart = $dtStart; }
+
+    public function getDtLength(): int { return $this->dtLength; }
+    public function setDtLength(int $dtLength): void { $this->dtLength = $dtLength; }
+
+    public function getDtSearch(): string { return $this->dtSearch; }
+    public function setDtSearch(string $dtSearch): void { $this->dtSearch = $dtSearch; }
+
+    public function getDtOrderColumn(): string { return $this->dtOrderColumn; }
+    public function setDtOrderColumn(string $dtOrderColumn): void { $this->dtOrderColumn = $dtOrderColumn; }
+
+    public function getDtOrderDir(): string { return $this->dtOrderDir; }
+    public function setDtOrderDir(string $dtOrderDir): void { $this->dtOrderDir = $dtOrderDir; }
 
     // =========================================================================
     // MÉTODOS DE CONSULTA Y ANÁLISIS
@@ -607,6 +633,251 @@ class Reporte extends Database {
         } catch (PDOException $e) {
             error_log("Error en Reporte::obtenerReporteInstituciones: " . $e->getMessage());
             throw new Exception("Error al calcular el reporte de instituciones atendidas.");
+        }
+    }
+
+    /**
+     * Obtiene las filas paginadas de la tabla del reporte mediante SQL directo para DataTables Server-Side Processing
+     * utilizando las propiedades internas ($this->seccion, $this->fechaInicio, $this->fechaFin, $this->estatus,
+     * $this->tipoCita, $this->dtStart, $this->dtLength, $this->dtSearch, $this->dtOrderColumn, $this->dtOrderDir).
+     */
+    public function obtenerTablaPaginada(): array {
+        try {
+            $hasEstatus = (!empty($this->estatus) && $this->estatus !== 'todos');
+            $hasTipo = (!empty($this->tipoCita) && $this->tipoCita !== 'todos');
+            $hasSearch = ($this->dtSearch !== '');
+            $likeVal = '%' . $this->dtSearch . '%';
+
+            if ($this->seccion === 'zonas') {
+                $baseSql = "SELECT 
+                                z.id AS zona_id,
+                                z.nombre AS zona_nombre,
+                                COUNT(DISTINCT c.id) AS total_visitas,
+                                COALESCE(SUM(asistentes.total_asistentes), 0) AS total_visitantes_zona,
+                                GROUP_CONCAT(DISTINCT r.nombre SEPARATOR ', ') AS recorridos_asociados
+                            FROM zonas z
+                            INNER JOIN rutas ru ON z.id = ru.zona_id
+                            INNER JOIN recorrido r ON ru.recorrido_id = r.id
+                            INNER JOIN citas c ON r.id = c.recorrido_id
+                            LEFT JOIN (
+                                SELECT cita_id, COUNT(*) AS total_asistentes
+                                FROM asistencia_cita
+                                GROUP BY cita_id
+                            ) asistentes ON c.id = asistentes.cita_id
+                            WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
+                if ($hasTipo) {
+                    $baseSql .= " AND c.tipo = :tipo_cita";
+                }
+                $baseSql .= " GROUP BY z.id, z.nombre";
+
+                $searchWhere = $hasSearch ? " WHERE (sub.zona_nombre LIKE :s1 OR sub.recorridos_asociados LIKE :s2 OR CAST(sub.total_visitas AS CHAR) LIKE :s3)" : "";
+                $searchCount = 3;
+
+            } elseif ($this->seccion === 'exoneraciones') {
+                $baseSql = "SELECT 
+                                c.id AS cita_id,
+                                c.tipo,
+                                c.fecha_visita,
+                                c.estatus,
+                                c.metodo_pago,
+                                c.pago_estado,
+                                e.tipo_documento,
+                                e.documento AS institucion_rif,
+                                e.nombre_completo AS institucion_nombre,
+                                i.tipo_organizacion,
+                                i.tipo_gestion,
+                                CASE 
+                                    WHEN c.pago_estado = 'exonerado' AND (LOWER(c.metodo_pago) LIKE '%exonera%' OR LOWER(c.metodo_pago) LIKE '%exen%') THEN c.metodo_pago
+                                    WHEN c.pago_estado = 'exonerado' THEN 'Estado Exonerado'
+                                    WHEN LOWER(c.metodo_pago) LIKE '%exonera%' OR LOWER(c.metodo_pago) LIKE '%exen%' THEN c.metodo_pago
+                                    ELSE 'Exoneración Autorizada'
+                                END AS motivo_exoneracion,
+                                COUNT(ac.id) AS total_visitantes_exonerados
+                            FROM citas c
+                            INNER JOIN instituciones i ON c.institucion_id = i.id
+                            INNER JOIN entidades e ON i.entidad_id = e.id
+                            LEFT JOIN asistencia_cita ac ON c.id = ac.cita_id
+                            WHERE c.fecha_visita BETWEEN :inicio AND :fin
+                              AND c.activo = 1
+                              AND (c.pago_estado = 'exonerado' 
+                                   OR LOWER(c.metodo_pago) LIKE '%exonera%' 
+                                   OR LOWER(c.metodo_pago) LIKE '%exen%')";
+                if ($hasTipo) {
+                    $baseSql .= " AND c.tipo = :tipo_cita";
+                }
+                $baseSql .= " GROUP BY c.id";
+
+                $searchWhere = $hasSearch ? " WHERE (CAST(sub.cita_id AS CHAR) LIKE :s1 OR sub.institucion_nombre LIKE :s2 OR sub.institucion_rif LIKE :s3 OR sub.motivo_exoneracion LIKE :s4 OR sub.estatus LIKE :s5)" : "";
+                $searchCount = 5;
+
+            } elseif ($this->seccion === 'visitantes') {
+                $baseSql = "SELECT 
+                                v.id AS visitante_id,
+                                v.cedula,
+                                v.nombres,
+                                v.apellidos,
+                                v.fecha_nacimiento,
+                                c.fecha_visita,
+                                c.id AS cita_id,
+                                e.nombre_completo AS institucion_nombre,
+                                CASE 
+                                    WHEN v.fecha_nacimiento IS NOT NULL AND v.fecha_nacimiento > '1900-01-01'
+                                    THEN TIMESTAMPDIFF(YEAR, v.fecha_nacimiento, c.fecha_visita)
+                                    ELSE NULL 
+                                END AS edad_estimada,
+                                CASE 
+                                    WHEN v.fecha_nacimiento IS NULL OR v.fecha_nacimiento <= '1900-01-01' THEN 'Sin especificar'
+                                    WHEN TIMESTAMPDIFF(YEAR, v.fecha_nacimiento, c.fecha_visita) < 13 THEN 'Niño (0-12)'
+                                    WHEN TIMESTAMPDIFF(YEAR, v.fecha_nacimiento, c.fecha_visita) BETWEEN 13 AND 17 THEN 'Adolescente (13-17)'
+                                    WHEN TIMESTAMPDIFF(YEAR, v.fecha_nacimiento, c.fecha_visita) BETWEEN 18 AND 59 THEN 'Adulto (18-59)'
+                                    ELSE 'Adulto Mayor (60+)'
+                                END AS grupo_etario
+                            FROM asistencia_cita ac
+                            INNER JOIN citas c ON ac.cita_id = c.id
+                            INNER JOIN visitantes v ON ac.visitante_id = v.id
+                            INNER JOIN instituciones i ON c.institucion_id = i.id
+                            INNER JOIN entidades e ON i.entidad_id = e.id
+                            WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
+                if ($hasTipo) {
+                    $baseSql .= " AND c.tipo = :tipo_cita";
+                }
+
+                $searchWhere = $hasSearch ? " WHERE (sub.cedula LIKE :s1 OR sub.nombres LIKE :s2 OR sub.apellidos LIKE :s3 OR CONCAT(sub.nombres, ' ', sub.apellidos) LIKE :s4 OR sub.institucion_nombre LIKE :s5 OR sub.grupo_etario LIKE :s6)" : "";
+                $searchCount = 6;
+
+            } elseif ($this->seccion === 'instituciones') {
+                $baseSql = "SELECT 
+                                i.id AS institucion_id,
+                                e.tipo_documento,
+                                e.documento AS rif,
+                                e.nombre_completo AS institucion_nombre,
+                                i.tipo_organizacion,
+                                i.tipo_gestion,
+                                COUNT(DISTINCT c.id) AS total_citas,
+                                COUNT(ac.id) AS total_visitantes_atendidos,
+                                MAX(c.fecha_visita) AS ultima_visita,
+                                GROUP_CONCAT(DISTINCT c.estatus SEPARATOR ', ') AS estatus_citas
+                            FROM instituciones i
+                            INNER JOIN entidades e ON i.entidad_id = e.id
+                            INNER JOIN citas c ON i.id = c.institucion_id
+                            LEFT JOIN asistencia_cita ac ON c.id = ac.cita_id
+                            WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
+                if ($hasTipo) {
+                    $baseSql .= " AND c.tipo = :tipo_cita";
+                }
+                $baseSql .= " GROUP BY i.id, e.tipo_documento, e.documento, e.nombre_completo, i.tipo_organizacion, i.tipo_gestion";
+
+                $searchWhere = $hasSearch ? " WHERE (sub.rif LIKE :s1 OR sub.institucion_nombre LIKE :s2 OR sub.tipo_organizacion LIKE :s3 OR sub.tipo_gestion LIKE :s4)" : "";
+                $searchCount = 4;
+
+            } else {
+                // 'general' o 'citas'
+                $baseSql = "SELECT 
+                                c.id,
+                                c.tipo,
+                                c.fecha_solicitud,
+                                c.fecha_visita,
+                                c.hora_inicio,
+                                c.estatus,
+                                c.metodo_pago,
+                                c.pago_estado,
+                                e.nombre_completo AS institucion_nombre,
+                                e.tipo_documento,
+                                e.documento AS institucion_rif,
+                                i.tipo_organizacion,
+                                i.tipo_gestion,
+                                r.nombre AS recorrido_nombre,
+                                COUNT(ac.id) AS total_visitantes
+                            FROM citas c
+                            INNER JOIN instituciones i ON c.institucion_id = i.id
+                            INNER JOIN entidades e ON i.entidad_id = e.id
+                            LEFT JOIN recorrido r ON c.recorrido_id = r.id
+                            LEFT JOIN asistencia_cita ac ON c.id = ac.cita_id
+                            WHERE c.fecha_visita BETWEEN :inicio AND :fin AND c.activo = 1";
+                if ($hasEstatus && $this->seccion === 'citas') {
+                    $baseSql .= " AND c.estatus = :estatus";
+                }
+                if ($hasTipo) {
+                    $baseSql .= " AND c.tipo = :tipo_cita";
+                }
+                $baseSql .= " GROUP BY c.id";
+
+                $searchWhere = $hasSearch ? " WHERE (CAST(sub.id AS CHAR) LIKE :s1 OR sub.institucion_nombre LIKE :s2 OR sub.institucion_rif LIKE :s3 OR sub.tipo LIKE :s4 OR sub.recorrido_nombre LIKE :s5 OR sub.estatus LIKE :s6 OR sub.metodo_pago LIKE :s7)" : "";
+                $searchCount = 7;
+            }
+
+            // 1. Total sin filtro de búsqueda
+            $stmtTotal = $this->db->prepare("SELECT COUNT(*) FROM (" . $baseSql . ") AS sub");
+            $stmtTotal->bindValue(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmtTotal->bindValue(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if ($hasEstatus && $this->seccion === 'citas') {
+                $stmtTotal->bindValue(":estatus", $this->estatus, PDO::PARAM_STR);
+            }
+            if ($hasTipo) {
+                $stmtTotal->bindValue(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
+            $stmtTotal->execute();
+            $recordsTotal = (int)$stmtTotal->fetchColumn();
+
+            // 2. Total filtrado
+            if ($hasSearch) {
+                $stmtFiltered = $this->db->prepare("SELECT COUNT(*) FROM (" . $baseSql . ") AS sub" . $searchWhere);
+                $stmtFiltered->bindValue(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+                $stmtFiltered->bindValue(":fin", $this->fechaFin, PDO::PARAM_STR);
+                if ($hasEstatus && $this->seccion === 'citas') {
+                    $stmtFiltered->bindValue(":estatus", $this->estatus, PDO::PARAM_STR);
+                }
+                if ($hasTipo) {
+                    $stmtFiltered->bindValue(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+                }
+                for ($i = 1; $i <= $searchCount; $i++) {
+                    $stmtFiltered->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+                }
+                $stmtFiltered->execute();
+                $recordsFiltered = (int)$stmtFiltered->fetchColumn();
+            } else {
+                $recordsFiltered = $recordsTotal;
+            }
+
+            // 3. Consulta paginada con ordenamiento
+            $queryData = "SELECT * FROM (" . $baseSql . ") AS sub"
+                       . $searchWhere
+                       . " ORDER BY " . $this->dtOrderColumn . " " . $this->dtOrderDir;
+
+            if ($this->dtLength > 0) {
+                $queryData .= " LIMIT :limit OFFSET :offset";
+            }
+
+            $stmtData = $this->db->prepare($queryData);
+            $stmtData->bindValue(":inicio", $this->fechaInicio, PDO::PARAM_STR);
+            $stmtData->bindValue(":fin", $this->fechaFin, PDO::PARAM_STR);
+            if ($hasEstatus && $this->seccion === 'citas') {
+                $stmtData->bindValue(":estatus", $this->estatus, PDO::PARAM_STR);
+            }
+            if ($hasTipo) {
+                $stmtData->bindValue(":tipo_cita", $this->tipoCita, PDO::PARAM_STR);
+            }
+            if ($hasSearch) {
+                for ($i = 1; $i <= $searchCount; $i++) {
+                    $stmtData->bindValue(":s{$i}", $likeVal, PDO::PARAM_STR);
+                }
+            }
+            if ($this->dtLength > 0) {
+                $stmtData->bindValue(":limit", $this->dtLength, PDO::PARAM_INT);
+                $stmtData->bindValue(":offset", $this->dtStart, PDO::PARAM_INT);
+            }
+
+            $stmtData->execute();
+            $data = $stmtData->fetchAll(PDO::FETCH_ASSOC);
+
+            return [
+                'recordsTotal'    => $recordsTotal,
+                'recordsFiltered' => $recordsFiltered,
+                'data'            => $data
+            ];
+        } catch (PDOException $e) {
+            error_log("Error en Reporte::obtenerTablaPaginada: " . $e->getMessage());
+            throw new Exception("Error al consultar la tabla paginada del reporte.");
         }
     }
 }
