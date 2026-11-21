@@ -75,7 +75,7 @@ class Sede extends Database {
      */
     public function actualizar(): bool {
         if (!$this->db || !$this->id) {
-            throw new Exception("Parámetros insuficientes para actualizar la sede.");
+            return false;
         }
 
         $query = "UPDATE " . $this->table_name . " 

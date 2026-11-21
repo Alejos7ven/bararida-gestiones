@@ -140,7 +140,7 @@ class Zona extends Database {
         }
 
         if (!$this->db || !$this->id) {
-            throw new Exception("Conexión de base de datos o ID de zona no inicializado.");
+            return false;
         }
 
         $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
@@ -165,7 +165,7 @@ class Zona extends Database {
         }
 
         if (!$this->db || !$this->id) {
-            throw new Exception("Conexión de base de datos o ID de zona no inicializado.");
+            return false;
         }
 
         $query = "UPDATE " . $this->table_name . " SET coordenadas = :coordenadas WHERE id = :id";
@@ -195,7 +195,7 @@ class Zona extends Database {
         }
 
         if (!$this->db || !$this->id) {
-            throw new Exception("Conexión de base de datos o ID de zona no inicializado.");
+            return false;
         }
 
         $query = "UPDATE " . $this->table_name . " SET nombre = :nombre, coordenadas = :coordenadas WHERE id = :id";

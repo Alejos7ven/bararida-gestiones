@@ -215,7 +215,7 @@ class Recorrido extends Database {
         }
 
         if (!$this->db || !$this->id) {
-            throw new Exception("Conexión de base de datos o ID de recorrido no inicializado.");
+            return false;
         }
 
         try {
@@ -246,7 +246,7 @@ class Recorrido extends Database {
         }
 
         if (!$this->db || !$this->id) {
-            throw new Exception("Conexión de base de datos o ID de recorrido no inicializado.");
+            return false;
         }
 
         try {
@@ -302,7 +302,7 @@ class Recorrido extends Database {
         }
 
         if (!$this->db || !$this->id) {
-            throw new Exception("Conexión de base de datos o ID de recorrido no inicializado.");
+            return false;
         }
 
         try {

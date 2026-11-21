@@ -516,6 +516,16 @@ function eliminarAction() {
         return;
     }
 
+    // Regla de validación en el Controller: Proteger usuario superadmin principal (ID 0 o 1)
+    if ($id === 0 || $id === 1) {
+        http_response_code(403);
+        echo json_encode([
+            "status" => "error",
+            "message" => "No es posible eliminar al Super Administrador principal."
+        ]);
+        return;
+    }
+
     try {
         $personalModel = new Personal();
         $personalModel->setId($id);

@@ -537,7 +537,7 @@ class Institucion extends Database {
      */
     public function actualizar(): bool {
         if (!$this->db || !$this->id) {
-            throw new Exception("Parámetros insuficientes para actualizar la institución.");
+            return false;
         }
 
         try {
@@ -678,7 +678,7 @@ class Institucion extends Database {
         }
 
         if (!$this->db || !$this->id) {
-            throw new Exception("Conexión de base de datos o ID de institución no inicializado.");
+            return false;
         }
 
         try {

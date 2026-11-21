@@ -11,7 +11,7 @@ class Personal extends Database {
 
     // Propiedades de la entidad
     private ?int $id = null;
-    private ?string $tipo_documento = 'V';
+    private ?string $tipo_documento = null;
     private ?string $cedula = null;
     private ?string $nombre_completo = null;
     private ?string $rol = null;
@@ -26,7 +26,6 @@ class Personal extends Database {
      */
     public function __construct() {
         parent::__construct();
-        $this->tipo_documento = 'V';
     }
 
     // =========================================================================
@@ -54,7 +53,7 @@ class Personal extends Database {
     }
 
     public function setTipoDocumento(?string $tipo_documento): void {
-        $this->tipo_documento = $tipo_documento ? strtoupper(trim($tipo_documento)) : 'V';
+        $this->tipo_documento = $tipo_documento ? strtoupper(trim($tipo_documento)) : null;
     }
 
     public function getCedula(): ?string {
@@ -333,15 +332,20 @@ class Personal extends Database {
         try {
             $this->db->beginTransaction();
 
-            // Obtener rol_id a partir del nombre del rol
-            $queryRol = "SELECT id FROM roles WHERE nombre = :rol LIMIT 1";
-            $stmtRol = $this->db->prepare($queryRol);
-            $stmtRol->bindParam(":rol", $this->rol, PDO::PARAM_STR);
-            $stmtRol->execute();
-            $rolId = $stmtRol->fetchColumn();
+            $rolId = $this->rol_id;
+            if (!$rolId && !empty($this->rol)) {
+                $queryRol = "SELECT id FROM roles WHERE nombre = :rol LIMIT 1";
+                $stmtRol = $this->db->prepare($queryRol);
+                $stmtRol->bindParam(":rol", $this->rol, PDO::PARAM_STR);
+                $stmtRol->execute();
+                $rolId = $stmtRol->fetchColumn();
+            }
 
             if (!$rolId) {
-                throw new Exception("Rol especificado no encontrado en el sistema.");
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+                return false;
             }
 
             // Verificar si la entidad ya existe por su documento único
@@ -466,12 +470,7 @@ class Personal extends Database {
         }
 
         if (!$this->db || $this->id === null) {
-            throw new Exception("Conexión de base de datos o ID no inicializado.");
-        }
-
-        // Proteger usuario superadmin principal (ID 0 o 1)
-        if ($this->id === 0 || $this->id === 1) {
-            throw new Exception("No es posible eliminar al Super Administrador principal.");
+            return false;
         }
 
         $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";

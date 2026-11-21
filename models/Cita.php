@@ -67,7 +67,7 @@ class Cita extends Database {
     }
 
     public function setSedeId(?int $sede_id): void {
-        $this->sede_id = ($sede_id !== null && $sede_id !== '' && is_numeric($sede_id)) ? (int)$sede_id : null;
+        $this->sede_id = $sede_id;
     }
 
     public function getRecorridoId(): ?int {
@@ -75,7 +75,7 @@ class Cita extends Database {
     }
 
     public function setRecorridoId(?int $rec_id): void {
-        $this->recorrido_id = ($rec_id !== null && $rec_id !== '' && is_numeric($rec_id)) ? (int)$rec_id : null;
+        $this->recorrido_id = $rec_id;
     }
 
     public function getFechaSolicitud(): ?string {
@@ -237,7 +237,7 @@ class Cita extends Database {
      */
     public function actualizar(): bool {
         if (!$this->db || empty($this->id)) {
-            throw new Exception("Conexión de base de datos o ID de cita no configurados.");
+            return false;
         }
 
         try {
@@ -291,7 +291,7 @@ class Cita extends Database {
         }
 
         if (!$this->db || !$this->id) {
-            throw new Exception("Conexión de base de datos o ID de cita no configurado.");
+            return false;
         }
 
         try {
@@ -301,7 +301,7 @@ class Cita extends Database {
             return $stmtCita->execute();
         } catch (Exception $e) {
             error_log("Error al eliminar lógicamente la cita: " . $e->getMessage());
-            throw $e;
+            return false;
         }
     }
 
@@ -829,7 +829,7 @@ class Cita extends Database {
         }
 
         if (!$this->db || !$this->id) {
-            throw new Exception("Conexión de base de datos o ID de cita no configurado.");
+            return 0;
         }
 
         try {
@@ -879,7 +879,7 @@ class Cita extends Database {
         }
 
         if (!$this->db || !$this->id) {
-            throw new Exception("Conexión de base de datos o ID de cita no configurado.");
+            return false;
         }
 
         try {

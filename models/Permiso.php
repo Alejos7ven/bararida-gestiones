@@ -287,12 +287,8 @@ class Permiso extends Database {
             $this->puedeAcceder = (int)$puede_acceder;
         }
 
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada en Permiso.");
-        }
-
-        if ($this->rolId === null || $this->moduloId === null || $this->puedeAcceder === null) {
-            throw new InvalidArgumentException("Propiedades rolId, moduloId y puedeAcceder son requeridas.");
+        if (!$this->db || $this->rolId === null || $this->moduloId === null || $this->puedeAcceder === null) {
+            return false;
         }
 
         try {

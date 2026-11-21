@@ -140,7 +140,7 @@ class Visitante extends Database {
      */
     public function actualizar(): bool {
         if (!$this->db || !$this->id) {
-            throw new Exception("Conexión de base de datos o ID de visitante no inicializado.");
+            return false;
         }
         
         $query = "UPDATE " . $this->table_name . " 

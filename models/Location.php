@@ -54,11 +54,8 @@ class Location extends Database {
      * Obtiene los municipios correspondientes al estado configurado en $this->estadoId.
      */
     public function obtenerMunicipios(): array {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-        if (!$this->estadoId) {
-            throw new InvalidArgumentException("ID de estado no configurado.");
+        if (!$this->db || !$this->estadoId) {
+            return [];
         }
 
         $stmt = $this->db->prepare("SELECT id_municipio, municipio FROM municipios WHERE id_estado = :estado_id ORDER BY municipio ASC");
@@ -70,11 +67,8 @@ class Location extends Database {
      * Obtiene las parroquias correspondientes al municipio configurado en $this->municipioId.
      */
     public function obtenerParroquias(): array {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-        if (!$this->municipioId) {
-            throw new InvalidArgumentException("ID de municipio no configurado.");
+        if (!$this->db || !$this->municipioId) {
+            return [];
         }
 
         $stmt = $this->db->prepare("SELECT id_parroquia, parroquia FROM parroquias WHERE id_municipio = :municipio_id ORDER BY parroquia ASC");
@@ -86,11 +80,8 @@ class Location extends Database {
      * Obtiene las ciudades correspondientes al estado configurado en $this->estadoId.
      */
     public function obtenerCiudades(): array {
-        if (!$this->db) {
-            throw new Exception("Conexión de base de datos no inicializada.");
-        }
-        if (!$this->estadoId) {
-            throw new InvalidArgumentException("ID de estado no configurado.");
+        if (!$this->db || !$this->estadoId) {
+            return [];
         }
 
         $stmt = $this->db->prepare("SELECT id_ciudad, ciudad FROM ciudades WHERE id_estado = :estado_id ORDER BY ciudad ASC");
