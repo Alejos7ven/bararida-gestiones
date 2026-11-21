@@ -131,16 +131,9 @@ class Personal extends Database {
     /**
      * Método seguro de verificación de credenciales (Login)
      * Opera mediante las propiedades internas ($this->tipo_documento, $this->cedula, $this->plainPassword o $this->password)
-     * Soporta argumentos opcionales por retrocompatibilidad
      */
-    public function login(?string $tipo_documento = null, ?string $cedula = null, ?string $password = null): bool {
-        if ($tipo_documento !== null) {
-            $this->setTipoDocumento($tipo_documento);
-        }
-        if ($cedula !== null) {
-            $this->setCedula($cedula);
-        }
-        $passToVerify = $password !== null ? $password : ($this->plainPassword ?? $this->password);
+    public function login(): bool {
+        $passToVerify = $this->plainPassword ?? $this->password;
 
         try {
             $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre_completo, r.id AS rol_id, r.nombre AS rol, p.password 
@@ -199,13 +192,9 @@ class Personal extends Database {
     }
 
     /**
-     * Obtiene la información de un personal específico por su ID.
+     * Obtiene la información de un personal específico por su ID utilizando $this->id.
      */
-    public function obtenerPorId(?int $id = null): ?array {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function obtenerPorId(): ?array {
         $query = "SELECT p.id, e.tipo_documento, e.documento AS cedula, e.nombre_completo, r.nombre AS rol, p.created_at, p.updated_at 
                   FROM " . $this->table_name . " p
                   INNER JOIN entidades e ON p.entidad_id = e.id
@@ -227,17 +216,13 @@ class Personal extends Database {
 
     /**
      * Busca si una cédula/documento ya existe en la tabla entidades y obtiene información
-     * de a quién pertenece (institución, otro personal o entidad general).
+     * de a quién pertenece.
+     * Utiliza $this->cedula y ($this->excluirId ?? $this->id).
      *
-     * @param string|null $cedula Cédula/documento a verificar
-     * @param int|null $excluirPersonalId ID del personal a excluir (en actualización)
      * @return array|null Datos de la entidad coincidente o null si está libre
      */
-    public function buscarEntidadPorDocumento(?string $cedula = null, ?int $excluirPersonalId = null): ?array {
-        if ($cedula !== null) {
-            $this->setCedula($cedula);
-        }
-        $cleanExcluir = $excluirPersonalId !== null ? $excluirPersonalId : ($this->excluirId ?? $this->id);
+    public function buscarEntidadPorDocumento(): ?array {
+        $cleanExcluir = $this->excluirId ?? $this->id;
 
         try {
             $query = "SELECT e.id, e.tipo_documento, e.documento, e.nombre_completo, e.tipo_entidad,
@@ -270,16 +255,10 @@ class Personal extends Database {
 
     /**
      * Verifica de forma segura si un documento ya existe en la base de datos.
-     * Utiliza $this->tipo_documento, $this->cedula y $this->excluirId (o $this->id)
+     * Utiliza $this->tipo_documento, $this->cedula y ($this->excluirId ?? $this->id).
      */
-    public function existeDocumento(?string $tipo_documento = null, ?string $cedula = null, ?int $excluirId = null): bool {
-        if ($tipo_documento !== null) {
-            $this->setTipoDocumento($tipo_documento);
-        }
-        if ($cedula !== null) {
-            $this->setCedula($cedula);
-        }
-        $cleanExcluir = $excluirId !== null ? $excluirId : ($this->excluirId ?? $this->id);
+    public function existeDocumento(): bool {
+        $cleanExcluir = $this->excluirId ?? $this->id;
 
         $query = "SELECT COUNT(*) 
                   FROM personal p
@@ -433,13 +412,9 @@ class Personal extends Database {
     }
 
     /**
-     * Elimina un personal por ID de forma lógica (Soft Delete).
+     * Elimina un personal por ID de forma lógica (Soft Delete) utilizando $this->id.
      */
-    public function eliminar(?int $id = null): bool {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function eliminar(): bool {
         $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $this->id, PDO::PARAM_INT);
@@ -483,14 +458,12 @@ class Personal extends Database {
     }
 
     /**
-     * Obtiene el ID del rol dado su nombre
+     * Obtiene el ID del rol dado su nombre utilizando $this->rol
      */
-    public function obtenerRolIdPorNombre(?string $rolNombre = null): ?int {
-        $nombre = $rolNombre !== null ? $rolNombre : $this->rol;
-
+    public function obtenerRolIdPorNombre(): ?int {
         try {
             $stmt = $this->db->prepare("SELECT id FROM roles WHERE LOWER(nombre) = LOWER(:nombre) LIMIT 1");
-            $stmt->bindParam(":nombre", $nombre, PDO::PARAM_STR);
+            $stmt->bindParam(":nombre", $this->rol, PDO::PARAM_STR);
             $stmt->execute();
             $id = $stmt->fetchColumn();
             return ($id !== false && $id !== null) ? (int)$id : null;

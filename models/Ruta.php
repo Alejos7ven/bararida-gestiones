@@ -85,14 +85,9 @@ class Ruta extends Database {
     /**
      * Obtiene el listado de paradas (rutas) asociadas a un recorrido específico en orden.
      * Utiliza la propiedad $this->recorrido_id.
-     * @param int|null $recorrido_id Opcional para retrocompatibilidad
      * @return array Listado de zonas en la ruta
      */
-    public function obtenerPorRecorrido(?int $recorrido_id = null): array {
-        if ($recorrido_id !== null) {
-            $this->recorrido_id = $recorrido_id;
-        }
-
+    public function obtenerPorRecorrido(): array {
         $query = "SELECT r.id, r.recorrido_id, r.zona_id, r.orden, z.nombre as zona_nombre, z.coordenadas 
                   FROM " . $this->table_name . " r
                   INNER JOIN zonas z ON r.zona_id = z.id
@@ -108,14 +103,9 @@ class Ruta extends Database {
 
     /**
      * Elimina todas las paradas (rutas) de un recorrido utilizando $this->recorrido_id.
-     * @param int|null $recorrido_id Opcional para retrocompatibilidad
      * @return bool True si se eliminó con éxito
      */
-    public function eliminarPorRecorrido(?int $recorrido_id = null): bool {
-        if ($recorrido_id !== null) {
-            $this->recorrido_id = $recorrido_id;
-        }
-
+    public function eliminarPorRecorrido(): bool {
         $query = "DELETE FROM " . $this->table_name . " WHERE recorrido_id = :recorrido_id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":recorrido_id", $this->recorrido_id, PDO::PARAM_INT);

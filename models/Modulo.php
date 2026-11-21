@@ -88,14 +88,9 @@ class Modulo extends Database {
 
     /**
      * Obtiene un módulo por su ID primario utilizando la propiedad $this->id.
-     * @param int|null $id Opcional para retrocompatibilidad
      * @return array|false
      */
-    public function getById(?int $id = null) {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function getById() {
         try {
             $query = "SELECT id, nombre, label FROM " . $this->table . " WHERE id = :id LIMIT 1";
             $stmt  = $this->db->prepare($query);
@@ -115,14 +110,9 @@ class Modulo extends Database {
 
     /**
      * Obtiene un módulo por su nombre identificador (slug) utilizando la propiedad $this->nombre.
-     * @param string|null $nombre Opcional para retrocompatibilidad
      * @return array|false
      */
-    public function getByNombre(?string $nombre = null) {
-        if ($nombre !== null) {
-            $this->nombre = $nombre;
-        }
-
+    public function getByNombre() {
         try {
             $query = "SELECT id, nombre, label FROM " . $this->table . " WHERE nombre = :nombre LIMIT 1";
             $stmt  = $this->db->prepare($query);

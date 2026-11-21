@@ -150,14 +150,9 @@ class Visitante extends Database {
     /**
      * Elimina un visitante por ID de forma lógica (Soft Delete) usando $this->id
      * Preserva los registros históricos en asistencia_cita para mantener la integridad.
-     * @param int|null $id Opcional para retrocompatibilidad
      * @return bool True si se desactivó con éxito, False de lo contrario
      */
-    public function eliminar(?int $id = null): bool {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function eliminar(): bool {
         try {
             $queryVis = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
             $stmtVis = $this->db->prepare($queryVis);
@@ -210,14 +205,9 @@ class Visitante extends Database {
 
     /**
      * Obtiene un visitante específico por su ID utilizando $this->id
-     * @param int|null $id Opcional para retrocompatibilidad
      * @return array|null Datos del visitante o null si no se encuentra
      */
-    public function obtenerPorId(?int $id = null): ?array {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function obtenerPorId(): ?array {
         $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM " . $this->table_name . " WHERE id = :id AND activo = 1 LIMIT 1";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $this->id, PDO::PARAM_INT);
@@ -235,14 +225,9 @@ class Visitante extends Database {
 
     /**
      * Obtiene todos los visitantes asignados a una cita específica usando $this->cita_id
-     * @param int|null $citaId Opcional para retrocompatibilidad
      * @return array Listado de visitantes
      */
-    public function obtenerPorCitaId(?int $citaId = null): array {
-        if ($citaId !== null) {
-            $this->cita_id = $citaId;
-        }
-
+    public function obtenerPorCitaId(): array {
         $query = "SELECT v.id, v.cedula, v.nombres, v.apellidos, v.fecha_nacimiento 
                   FROM " . $this->table_name . " v
                   INNER JOIN asistencia_cita ac ON v.id = ac.visitante_id
@@ -256,15 +241,10 @@ class Visitante extends Database {
 
     /**
      * Busca un visitante por su cédula utilizando $this->cedula y opcionalmente $this->excluirId
-     * @param string|null $cedula Opcional para retrocompatibilidad
-     * @param int|null $excludeId Opcional para retrocompatibilidad
      * @return array|null
      */
-    public function buscarPorCedula(?string $cedula = null, ?int $excludeId = null): ?array {
-        if ($cedula !== null) {
-            $this->cedula = $cedula;
-        }
-        $exclude = $excludeId !== null ? $excludeId : $this->excluirId;
+    public function buscarPorCedula(): ?array {
+        $exclude = $this->excluirId;
 
         $query = "SELECT id, cedula, nombres, apellidos, fecha_nacimiento FROM " . $this->table_name . " WHERE cedula = :cedula AND activo = 1";
         if ($exclude) {
@@ -286,14 +266,9 @@ class Visitante extends Database {
      * Importa una lista de visitantes vinculándolos a una cita ($this->cita_id).
      * Reutiliza visitantes existentes por cédula para evitar redundancias de datos.
      * @param array $visitantesArray Listado de visitantes a importar
-     * @param int|null $citaId Opcional para retrocompatibilidad
      * @return bool True en caso de éxito
      */
-    public function importarVisitantesCita(array $visitantesArray, ?int $citaId = null): bool {
-        if ($citaId !== null) {
-            $this->cita_id = $citaId;
-        }
-
+    public function importarVisitantesCita(array $visitantesArray): bool {
         try {
             $this->db->beginTransaction();
 

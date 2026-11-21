@@ -40,7 +40,8 @@ $userRol     = $currentUser['rol'] ?? '';
 // 2. Resolver rol_id y verificar permisos dinámicos contra la base de datos
 $permisoModel = new Permiso();
 if ($userRolId <= 0 && !empty($userRol)) {
-    $userRolId = $permisoModel->obtenerRolIdPorNombre($userRol) ?? 0;
+    $permisoModel->setRolNombre($userRol);
+    $userRolId = $permisoModel->obtenerRolIdPorNombre() ?? 0;
     if ($userRolId > 0) {
         $_SESSION['personal']['rol_id'] = $userRolId;
     }
@@ -256,7 +257,7 @@ function crearAction() {
     // Validar unicidad del documento en la BD mediante el modelo
     $personalModel->setTipoDocumento($tipo_documento);
     $personalModel->setCedula($cedula);
-    $entidadExistente = $personalModel->buscarEntidadPorDocumento($cedula);
+    $entidadExistente = $personalModel->buscarEntidadPorDocumento();
     if ($entidadExistente) {
         $tipoDocExistente = $entidadExistente['tipo_documento'] ?? $tipo_documento;
         $docCompleto = "{$tipoDocExistente}-{$cedula}";
@@ -433,7 +434,7 @@ function actualizarAction() {
     $personalModel->setTipoDocumento($tipo_documento);
     $personalModel->setCedula($cedula);
     $personalModel->setExcluirId($id);
-    $entidadExistente = $personalModel->buscarEntidadPorDocumento($cedula, $id);
+    $entidadExistente = $personalModel->buscarEntidadPorDocumento();
     if ($entidadExistente) {
         $tipoDocExistente = $entidadExistente['tipo_documento'] ?? $tipo_documento;
         $docCompleto = "{$tipoDocExistente}-{$cedula}";

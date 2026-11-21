@@ -95,14 +95,9 @@ class Zona extends Database {
 
     /**
      * Obtiene los datos de una zona por su ID utilizando la propiedad $this->id.
-     * @param int|null $id Opcional para retrocompatibilidad
      * @return array|null Datos de la zona o null si no se encuentra
      */
-    public function obtenerPorId(?int $id = null): ?array {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function obtenerPorId(): ?array {
         $query = "SELECT id, nombre, coordenadas FROM " . $this->table_name . " WHERE id = :id AND activo = 1 LIMIT 1";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $this->id, PDO::PARAM_INT);
@@ -119,14 +114,9 @@ class Zona extends Database {
 
     /**
      * Elimina lógicamente una zona por su ID (soft delete) usando $this->id.
-     * @param int|null $id Opcional para retrocompatibilidad
      * @return bool True si se desactivó con éxito, False de lo contrario
      */
-    public function eliminar(?int $id = null): bool {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function eliminar(): bool {
         $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $this->id, PDO::PARAM_INT);
@@ -136,18 +126,9 @@ class Zona extends Database {
 
     /**
      * Actualiza las coordenadas de una zona usando $this->id y $this->coordenadas.
-     * @param int|null $id Opcional para retrocompatibilidad
-     * @param string|null $coordenadas Opcional para retrocompatibilidad
      * @return bool True en caso de éxito, False de lo contrario
      */
-    public function actualizarCoordenadas(?int $id = null, ?string $coordenadas = null): bool {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-        if ($coordenadas !== null) {
-            $this->coordenadas = $coordenadas;
-        }
-
+    public function actualizarCoordenadas(): bool {
         $query = "UPDATE " . $this->table_name . " SET coordenadas = :coordenadas WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":coordenadas", $this->coordenadas, PDO::PARAM_STR);
@@ -158,22 +139,9 @@ class Zona extends Database {
 
     /**
      * Actualiza el nombre y las coordenadas de una zona usando $this->id, $this->nombre y $this->coordenadas.
-     * @param int|null $id Opcional para retrocompatibilidad
-     * @param string|null $nombre Opcional para retrocompatibilidad
-     * @param string|null $coordenadas Opcional para retrocompatibilidad
      * @return bool True en caso de éxito, False de lo contrario
      */
-    public function actualizarNombreYCoordenadas(?int $id = null, ?string $nombre = null, ?string $coordenadas = null): bool {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-        if ($nombre !== null) {
-            $this->nombre = $nombre;
-        }
-        if ($coordenadas !== null) {
-            $this->coordenadas = $coordenadas;
-        }
-
+    public function actualizarNombreYCoordenadas(): bool {
         $query = "UPDATE " . $this->table_name . " SET nombre = :nombre, coordenadas = :coordenadas WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":nombre", $this->nombre, PDO::PARAM_STR);

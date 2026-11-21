@@ -111,7 +111,7 @@ function actualizarPermiso() {
 
         // Si el usuario en sesión comparte el rol modificado, sincronizar su sesión de inmediato
         if (isset($_SESSION['personal']['rol_id']) && (int)$_SESSION['personal']['rol_id'] === (int)$rol_id) {
-            $_SESSION['personal']['permisos'] = $permisoModel->getPermisosPorRol((int)$rol_id);
+            $_SESSION['personal']['permisos'] = $permisoModel->getPermisosPorRol();
         }
 
         http_response_code(200);

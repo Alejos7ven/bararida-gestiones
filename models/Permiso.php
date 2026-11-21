@@ -83,7 +83,8 @@ class Permiso extends Database {
 
         // Si no se tiene rolId pero sí rolNombre, resolverlo dinámicamente desde la BD
         if (($rolId === null || $rolId <= 0) && !empty($rolNombre)) {
-            $rolId = $this->obtenerRolIdPorNombre($rolNombre);
+            $this->setRolNombre($rolNombre);
+            $rolId = $this->obtenerRolIdPorNombre();
         }
 
         if ($rolId === null || $rolId <= 0) {
@@ -120,7 +121,8 @@ class Permiso extends Database {
         // Cargar y almacenar en cache de la petición los permisos del rol
         if (!isset(self::$cachePermisos[$rolId])) {
             try {
-                self::$cachePermisos[$rolId] = $this->getPermisosPorRol($rolId);
+                $this->setRolId($rolId);
+                self::$cachePermisos[$rolId] = $this->getPermisosPorRol();
             } catch (Exception $e) {
                 error_log("Error al cargar permisos en tieneAccesoModulo: " . $e->getMessage());
                 return false;
@@ -135,15 +137,10 @@ class Permiso extends Database {
     // =========================================================================
 
     /**
-     * Obtiene el ID de un rol a partir de su nombre.
-     * @param string|null $rolNombre Opcional para retrocompatibilidad
+     * Obtiene el ID de un rol a partir de su nombre utilizando $this->rolNombre.
      * @return int|null
      */
-    public function obtenerRolIdPorNombre(?string $rolNombre = null): ?int {
-        if ($rolNombre !== null) {
-            $this->rolNombre = $rolNombre;
-        }
-
+    public function obtenerRolIdPorNombre(): ?int {
         try {
             $stmt = $this->db->prepare("SELECT id FROM roles WHERE LOWER(nombre) = LOWER(:nombre) LIMIT 1");
             $stmt->bindParam(":nombre", $this->rolNombre, PDO::PARAM_STR);
@@ -165,15 +162,10 @@ class Permiso extends Database {
      * Retorna un array asociativo donde la clave es el nombre del módulo
      * y el valor es un booleano indicando si puede acceder.
      *
-     * @param int|null $rolId Opcional para retrocompatibilidad
      * @return array Array asociativo de permisos por nombre de módulo
      * @throws Exception Si la conexión no está disponible
      */
-    public function getPermisosPorRol(?int $rolId = null): array {
-        if ($rolId !== null) {
-            $this->rolId = $rolId;
-        }
-
+    public function getPermisosPorRol(): array {
         $resultado = [];
 
         try {
@@ -250,23 +242,10 @@ class Permiso extends Database {
      * Inserta o actualiza un permiso individual para un rol y módulo dados.
      * Utiliza las propiedades $this->rolId, $this->moduloId y $this->puedeAcceder.
      *
-     * @param int|null  $rol_id        Opcional para retrocompatibilidad
-     * @param int|null  $modulo_id     Opcional para retrocompatibilidad
-     * @param bool|int|null $puede_acceder Opcional para retrocompatibilidad
      * @return bool True si la operación fue exitosa
      * @throws Exception Si la conexión no está disponible o hay error de BD
      */
-    public function actualizarPermiso(?int $rol_id = null, ?int $modulo_id = null, $puede_acceder = null): bool {
-        if ($rol_id !== null) {
-            $this->rolId = $rol_id;
-        }
-        if ($modulo_id !== null) {
-            $this->moduloId = $modulo_id;
-        }
-        if ($puede_acceder !== null) {
-            $this->puedeAcceder = (int)$puede_acceder;
-        }
-
+    public function actualizarPermiso(): bool {
         try {
             $query = "INSERT INTO permisos (rol_id, modulo_id, puede_acceder)
                       VALUES (:rol_id, :modulo_id, :puede_acceder)

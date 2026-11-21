@@ -66,16 +66,9 @@ class Institucion extends Database {
     // =========================================================================
 
     /**
-     * Busca una institución registrada por su RIF/documento de forma segura
+     * Busca una institución registrada por su RIF/documento de forma segura utilizando $this->tipo_documento y $this->documento
      */
-    public function buscarPorDocumento(?string $tipo_documento = null, ?string $documento = null): ?array {
-        if ($tipo_documento !== null) {
-            $this->tipo_documento = strtoupper(trim($tipo_documento));
-        }
-        if ($documento !== null) {
-            $this->documento = trim($documento);
-        }
-
+    public function buscarPorDocumento(): ?array {
         try {
             $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre_completo, 
                              i.tipo_organizacion, i.tipo_gestion
@@ -137,17 +130,11 @@ class Institucion extends Database {
     /**
      * Busca si un documento ya existe en la tabla de entidades y obtiene sus detalles,
      * identificando si pertenece a personal, a una institución o a otra entidad.
+     * Utiliza $this->documento y $this->entidad_id (para exclusión si aplica).
      *
-     * @param string|null $documento Documento a verificar
-     * @param int|null $excluirEntidadId ID de la entidad a excluir (útil en actualización)
      * @return array|null Datos de la entidad coincidente o null si está libre
      */
-    public function buscarEntidadPorDocumento(?string $documento = null, ?int $excluirEntidadId = null): ?array {
-        if ($documento !== null) {
-            $this->documento = trim($documento);
-        }
-        $excluirId = $excluirEntidadId !== null ? $excluirEntidadId : $this->entidad_id;
-
+    public function buscarEntidadPorDocumento(): ?array {
         try {
             $query = "SELECT e.id, e.tipo_documento, e.documento, e.nombre_completo, e.tipo_entidad,
                              (SELECT r.nombre FROM personal p INNER JOIN roles r ON p.rol_id = r.id WHERE p.entidad_id = e.id AND p.activo = 1 LIMIT 1) AS rol_personal,
@@ -155,15 +142,15 @@ class Institucion extends Database {
                       FROM entidades e
                       WHERE e.documento = :documento";
 
-            if ($excluirId !== null && $excluirId > 0) {
+            if ($this->entidad_id !== null && $this->entidad_id > 0) {
                 $query .= " AND e.id != :excluirEntidadId";
             }
             $query .= " LIMIT 1";
 
             $stmt = $this->db->prepare($query);
             $stmt->bindValue(":documento", $this->documento, PDO::PARAM_STR);
-            if ($excluirId !== null && $excluirId > 0) {
-                $stmt->bindValue(":excluirEntidadId", $excluirId, PDO::PARAM_INT);
+            if ($this->entidad_id !== null && $this->entidad_id > 0) {
+                $stmt->bindValue(":excluirEntidadId", $this->entidad_id, PDO::PARAM_INT);
             }
             $stmt->execute();
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -177,10 +164,8 @@ class Institucion extends Database {
     /**
      * Valida si un documento ya pertenece a otra entidad distinta de $this->entidad_id
      */
-    public function existeDocumentoEnOtraEntidad(?string $tipo_documento = null, ?string $documento = null, ?int $entidad_id = null): bool {
-        if ($documento !== null) $this->documento = trim($documento);
-        if ($entidad_id !== null) $this->entidad_id = $entidad_id;
-        return $this->buscarEntidadPorDocumento($this->documento, $this->entidad_id) !== null;
+    public function existeDocumentoEnOtraEntidad(): bool {
+        return $this->buscarEntidadPorDocumento() !== null;
     }
 
     /**
@@ -344,11 +329,7 @@ class Institucion extends Database {
      * Busca instituciones por coincidencia parcial de su nombre o documento (RIF).
      * Utiliza $this->terminoBusqueda.
      */
-    public function buscarPorTermino(?string $term = null): array {
-        if ($term !== null) {
-            $this->terminoBusqueda = trim($term);
-        }
-
+    public function buscarPorTermino(): array {
         try {
             $query = "SELECT i.id, e.id AS entidad_id, e.tipo_documento, e.documento, e.nombre_completo,
                              e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion,
@@ -438,11 +419,7 @@ class Institucion extends Database {
     /**
      * Obtiene la información detallada de una institución por su ID utilizando $this->id
      */
-    public function obtenerPorId(?int $id = null): ?array {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function obtenerPorId(): ?array {
         try {
             $query = "SELECT e.id AS entidad_id, i.id AS institucion_id, e.tipo_documento, e.documento, e.nombre_completo,
                              e.nombre_completo AS nombre, i.tipo_organizacion, i.tipo_gestion,
@@ -621,11 +598,7 @@ class Institucion extends Database {
     /**
      * Cuenta el número de citas asociadas a una institución usando $this->id
      */
-    public function contarCitas(?int $id = null): int {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function contarCitas(): int {
         try {
             $query = "SELECT COUNT(*) FROM citas WHERE institucion_id = :id AND activo = 1";
             $stmt = $this->db->prepare($query);
@@ -641,11 +614,7 @@ class Institucion extends Database {
     /**
      * Elimina una institución del sistema si no posee citas asociadas usando $this->id
      */
-    public function eliminar(?int $id = null): bool {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function eliminar(): bool {
         try {
             $this->db->beginTransaction();
 

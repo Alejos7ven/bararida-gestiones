@@ -274,14 +274,9 @@ class Cita extends Database {
 
     /**
      * Elimina una cita de forma segura (borrado lógico) mediante $this->id
-     * @param int|null $id Opcional para retrocompatibilidad
      * @return bool
      */
-    public function eliminar(?int $id = null): bool {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function eliminar(): bool {
         try {
             $queryCita = "UPDATE " . $this->table_name . " SET activo = 0, estatus = 'cancelada' WHERE id = :id";
             $stmtCita = $this->db->prepare($queryCita);
@@ -328,17 +323,9 @@ class Cita extends Database {
     /**
      * Obtiene los detalles de una cita por su ID utilizando $this->id
      * Actualiza también las propiedades internas del objeto si se encuentra
-     * @param mixed $arg1 Opcional: ID de la cita o conexión para retrocompatibilidad
-     * @param mixed $arg2 Opcional: ID de la cita para retrocompatibilidad
      * @return array|null
      */
-    public function obtenerPorId($arg1 = null, $arg2 = null): ?array {
-        if ($arg1 !== null && is_numeric($arg1)) {
-            $this->id = (int)$arg1;
-        } elseif ($arg2 !== null && is_numeric($arg2)) {
-            $this->id = (int)$arg2;
-        }
-
+    public function obtenerPorId(): ?array {
         try {
             $query = "SELECT c.id, c.institucion_id, c.sede_id, c.recorrido_id, c.tipo, c.fecha_solicitud, c.fecha_visita, c.hora_inicio, c.estatus, c.metodo_pago, c.pago_estado,
                              e.tipo_documento, e.documento AS RIF, e.nombre_completo AS razon_social, e.nombre_completo,
@@ -384,14 +371,9 @@ class Cita extends Database {
 
     /**
      * Obtiene la fecha de visita de la cita configurada en $this->id
-     * @param int|null $id Opcional para retrocompatibilidad
      * @return string|null
      */
-    public function obtenerFechaVisita(?int $id = null): ?string {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function obtenerFechaVisita(): ?string {
         try {
             $stmt = $this->db->prepare("SELECT fecha_visita FROM " . $this->table_name . " WHERE id = :id AND activo = 1 LIMIT 1");
             $stmt->bindValue(':id', (int)$this->id, PDO::PARAM_INT);
@@ -456,17 +438,7 @@ class Cita extends Database {
      * @param bool|null $tienePermisoCitas
      * @return array
      */
-    public function obtenerCitasHoy(?string $rol = null, ?int $personalId = null, ?bool $tienePermisoCitas = null): array {
-        if ($rol !== null) {
-            $this->filtro_rol = $rol;
-        }
-        if ($personalId !== null) {
-            $this->filtro_personal_id = $personalId;
-        }
-        if ($tienePermisoCitas !== null) {
-            $this->tiene_permiso_citas = $tienePermisoCitas;
-        }
-
+    public function obtenerCitasHoy(): array {
         try {
             // AUTO-TERMINACIÓN EN 2 HORAS (120 MINUTOS):
             // Cualquier recorrido que haya iniciado hace 2 horas o más, o en días anteriores,
@@ -549,14 +521,9 @@ class Cita extends Database {
     /**
      * Inicia un recorrido para la cita especificada mediante $this->id,
      * actualizando estatus a 'en_recorrido' y hora_inicio a la hora actual.
-     * @param int|null $id Opcional para retrocompatibilidad
      * @return bool
      */
-    public function empezarRecorrido(?int $id = null): bool {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function empezarRecorrido(): bool {
         try {
             $stmt = $this->db->prepare("UPDATE " . $this->table_name . " SET estatus = 'en_recorrido', hora_inicio = CURTIME() WHERE id = :id");
             $stmt->bindValue(':id', (int)$this->id, PDO::PARAM_INT);
@@ -569,14 +536,9 @@ class Cita extends Database {
 
     /**
      * Finaliza un recorrido manualmente mediante $this->id, cambiando su estatus a 'completado'.
-     * @param int|null $id Opcional para retrocompatibilidad
      * @return bool
      */
-    public function terminarRecorrido(?int $id = null): bool {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function terminarRecorrido(): bool {
         try {
             $stmt = $this->db->prepare("UPDATE " . $this->table_name . " SET estatus = 'completado' WHERE id = :id");
             $stmt->bindValue(':id', (int)$this->id, PDO::PARAM_INT);
@@ -589,18 +551,9 @@ class Cita extends Database {
 
     /**
      * Verifica si un personal específico está asignado como guía a la cita ($this->id y $this->personal_id)
-     * @param int|null $personalId
-     * @param int|null $citaId
      * @return bool
      */
-    public function esGuiaAsignado(?int $personalId = null, ?int $citaId = null): bool {
-        if ($citaId !== null) {
-            $this->id = $citaId;
-        }
-        if ($personalId !== null) {
-            $this->personal_id = $personalId;
-        }
-
+    public function esGuiaAsignado(): bool {
         try {
             $stmt = $this->db->prepare("SELECT 1 FROM guia_asignado WHERE cita_id = :cita_id AND personal_id = :personal_id LIMIT 1");
             $stmt->bindValue(':cita_id', (int)$this->id, PDO::PARAM_INT);
@@ -615,24 +568,10 @@ class Cita extends Database {
 
     /**
      * Verifica si un guía ya tiene una cita activa (no completada ni cancelada) en una fecha determinada.
-     * Si ya tiene una cita ese día en estatus 'pendiente', 'aprobado' o 'en_recorrido', no puede ser asignado.
-     * Solo podrá reasignarse cuando la cita otorgada sea 'completado'.
-     * @param int|null $personalId
-     * @param string|null $fechaVisita
-     * @param int|null $citaIdExcluir
+     * Utiliza $this->personal_id, $this->fecha_visita y $this->cita_id_excluir.
      * @return bool
      */
-    public function guiaTieneCitaActivaEnFecha(?int $personalId = null, ?string $fechaVisita = null, ?int $citaIdExcluir = null): bool {
-        if ($personalId !== null) {
-            $this->personal_id = $personalId;
-        }
-        if ($fechaVisita !== null) {
-            $this->fecha_visita = $fechaVisita;
-        }
-        if ($citaIdExcluir !== null) {
-            $this->cita_id_excluir = $citaIdExcluir;
-        }
-
+    public function guiaTieneCitaActivaEnFecha(): bool {
         try {
             $sql = "SELECT c.id 
                     FROM guia_asignado ga
@@ -661,23 +600,10 @@ class Cita extends Database {
     }
 
     /**
-     * Asigna un guía a la cita configurada en $this->id
-     * @param int|null $personalId
-     * @param string|null $rolGuia
-     * @param int|null $citaId
+     * Asigna un guía a la cita configurada en $this->id utilizando $this->personal_id y $this->rol_guia
      * @return bool
      */
-    public function asignarGuia(?int $personalId = null, ?string $rolGuia = null, ?int $citaId = null): bool {
-        if ($citaId !== null) {
-            $this->id = $citaId;
-        }
-        if ($personalId !== null) {
-            $this->personal_id = $personalId;
-        }
-        if ($rolGuia !== null) {
-            $this->rol_guia = $rolGuia;
-        }
-
+    public function asignarGuia(): bool {
         try {
             $delQuery = "DELETE FROM guia_asignado WHERE cita_id = :cita_id AND personal_id = :personal_id";
             $stmtDel = $this->db->prepare($delQuery);
@@ -698,19 +624,10 @@ class Cita extends Database {
     }
 
     /**
-     * Desasigna un guía de la cita configurada en $this->id
-     * @param int|null $personalId
-     * @param int|null $citaId
+     * Desasigna un guía de la cita configurada en $this->id utilizando $this->personal_id
      * @return bool
      */
-    public function desasignarGuia(?int $personalId = null, ?int $citaId = null): bool {
-        if ($citaId !== null) {
-            $this->id = $citaId;
-        }
-        if ($personalId !== null) {
-            $this->personal_id = $personalId;
-        }
-
+    public function desasignarGuia(): bool {
         try {
             $query = "DELETE FROM guia_asignado WHERE cita_id = :cita_id AND personal_id = :personal_id";
             $stmt = $this->db->prepare($query);
@@ -724,19 +641,10 @@ class Cita extends Database {
     }
 
     /**
-     * Actualiza el recorrido asociado a la cita configurada en $this->id
-     * @param int|null $recorridoId
-     * @param int|null $citaId
+     * Actualiza el recorrido asociado a la cita configurada en $this->id utilizando $this->recorrido_id
      * @return bool
      */
-    public function actualizarRecorrido(?int $recorridoId = null, ?int $citaId = null): bool {
-        if ($citaId !== null) {
-            $this->id = $citaId;
-        }
-        if ($recorridoId !== null) {
-            $this->recorrido_id = $recorridoId;
-        }
-
+    public function actualizarRecorrido(): bool {
         try {
             $stmt = $this->db->prepare("UPDATE " . $this->table_name . " SET recorrido_id = :recorrido_id WHERE id = :id");
             if ($this->recorrido_id !== null && $this->recorrido_id > 0) {
@@ -756,14 +664,9 @@ class Cita extends Database {
      * Vincula una lista de visitantes a la cita ($this->id).
      * Evita duplicados en la tabla de asistencia_cita mediante verificación previa.
      * @param array $visitanteIds Listado de IDs de visitantes
-     * @param int|null $citaId Opcional para retrocompatibilidad
      * @return int Cantidad de visitantes vinculados exitosamente
      */
-    public function vincularVisitantes(array $visitanteIds, ?int $citaId = null): int {
-        if ($citaId !== null) {
-            $this->id = $citaId;
-        }
-
+    public function vincularVisitantes(array $visitanteIds): int {
         try {
             $this->db->beginTransaction();
 
@@ -802,14 +705,9 @@ class Cita extends Database {
     /**
      * Remueve un visitante de la asistencia a la cita configurada en $this->id
      * @param int $visitanteId ID del visitante a desvincular
-     * @param int|null $citaId Opcional para retrocompatibilidad
      * @return bool
      */
-    public function desvincularVisitante(int $visitanteId, ?int $citaId = null): bool {
-        if ($citaId !== null) {
-            $this->id = $citaId;
-        }
-
+    public function desvincularVisitante(int $visitanteId): bool {
         try {
             $query = "DELETE FROM asistencia_cita WHERE cita_id = :cita_id AND visitante_id = :visitante_id";
             $stmt = $this->db->prepare($query);
@@ -824,14 +722,9 @@ class Cita extends Database {
 
     /**
      * Obtiene el listado de guías asignados a la cita configurada en $this->id
-     * @param int|null $citaId Opcional para retrocompatibilidad
      * @return array
      */
-    public function obtenerGuiasAsignados(?int $citaId = null): array {
-        if ($citaId !== null) {
-            $this->id = $citaId;
-        }
-
+    public function obtenerGuiasAsignados(): array {
         try {
             $query = "SELECT ga.personal_id, e.nombre_completo, e.nombre_completo AS nombre, '' AS apellido, ga.rol_guia 
                       FROM guia_asignado ga

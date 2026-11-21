@@ -36,7 +36,8 @@ $userRol     = $currentUser['rol'] ?? '';
 
 $permisoModel = new Permiso();
 if ($userRolId <= 0 && !empty($userRol)) {
-    $userRolId = $permisoModel->obtenerRolIdPorNombre($userRol) ?? 0;
+    $permisoModel->setRolNombre($userRol);
+    $userRolId = $permisoModel->obtenerRolIdPorNombre() ?? 0;
     if ($userRolId > 0) {
         $_SESSION['personal']['rol_id'] = $userRolId;
     }

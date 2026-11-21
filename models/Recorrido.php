@@ -66,15 +66,10 @@ class Recorrido extends Database {
     /**
      * Registra un recorrido y todas sus paradas de forma atómica usando Transacciones PDO.
      * Utiliza $this->nombre y $this->zonas.
-     * @param array|null $zonasOrdenadas Opcional para retrocompatibilidad
      * @return bool True en caso de éxito, False de lo contrario
      * @throws Exception Si ocurre un fallo en la base de datos
      */
-    public function crear(?array $zonasOrdenadas = null): bool {
-        if ($zonasOrdenadas !== null) {
-            $this->zonas = $zonasOrdenadas;
-        }
-
+    public function crear(): bool {
         try {
             // Iniciamos la transacción atómica
             $this->db->beginTransaction();
@@ -142,14 +137,9 @@ class Recorrido extends Database {
 
     /**
      * Obtiene los datos de un recorrido con sus paradas por su ID utilizando $this->id.
-     * @param int|null $id Opcional para retrocompatibilidad
      * @return array|null Datos del recorrido con paradas, o null si no existe
      */
-    public function obtenerPorId(?int $id = null): ?array {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function obtenerPorId(): ?array {
         $query = "SELECT id, nombre FROM " . $this->table_name . " WHERE id = :id AND activo = 1 LIMIT 1";
         $stmt = $this->db->prepare($query);
         $stmt->bindParam(":id", $this->id, PDO::PARAM_INT);
@@ -170,11 +160,7 @@ class Recorrido extends Database {
     /**
      * Obtiene el nombre del recorrido por su ID configurado en $this->id.
      */
-    public function obtenerNombre(?int $id = null): ?string {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function obtenerNombre(): ?string {
         $stmt = $this->db->prepare("SELECT nombre FROM " . $this->table_name . " WHERE id = :id AND activo = 1 LIMIT 1");
         $stmt->bindParam(':id', $this->id, PDO::PARAM_INT);
         $stmt->execute();
@@ -190,14 +176,9 @@ class Recorrido extends Database {
      * Elimina un recorrido por ID de forma lógica (Soft Delete) usando $this->id.
      * Preserva las paradas en 'rutas' para no corromper citas históricas.
      * 
-     * @param int|null $id Opcional para retrocompatibilidad
      * @return bool True si se eliminó correctamente
      */
-    public function eliminar(?int $id = null): bool {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function eliminar(): bool {
         try {
             $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
             $stmt = $this->db->prepare($query);
@@ -212,19 +193,10 @@ class Recorrido extends Database {
     /**
      * Actualiza la ruta (secuencia de paradas) de un recorrido en una transacción atómica.
      * Utiliza $this->id y $this->zonas.
-     * @param int|null $recorridoId Opcional para retrocompatibilidad
-     * @param array|null $zonasOrdenadas Opcional para retrocompatibilidad
      * @return bool True en caso de éxito, False de lo contrario
      * @throws Exception Si ocurre un fallo en la base de datos
      */
-    public function actualizarRuta(?int $recorridoId = null, ?array $zonasOrdenadas = null): bool {
-        if ($recorridoId !== null) {
-            $this->id = $recorridoId;
-        }
-        if ($zonasOrdenadas !== null) {
-            $this->zonas = $zonasOrdenadas;
-        }
-
+    public function actualizarRuta(): bool {
         try {
             $this->db->beginTransaction();
 
@@ -260,23 +232,10 @@ class Recorrido extends Database {
     /**
      * Actualiza el nombre y la secuencia de paradas de un recorrido en una transacción atómica.
      * Utiliza $this->id, $this->nombre y $this->zonas.
-     * @param int|null $recorridoId Opcional para retrocompatibilidad
-     * @param string|null $nombre Opcional para retrocompatibilidad
-     * @param array|null $zonasOrdenadas Opcional para retrocompatibilidad
      * @return bool True en caso de éxito, False de lo contrario
      * @throws Exception Si ocurre un fallo en la base de datos
      */
-    public function actualizarNombreYListadoZonas(?int $recorridoId = null, ?string $nombre = null, ?array $zonasOrdenadas = null): bool {
-        if ($recorridoId !== null) {
-            $this->id = $recorridoId;
-        }
-        if ($nombre !== null) {
-            $this->nombre = $nombre;
-        }
-        if ($zonasOrdenadas !== null) {
-            $this->zonas = $zonasOrdenadas;
-        }
-
+    public function actualizarNombreYListadoZonas(): bool {
         try {
             $this->db->beginTransaction();
 

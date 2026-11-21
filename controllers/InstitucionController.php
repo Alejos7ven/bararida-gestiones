@@ -34,7 +34,8 @@ $userRol     = $currentUser['rol'] ?? '';
 
 $permisoModel = new Permiso();
 if ($userRolId <= 0 && !empty($userRol)) {
-    $userRolId = $permisoModel->obtenerRolIdPorNombre($userRol) ?? 0;
+    $permisoModel->setRolNombre($userRol);
+    $userRolId = $permisoModel->obtenerRolIdPorNombre() ?? 0;
     if ($userRolId > 0) {
         $_SESSION['personal']['rol_id'] = $userRolId;
     }
@@ -307,7 +308,8 @@ function crearInstitucionAction() {
 
     // Validar unicidad del RIF/documento en el sistema mediante el modelo Institucion
     $instModel = new Institucion();
-    $entidadExistente = $instModel->buscarEntidadPorDocumento($documento);
+    $instModel->setDocumento($documento);
+    $entidadExistente = $instModel->buscarEntidadPorDocumento();
     if ($entidadExistente) {
         $tipoDocExistente = $entidadExistente['tipo_documento'] ?? $tipo_documento;
         $docCompleto = "{$tipoDocExistente}-{$documento}";
@@ -455,7 +457,8 @@ function actualizarInstitucionAction() {
 
     // Verificar existencia de la institución y obtener su entidad_id real
     $instModel = new Institucion();
-    $instActual = $instModel->obtenerPorId($id);
+    $instModel->setId($id);
+    $instActual = $instModel->obtenerPorId();
     if (!$instActual) {
         http_response_code(404);
         echo json_encode([
@@ -542,7 +545,9 @@ function actualizarInstitucionAction() {
 
     // Validar si el RIF/documento ya pertenece a otra entidad o institución mediante el modelo
     $instModel = new Institucion();
-    $entidadExistente = $instModel->buscarEntidadPorDocumento($documento, $entidad_id);
+    $instModel->setDocumento($documento);
+    $instModel->setEntidadId($entidad_id);
+    $entidadExistente = $instModel->buscarEntidadPorDocumento();
     if ($entidadExistente) {
         $tipoDocExistente = $entidadExistente['tipo_documento'] ?? $tipo_documento;
         $docCompleto = "{$tipoDocExistente}-{$documento}";

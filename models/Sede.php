@@ -84,11 +84,7 @@ class Sede extends Database {
     /**
      * Elimina una sede por su ID (Borrado Lógico) usando $this->id
      */
-    public function eliminar(?int $id = null): bool {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function eliminar(): bool {
         $query = "UPDATE " . $this->table_name . " SET activo = 0 WHERE id = :id";
         $stmt = $this->db->prepare($query);
         $stmt->bindValue(":id", (int)$this->id, PDO::PARAM_INT);
@@ -96,14 +92,10 @@ class Sede extends Database {
     }
 
     /**
-     * Obtiene una sede por su ID reconstruyendo toda la jerarquía geográfica:
+     * Obtiene una sede por su ID reconstruyendo toda la jerarquía geográfica usando $this->id:
      * Parroquia -> Municipio -> Estado
      */
-    public function obtenerPorId(?int $id = null): ?array {
-        if ($id !== null) {
-            $this->id = $id;
-        }
-
+    public function obtenerPorId(): ?array {
         try {
             $query = "SELECT s.id, s.institucion_id, s.parroquia_id, s.detalles,
                              p.parroquia, m.id_municipio, m.municipio, est.id_estado, est.estado
@@ -133,11 +125,7 @@ class Sede extends Database {
      * Obtiene todas las sedes asociadas a una institución usando $this->institucion_id,
      * reconstruyendo toda la información geográfica desde parroquias
      */
-    public function listarPorInstitucion(?int $institucion_id = null): array {
-        if ($institucion_id !== null) {
-            $this->institucion_id = $institucion_id;
-        }
-
+    public function listarPorInstitucion(): array {
         try {
             $query = "SELECT s.id, s.institucion_id, s.parroquia_id, s.detalles,
                              p.parroquia, m.id_municipio, m.municipio, est.id_estado, est.estado
