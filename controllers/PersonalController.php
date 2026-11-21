@@ -503,7 +503,7 @@ function actualizarAction() {
 }
 
 /**
- * Elimina un personal por ID (Previene eliminar superadmins)
+ * Elimina un personal por ID (Previene eliminar al superadmin principal, usuario en sesión y protege superadmins de administradores)
  */
 function eliminarAction() {
     $id = isset($_POST['id']) && is_numeric($_POST['id']) ? (int)$_POST['id'] : null;
@@ -517,12 +517,23 @@ function eliminarAction() {
         return;
     }
 
-    // Regla de validación en el Controller: Proteger usuario superadmin principal (ID 0 o 1)
-    if ($id === 0 || $id === 1) {
+    // Regla de validación: Proteger al Super Administrador principal (ID 0)
+    if ($id === 0) {
         http_response_code(403);
         echo json_encode([
             "status" => "error",
             "message" => "No es posible eliminar al Super Administrador principal."
+        ]);
+        return;
+    }
+
+    // Regla de validación: Proteger la cuenta del usuario actualmente en sesión
+    $currentUserId = isset($_SESSION['personal']['id']) ? (int)$_SESSION['personal']['id'] : null;
+    if ($currentUserId !== null && $id === $currentUserId) {
+        http_response_code(403);
+        echo json_encode([
+            "status" => "error",
+            "message" => "No es posible eliminar su propio usuario actualmente en sesión."
         ]);
         return;
     }
@@ -540,11 +551,14 @@ function eliminarAction() {
             return;
         }
 
-        if ($personalActual['rol'] === 'superadmin') {
+        // Regla de validación: Solo un Super Administrador puede eliminar a otro Super Administrador
+        $currentUserRole = strtolower(trim($_SESSION['personal']['rol'] ?? ''));
+        $targetRole = strtolower(trim($personalActual['rol'] ?? ''));
+        if ($targetRole === 'superadmin' && $currentUserRole !== 'superadmin') {
             http_response_code(403);
             echo json_encode([
                 "status" => "error",
-                "message" => "Un Super Administrador no puede ser eliminado del sistema."
+                "message" => "No posee permisos para eliminar a un Super Administrador."
             ]);
             return;
         }

@@ -113,26 +113,48 @@ $(document).ready(function() {
             return;
         }
 
+        const loggedUserId = parseInt($('#currentLoggedUserId').val(), 10);
         const loggedUserRol = ($('#currentLoggedUserRol').val() || '').toLowerCase().trim();
 
         data.forEach(function(u) {
             let badgeRol = '';
-            if (u.rol === 'superadmin') {
+            const rolNorm = (u.rol || '').toLowerCase().trim();
+            if (rolNorm === 'superadmin') {
                 badgeRol = '<span class="badge-premium badge-premium-superadmin">Super Admin</span>';
-            } else if (u.rol === 'admin') {
+            } else if (rolNorm === 'admin') {
                 badgeRol = '<span class="badge-premium badge-premium-admin">Administrador</span>';
             } else {
                 badgeRol = '<span class="badge-premium badge-premium-guia">Guía de Campo</span>';
             }
 
-            const isTargetSuperadmin = (u.rol === 'superadmin');
-            const deleteDisabled = isTargetSuperadmin ? 'disabled' : '';
-            const deleteTitle = isTargetSuperadmin ? 'Un Super Administrador no puede ser eliminado' : 'Eliminar Personal';
+            const targetId = parseInt(u.id, 10);
+            const isRootSuperadmin = (targetId === 0);
+            const isSelf = (!isNaN(loggedUserId) && targetId === loggedUserId);
+            const isTargetSuperadmin = (rolNorm === 'superadmin');
 
-            const editDisabled = (isTargetSuperadmin && loggedUserRol !== 'superadmin') ? 'disabled' : '';
-            const editTitle = (isTargetSuperadmin && loggedUserRol !== 'superadmin')
-                ? 'No posee permisos para editar a un Super Administrador'
-                : 'Editar Personal';
+            // Determinar si la eliminación está deshabilitada y la razón descriptiva
+            let deleteDisabled = '';
+            let deleteTitle = 'Eliminar Personal';
+
+            if (isRootSuperadmin) {
+                deleteDisabled = 'disabled';
+                deleteTitle = 'No es posible eliminar al Super Administrador principal';
+            } else if (isSelf) {
+                deleteDisabled = 'disabled';
+                deleteTitle = 'No puede eliminar su propia cuenta de usuario en sesión';
+            } else if (isTargetSuperadmin && loggedUserRol !== 'superadmin') {
+                deleteDisabled = 'disabled';
+                deleteTitle = 'No posee permisos para eliminar a un Super Administrador';
+            }
+
+            // Determinar si la edición está deshabilitada y la razón
+            let editDisabled = '';
+            let editTitle = 'Editar Personal';
+
+            if (isTargetSuperadmin && loggedUserRol !== 'superadmin') {
+                editDisabled = 'disabled';
+                editTitle = 'No posee permisos para editar a un Super Administrador';
+            }
 
             const nameFull = u.nombre_completo || `${u.nombre || ''} ${u.apellido || ''}`.trim();
 
@@ -317,12 +339,13 @@ $(document).ready(function() {
     // OBTENER DATOS PARA EDICIÓN
     // =========================================================================
     $(document).on('click', '.btn-editar-personal', function(e) {
-        if ($(this).is(':disabled') || $(this).prop('disabled')) {
-            e.preventDefault();
+        e.preventDefault();
+        const $btn = $(this).closest('.btn-editar-personal');
+        if ($btn.is(':disabled') || $btn.prop('disabled')) {
             return false;
         }
 
-        const id = $(this).data('id');
+        const id = $btn.attr('data-id');
         const $modal = $('#modalEditarPersonal');
         const $alert = $('#alertEditarFeedback');
         const $rolSelect = $('#edit_rol');
@@ -454,16 +477,22 @@ $(document).ready(function() {
     // ABRIR CONFIRMACIÓN DE ELIMINACIÓN
     // =========================================================================
     $(document).on('click', '.btn-eliminar-personal', function(e) {
-        if ($(this).is(':disabled') || $(this).prop('disabled')) {
-            e.preventDefault();
+        e.preventDefault();
+        const $btn = $(this).closest('.btn-eliminar-personal');
+        if ($btn.is(':disabled') || $btn.prop('disabled')) {
             return false;
         }
 
-        const id = $(this).data('id');
-        const name = $(this).data('name');
+        const id = $btn.attr('data-id');
+        const name = $btn.attr('data-name');
+
+        if (!id && id !== '0') {
+            showGlobalAlert('No se pudo identificar el usuario a eliminar.', 'danger');
+            return false;
+        }
 
         $('#delete_id').val(id);
-        $('#deleteUserNameSpan').text(name);
+        $('#deleteUserNameSpan').text(name || '');
         $('#modalEliminarPersonal').modal('show');
     });
 
@@ -472,8 +501,12 @@ $(document).ready(function() {
     // =========================================================================
     $('#btnConfirmarEliminar').on('click', function() {
         const id = $('#delete_id').val();
+        if (!id && id !== '0') {
+            showGlobalAlert('ID de personal no válido.', 'danger');
+            return;
+        }
+
         const $btn = $(this);
-        
         $btn.prop('disabled', true).text('Eliminando...');
 
         $.ajax({
